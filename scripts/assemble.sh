@@ -35,3 +35,12 @@ external/bazelbuild-rules_pkg
 external/bazelbuild-rules_python
 external/bazelbuild-rules_shell
 PATHS
+# This dev-only module is absent from the registry selected by OnePlus .bazelrc.
+git clone --filter=blob:none --depth=1 -b 0.7.2 https://github.com/bazelbuild/stardoc.git source/kernel_platform/external/stardoc
+cat >> source/kernel_platform/MODULE.bazel <<'MODULE'
+
+local_path_override(
+    module_name = "stardoc",
+    path = "external/stardoc",
+)
+MODULE
