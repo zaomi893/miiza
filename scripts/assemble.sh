@@ -5,6 +5,8 @@ git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/and
 rm -rf source/kernel_platform/common source/kernel_platform/msm-kernel
 git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/android_kernel_common_oneplus_sm8850.git source/kernel_platform/common
 git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/android_kernel_oneplus_sm8850.git source/kernel_platform/msm-kernel
-# OnePlus publishes source repos without this Kleaf runtime prebuilt. Supply the matching AOSP host launcher.
-rm -rf source/kernel_platform/prebuilts/build-tools/linux_musl-x86
-git clone --filter=blob:none --depth=1 -b main-kernel-build-2024 https://android.googlesource.com/platform/prebuilts/build-tools source/kernel_platform/prebuilts/build-tools/linux_musl-x86
+# Kleaf expects prebuilts/build-tools/linux_musl-x86/bin/py3-cmd.
+# Clone the build-tools repository at its root, not inside linux_musl-x86.
+rm -rf source/kernel_platform/prebuilts/build-tools
+git clone --filter=blob:none --depth=1 -b main-kernel-build-2024 https://android.googlesource.com/platform/prebuilts/build-tools source/kernel_platform/prebuilts/build-tools
+test -x source/kernel_platform/prebuilts/build-tools/linux_musl-x86/bin/py3-cmd
