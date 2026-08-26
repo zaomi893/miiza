@@ -14,3 +14,24 @@ test -x source/kernel_platform/prebuilts/build-tools/linux_musl-x86/bin/py3-cmd
 rm -rf source/kernel_platform/prebuilts/kernel-build-tools
 git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/kernel/prebuilts/build-tools source/kernel_platform/prebuilts/kernel-build-tools
 test -x source/kernel_platform/prebuilts/kernel-build-tools/bazel/linux-x86_64/bazel
+# MODULE.bazel uses Android-tree local_path_override entries. Restore the public AOSP parts.
+while read -r path; do
+  git clone --filter=blob:none --depth=1 -b main-kernel-2025 "https://android.googlesource.com/platform/${path}" "source/kernel_platform/${path}"
+done <<'PATHS'
+external/libcap
+external/libcap-ng
+external/lz4
+external/toybox
+external/zlib
+external/zopfli
+external/pigz
+external/python/absl-py
+external/bazel-contrib-bazel_features
+external/bazel-skylib
+external/bazelbuild-platforms
+external/bazelbuild-rules_cc
+external/bazelbuild-rules_license
+external/bazelbuild-rules_pkg
+external/bazelbuild-rules_python
+external/bazelbuild-rules_shell
+PATHS
