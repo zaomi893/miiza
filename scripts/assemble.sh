@@ -79,3 +79,9 @@ open(p, "w").write(s)
 PY
 grep -q 'T = TypeVar("T")' source/kernel_platform/build/kernel/kleaf/workspace_status_stamp.py
 ! grep -q 'load_attribute_from_json\[T\]' source/kernel_platform/build/kernel/kleaf/workspace_status_stamp.py
+# The published build/kernel/build-tools/sysroot symlink targets an omitted
+# proprietary prebuilts/gcc checkout. Point it at AOSP's equivalent musl sysroot.
+rm -f source/kernel_platform/build/kernel/build-tools/sysroot
+ln -s ../../../prebuilts/build-tools/sysroots/x86_64-unknown-linux-musl \
+  source/kernel_platform/build/kernel/build-tools/sysroot
+test -f source/kernel_platform/build/kernel/build-tools/sysroot/include/stdio.h
