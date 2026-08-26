@@ -35,6 +35,9 @@ external/bazelbuild-rules_pkg
 external/bazelbuild-rules_python
 external/bazelbuild-rules_shell
 PATHS
+# Kleaf pins an offline file registry under external/.
+git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/external/bazelbuild-bazel-central-registry source/kernel_platform/external/bazelbuild-bazel-central-registry
+
 # This dev-only module is absent from the registry selected by OnePlus .bazelrc.
 git clone --filter=blob:none --depth=1 -b 0.7.2 https://github.com/bazelbuild/stardoc.git source/kernel_platform/external/stardoc
 cat >> source/kernel_platform/MODULE.bazel <<'MODULE'
