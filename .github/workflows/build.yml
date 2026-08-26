@@ -1,0 +1,48 @@
+name: Build OnePlus 15 HMBIRD kernel
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Official aligned source branch
+        required: true
+        default: oneplus/sm8850_b_16.0.0_oneplus_15
+      run_build:
+        description: Attempt public Kleaf canoe build
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      BRANCH: ${{ inputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk
+        run: sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet
+      - name: Assemble aligned official sources
+        run: ./scripts/assemble.sh
+      - name: Verify HMBIRD II
+        run: ./scripts/check_hmbird.sh
+      - name: Attempt public Kleaf build
+        if: inputs.run_build
+        id: build
+        continue-on-error: true
+        run: ./scripts/build.sh
+      - name: Record upstream limitation
+        if: inputs.run_build && steps.build.outcome != 'success'
+        run: |
+          mkdir -p logs
+          printf '%s\n' 'Official oplus_build.sh requires a previously built proprietary VND Android environment.' 'No incomplete output is represented as flashable vendor_dlkm.' > logs/LIMITATION.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oneplus15-hmbird-${{ github.run_number }}
+          path: |
+            artifacts/**
+            logs/**
+            hmbird-targets.txt
+          if-no-files-found: warn
+          retention-days: 14
