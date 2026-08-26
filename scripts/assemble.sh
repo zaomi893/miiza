@@ -85,3 +85,9 @@ rm -f source/kernel_platform/build/kernel/build-tools/sysroot
 ln -s ../../../prebuilts/build-tools/sysroots/x86_64-unknown-linux-musl \
   source/kernel_platform/build/kernel/build-tools/sysroot
 test -f source/kernel_platform/build/kernel/build-tools/sysroot/include/stdio.h
+# Kleaf boot_images references the standard Android mkbootimg package.
+git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+  https://android.googlesource.com/platform/system/tools/mkbootimg \
+  source/kernel_platform/tools/mkbootimg
+test -f source/kernel_platform/tools/mkbootimg/BUILD.bazel
+test -f source/kernel_platform/tools/mkbootimg/mkbootimg.py
