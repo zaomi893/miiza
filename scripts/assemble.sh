@@ -12,5 +12,5 @@ git clone --filter=blob:none --depth=1 -b main-kernel-build-2024 https://android
 test -x source/kernel_platform/prebuilts/build-tools/linux_musl-x86/bin/py3-cmd
 # Bazel binary used by Kleaf is published separately under kernel/prebuilts.
 rm -rf source/kernel_platform/prebuilts/kernel-build-tools
-git clone --filter=blob:none --depth=1 -b main-kernel-build-2024 https://android.googlesource.com/kernel/prebuilts/build-tools source/kernel_platform/prebuilts/kernel-build-tools
+git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/kernel/prebuilts/build-tools source/kernel_platform/prebuilts/kernel-build-tools
 test -x source/kernel_platform/prebuilts/kernel-build-tools/bazel/linux-x86_64/bazel
