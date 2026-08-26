@@ -47,3 +47,5 @@ local_path_override(
     path = "external/stardoc",
 )
 MODULE
+# Qualcomm target definitions load //build/bazel_common_rules/dist:dist.bzl.
+git clone --filter=blob:none --depth=1 -b android16-release https://android.googlesource.com/platform/build/bazel_common_rules source/kernel_platform/build/bazel_common_rules
