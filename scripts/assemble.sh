@@ -58,3 +58,7 @@ ln -s ../../../../../qcom/opensource/devicetree source/kernel_platform/msm-kerne
 test -f source/kernel_platform/soc-repo/target_variants.bzl
 test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/BUILD.bazel
 test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/oplus/platform_map.bzl
+# Kleaf toolchain extension and common build.config.constants require clang-r536225.
+git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 source/kernel_platform/prebuilts/clang/host/linux-x86
+test -f source/kernel_platform/prebuilts/clang/host/linux-x86/kleaf/clang_toolchain_repository.bzl
+test -x source/kernel_platform/prebuilts/clang/host/linux-x86/clang-r536225/bin/clang
