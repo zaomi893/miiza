@@ -62,3 +62,20 @@ test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/oplus/platfor
 git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 source/kernel_platform/prebuilts/clang/host/linux-x86
 test -f source/kernel_platform/prebuilts/clang/host/linux-x86/kleaf/clang_toolchain_repository.bzl
 test -x source/kernel_platform/prebuilts/clang/host/linux-x86/clang-r536225/bin/clang
+# OnePlus published workspace_status_stamp.py with Python 3.12 PEP 695 syntax,
+# while its pinned hermetic py3-cmd is older. Apply the equivalent portable typing form.
+python3 - <<'PY'
+p = "source/kernel_platform/build/kernel/kleaf/workspace_status_stamp.py"
+s = open(p).read()
+old = "from typing import Iterable\n"
+new = "from typing import Iterable, TypeVar\n\nT = TypeVar(\"T\")\n"
+assert old in s
+s = s.replace(old, new, 1)
+old = "def load_attribute_from_json[T](json_file: pathlib.Path, attr_name: str, attr_type: type[T]) \\\n"
+new = "def load_attribute_from_json(json_file: pathlib.Path, attr_name: str, attr_type: type[T]) \\\n"
+assert old in s
+s = s.replace(old, new, 1)
+open(p, "w").write(s)
+PY
+grep -q 'T = TypeVar("T")' source/kernel_platform/build/kernel/kleaf/workspace_status_stamp.py
+! grep -q 'load_attribute_from_json\[T\]' source/kernel_platform/build/kernel/kleaf/workspace_status_stamp.py
