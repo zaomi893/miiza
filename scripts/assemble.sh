@@ -49,9 +49,12 @@ local_path_override(
 MODULE
 # Qualcomm target definitions load //build/bazel_common_rules/dist:dist.bzl.
 git clone --filter=blob:none --depth=1 -b android16-release https://android.googlesource.com/platform/build/bazel_common_rules source/kernel_platform/build/bazel_common_rules
-# The original Android manifest mounts Qualcomm's devicetree project here.
-# Recreate that checkout layout from the copy included in OnePlus' monorepo.
-mkdir -p source/kernel_platform/soc-repo/arch/arm64/boot/dts
-ln -s ../../../../../qcom/opensource/devicetree source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor
+# Qualcomm's manifest exposes the SoC kernel checkout under both msm-kernel and soc-repo,
+# then mounts the separate devicetree project below its arch tree.
+rm -rf source/kernel_platform/soc-repo
+ln -s msm-kernel source/kernel_platform/soc-repo
+mkdir -p source/kernel_platform/msm-kernel/arch/arm64/boot/dts
+ln -s ../../../../../qcom/opensource/devicetree source/kernel_platform/msm-kernel/arch/arm64/boot/dts/vendor
+test -f source/kernel_platform/soc-repo/target_variants.bzl
 test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/BUILD.bazel
 test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/oplus/platform_map.bzl
