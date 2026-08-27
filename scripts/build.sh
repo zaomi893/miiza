@@ -7,7 +7,12 @@ if [[ -n "${BAZEL_REPOSITORY_CACHE:-}" ]]; then
   mkdir -p "$BAZEL_REPOSITORY_CACHE"
   BAZEL_CACHE_ARGS+=(--repository_cache="$BAZEL_REPOSITORY_CACHE")
 fi
-bazel() { ./tools/bazel "${BAZEL_CACHE_ARGS[@]}" "$@"; }
+bazel() {
+  local command="$1"
+  shift
+  # repository_cache is a command option, not a Bazel startup option.
+  ./tools/bazel "$command" "${BAZEL_CACHE_ARGS[@]}" "$@"
+}
 # Bazel label patterns do not support shell-style * wildcards. Query the package,
 # retain the Canoe labels for diagnostics, then build the public perf dist rule.
 bazel query '//msm-kernel:all' 2>&1 | tee ../../logs/bazel-targets-all.log | grep -E '^//msm-kernel:canoe' | tee ../../logs/bazel-targets.log
