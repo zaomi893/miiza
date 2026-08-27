@@ -157,20 +157,26 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/BUILD.bazel
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot/usr/include/stdio.h
 # Kleaf accepts ndk-r27 or ndk-r26; r26 has an aligned public kernel branch.
-# Gitiles occasionally closes this large clone after checkout and git exits 1
-# even though all required files are present. Retry a genuinely incomplete tree,
-# but accept a completed checkout instead of aborting assembly.
-if ! git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
-  https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
-  source/kernel_platform/prebuilts/ndk-r26; then
-  if [[ ! -f source/kernel_platform/prebuilts/ndk-r26/source.properties || \
-        ! -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot ]]; then
-    rm -rf source/kernel_platform/prebuilts/ndk-r26
-    git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
-      https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
-      source/kernel_platform/prebuilts/ndk-r26
+# Gitiles occasionally finishes checkout with a non-zero status, and can also
+# return zero before every lazy blob needed by this large partial clone is usable.
+# Validate the actual Kleaf inputs after each attempt rather than trusting Git's
+# exit status. A complete tree is accepted; an incomplete tree is retried.
+ndk_ok() {
+  [[ -f source/kernel_platform/prebuilts/ndk-r26/source.properties &&
+     -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot ]]
+}
+for attempt in 1 2 3; do
+  rm -rf source/kernel_platform/prebuilts/ndk-r26
+  git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+    https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
+    source/kernel_platform/prebuilts/ndk-r26 || true
+  if ndk_ok; then
+    break
   fi
-fi
+  echo "NDK checkout incomplete (attempt $attempt/3)" >&2
+  sleep $((attempt * 5))
+done
+ndk_ok
 test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
 test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
