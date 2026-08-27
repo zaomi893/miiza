@@ -7,6 +7,10 @@ if [[ -n "${BAZEL_REPOSITORY_CACHE:-}" ]]; then
   mkdir -p "$BAZEL_REPOSITORY_CACHE"
   BAZEL_CACHE_ARGS+=(--repository_cache="$BAZEL_REPOSITORY_CACHE")
 fi
+if [[ -n "${BAZEL_DISK_CACHE:-}" ]]; then
+  mkdir -p "$BAZEL_DISK_CACHE"
+  BAZEL_CACHE_ARGS+=(--disk_cache="$BAZEL_DISK_CACHE")
+fi
 bazel() {
   local command="$1"
   shift
