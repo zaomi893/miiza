@@ -157,15 +157,12 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/prebuilts/ndk-r26
 test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
 test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
-# OnePlus enables Kleaf's experimental musl host platform by default, but the
-# published linux-x86 libdw/libelf/libc++ prebuilts are glibc-linked. Building
-# gendwarfksyms as musl then fails on glibc symbols. Use the normal glibc host.
-for rc in \
-  source/kernel_platform/build/kernel/kleaf/bazelrc/musl.bazelrc \
-  source/kernel_platform/build/kleaf/bazelrc/musl.bazelrc; do
-  [[ -f "$rc" ]] || continue
-  sed -i '/^common --config=musl_platform$/d' "$rc"
+# Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
+# musl sysroot. The published gendwarfksyms dependencies are glibc-linked, so
+# select the bundled musl variants instead of globally changing host libc.
+for f in \
+  source/kernel_platform/prebuilts/kernel-build-tools/BUILD.bazel \
+  source/kernel_platform/prebuilts/kernel-build-tools/BUILD; do
+  [[ -f "$f" ]] || continue
+  sed -i 's#linux-x86/lib64/libdw\.so#linux_musl-x86/lib64/libdw.so#g; s#linux-x86/lib64/libelf\.so#linux_musl-x86/lib64/libelf.so#g; s#linux-x86/lib64/libc++\.so#linux_musl-x86/lib64/libc++.so#g' "$f"
 done
-! grep -R -q '^common --config=musl_platform$' \
-  source/kernel_platform/build/kernel/kleaf/bazelrc \
-  source/kernel_platform/build/kleaf/bazelrc
