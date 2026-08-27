@@ -103,3 +103,9 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/prebuilts/rust
 test -f source/kernel_platform/prebuilts/rust/linux-x86/1.82.0/BUILD.bazel
 test -x source/kernel_platform/prebuilts/rust/linux-x86/1.82.0/bin/rustc
+# Clang's generated host toolchain uses this legacy glibc sysroot package.
+git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+  https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8 \
+  source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8
+test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/BUILD.bazel
+test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot/usr/include/stdio.h
