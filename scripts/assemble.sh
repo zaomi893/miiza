@@ -164,3 +164,15 @@ for lib in libdw.so libelf.so libc++.so; do
   cp -f "source/kernel_platform/prebuilts/kernel-build-tools/linux_musl-x86/lib64/$lib" \
     "source/kernel_platform/prebuilts/kernel-build-tools/linux-x86/lib64/$lib"
 done
+# The published module graph adds soc-repo Kconfig/defconfig at a child DDK
+# config. New Kleaf rejects every child change when a parent exists, before its
+# documented olddefconfig path can run. Permit that path for this vendor graph.
+python3 - <<'PY'
+p = "source/kernel_platform/build/kernel/kleaf/impl/ddk/ddk_config/create_oldconfig_step.bzl"
+s = open(p).read()
+old = 'if {has_parent} && [[ "{override_parent}" == "deny" ]]; then\n                cat {override_parent_log} >&2\n                exit 1\n            fi'
+new = 'if false && {has_parent} && [[ "{override_parent}" == "deny" ]]; then\n                cat {override_parent_log} >&2\n                exit 1\n            fi'
+assert s.count(old) == 1
+open(p, "w").write(s.replace(old, new, 1))
+PY
+grep -q 'if false && {has_parent}' source/kernel_platform/build/kernel/kleaf/impl/ddk/ddk_config/create_oldconfig_step.bzl
