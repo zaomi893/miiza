@@ -229,3 +229,24 @@ open(p, "w").writelines(lines)
 PY
 grep -Fq -- '-Clinker=clang' source/kernel_platform/common/rust/Makefile
 grep -Fq -- "-Clink-args='-fuse-ld=lld'" source/kernel_platform/common/rust/Makefile
+# The DTB kernel_build sandbox needs the complete msm dt-bindings filegroup as
+# declared inputs. additional_msm_headers is a DDK headers provider and did not
+# materialize every header (notably qcom_dma_heap_dt_constants.h) for this action.
+python3 - <<'PY'
+p = "source/kernel_platform/msm-kernel/kleaf-scripts/dtbs.bzl"
+s = open(p).read()
+old = '''        srcs = [
+            # keep sorted
+            ":additional_msm_headers_aarch64_globs",
+            "//common:kernel_aarch64_sources",
+        ],'''
+new = '''        srcs = [
+            # keep sorted
+            ":additional_msm_headers_aarch64_globs",
+            ":dt_bindings_headers",
+            "//common:kernel_aarch64_sources",
+        ],'''
+assert s.count(old) == 1
+open(p, "w").write(s.replace(old, new, 1))
+PY
+grep -A5 'srcs = \[' source/kernel_platform/msm-kernel/kleaf-scripts/dtbs.bzl | grep -Fq ':dt_bindings_headers'
