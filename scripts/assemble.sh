@@ -250,3 +250,19 @@ assert s.count(old) == 1
 open(p, "w").write(s.replace(old, new, 1))
 PY
 grep -A5 'srcs = \[' source/kernel_platform/msm-kernel/kleaf-scripts/dtbs.bzl | grep -Fq ':dt_bindings_headers'
+# DT preprocessing uses common as srctree. Declaring the msm filegroup only
+# places headers below ../msm-kernel in the sandbox, so name the copied common
+# header explicitly to materialize it at common/include/dt-bindings/... .
+python3 - <<'PY'
+p = "source/kernel_platform/msm-kernel/kleaf-scripts/dtbs.bzl"
+s = open(p).read()
+old = '''            ":dt_bindings_headers",
+            "//common:kernel_aarch64_sources",'''
+new = '''            ":dt_bindings_headers",
+            "//common:include/dt-bindings/arm/msm/qcom_dma_heap_dt_constants.h",
+            "//common:kernel_aarch64_sources",'''
+assert s.count(old) == 1
+open(p, "w").write(s.replace(old, new, 1))
+PY
+test -f source/kernel_platform/common/include/dt-bindings/arm/msm/qcom_dma_heap_dt_constants.h
+grep -Fq '//common:include/dt-bindings/arm/msm/qcom_dma_heap_dt_constants.h' source/kernel_platform/msm-kernel/kleaf-scripts/dtbs.bzl
