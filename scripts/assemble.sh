@@ -160,7 +160,7 @@ test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
 # musl sysroot. Kbuild nevertheless hardcodes the linux-x86 runpath for
 # gendwarfksyms, so place the matching musl libraries at that exact runpath.
-for lib in libdw.so libelf.so libc++.so; do
+for lib in libdw.so libelf.so libc++.so libcrypto-host.so; do
   cp -f "source/kernel_platform/prebuilts/kernel-build-tools/linux_musl-x86/lib64/$lib" \
     "source/kernel_platform/prebuilts/kernel-build-tools/linux-x86/lib64/$lib"
 done
