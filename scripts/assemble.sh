@@ -109,3 +109,9 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/BUILD.bazel
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot/usr/include/stdio.h
+# Kleaf accepts ndk-r27 or ndk-r26; r26 has an aligned public kernel branch.
+git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+  https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
+  source/kernel_platform/prebuilts/ndk-r26
+test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
+test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
