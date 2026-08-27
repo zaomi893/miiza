@@ -227,3 +227,16 @@ assert s.count(old) == 1
 open(p, "w").write(s.replace(old, new, 1))
 PY
 grep -Fq -- '-Clinker=/usr/bin/cc' source/kernel_platform/common/rust/Makefile
+# The hermetic PATH contains Android's clang/lld, while /usr/bin/cc cannot find ld.
+python3 - <<'PY'
+import re
+p='source/kernel_platform/common/rust/Makefile'
+s=open(p).read()
+s,n=re.subn(r'-Clinker=\$\(HOSTCC\)', '-Clinker=clang', s, count=1)
+assert n==1
+s,n=re.subn(r"\t\t-Clink-args='\$\(call escsq,\$\(KBUILD_PROCMACROLDFLAGS\)\)' \\\n", "\t\t-Clink-args='-fuse-ld=lld' \\\n", s, count=1)
+assert n==1
+open(p,'w').write(s)
+PY
+grep -Fq -- '-Clinker=clang' source/kernel_platform/common/rust/Makefile
+grep -Fq -- "-Clink-args='-fuse-ld=lld'" source/kernel_platform/common/rust/Makefile
