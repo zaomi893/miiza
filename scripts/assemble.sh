@@ -97,3 +97,9 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/prebuilts/clang-tools
 test -f source/kernel_platform/prebuilts/clang-tools/BUILD.bazel
 test -x source/kernel_platform/prebuilts/clang-tools/linux-x86/bin/bindgen
+# Kernel toolchain analysis requires the aligned Rust 1.82 host prebuilts.
+git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+  https://android.googlesource.com/platform/prebuilts/rust \
+  source/kernel_platform/prebuilts/rust
+test -f source/kernel_platform/prebuilts/rust/linux-x86/1.82.0/BUILD.bazel
+test -x source/kernel_platform/prebuilts/rust/linux-x86/1.82.0/bin/rustc
