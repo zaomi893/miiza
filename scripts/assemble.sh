@@ -63,6 +63,11 @@ ln -s ../../../../../qcom/opensource/devicetree source/kernel_platform/msm-kerne
 test -f source/kernel_platform/soc-repo/target_variants.bzl
 test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/BUILD.bazel
 test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/oplus/platform_map.bzl
+# DT preprocessing runs with common as srctree. Merge Qualcomm vendor bindings
+# published by msm-kernel into common's include tree so <dt-bindings/...> resolves.
+cp -a source/kernel_platform/msm-kernel/include/dt-bindings/. \
+  source/kernel_platform/common/include/dt-bindings/
+test -f source/kernel_platform/common/include/dt-bindings/arm/msm/qti-smmu-proxy-dt-ids.h
 # Derive the Kconfig source prefix from Bazel's resolved package path. The same
 # package may be materialized as msm-kernel or through its soc-repo alias.
 python3 - <<'FIX_KCONFIG_PREFIX'
