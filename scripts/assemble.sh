@@ -91,3 +91,9 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/tools/mkbootimg
 test -f source/kernel_platform/tools/mkbootimg/BUILD.bazel
 test -f source/kernel_platform/tools/mkbootimg/mkbootimg.py
+# Kleaf 2025 requires the AOSP bindgen/clang-tools Bazel package.
+git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+  https://android.googlesource.com/platform/prebuilts/clang-tools \
+  source/kernel_platform/prebuilts/clang-tools
+test -f source/kernel_platform/prebuilts/clang-tools/BUILD.bazel
+test -x source/kernel_platform/prebuilts/clang-tools/linux-x86/bin/bindgen
