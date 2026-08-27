@@ -14,6 +14,11 @@ test -x source/kernel_platform/prebuilts/build-tools/linux_musl-x86/bin/py3-cmd
 rm -rf source/kernel_platform/prebuilts/kernel-build-tools
 git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/kernel/prebuilts/build-tools source/kernel_platform/prebuilts/kernel-build-tools
 test -x source/kernel_platform/prebuilts/kernel-build-tools/bazel/linux-x86_64/bazel
+# OnePlus host tools are musl-linked while this target selects the linux-x86
+# runpath. Expose the published musl loader in that selected runpath as well.
+cp -f source/kernel_platform/prebuilts/kernel-build-tools/linux_musl-x86/lib64/libc_musl.so \
+  source/kernel_platform/prebuilts/kernel-build-tools/linux-x86/lib64/libc_musl.so
+test -f source/kernel_platform/prebuilts/kernel-build-tools/linux-x86/lib64/libc_musl.so
 # MODULE.bazel uses Android-tree local_path_override entries. Restore the public AOSP parts.
 while read -r path; do
   git clone --filter=blob:none --depth=1 -b main-kernel-2025 "https://android.googlesource.com/platform/${path}" "source/kernel_platform/${path}"
