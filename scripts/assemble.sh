@@ -63,17 +63,17 @@ ln -s ../../../../../qcom/opensource/devicetree source/kernel_platform/msm-kerne
 test -f source/kernel_platform/soc-repo/target_variants.bzl
 test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/BUILD.bazel
 test -f source/kernel_platform/soc-repo/arch/arm64/boot/dts/vendor/oplus/platform_map.bzl
-# kconfig.msm.generated runs in a Bazel sandbox. Its declared Kconfig inputs are
-# materialized under msm-kernel/, while the workspace-only soc-repo symlink is not.
+# Derive the Kconfig source prefix from Bazel's resolved package path. The same
+# package may be materialized as msm-kernel or through its soc-repo alias.
 python3 - <<'FIX_KCONFIG_PREFIX'
 p = "source/kernel_platform/msm-kernel/BUILD.bazel"
 s = open(p).read()
 old = 'cmd = "KCONFIG_EXT_PREFIX=soc-repo/ $(location flatten_kconfig.sh) $(location Kconfig.msm) >$@",'
-new = 'cmd = "KCONFIG_EXT_PREFIX=msm-kernel/ $(location flatten_kconfig.sh) $(location Kconfig.msm) >$@",'
+new = 'cmd = "KCONFIG_EXT_PREFIX=$$(dirname $(location Kconfig.msm))/ $(location flatten_kconfig.sh) $(location Kconfig.msm) >$@",'
 assert s.count(old) == 1
 open(p, "w").write(s.replace(old, new, 1))
 FIX_KCONFIG_PREFIX
-grep -q 'KCONFIG_EXT_PREFIX=msm-kernel/' source/kernel_platform/msm-kernel/BUILD.bazel
+grep -Fq 'KCONFIG_EXT_PREFIX=$$(dirname $(location Kconfig.msm))/' source/kernel_platform/msm-kernel/BUILD.bazel
 # Kleaf toolchain extension and common build.config.constants require clang-r536225.
 git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 source/kernel_platform/prebuilts/clang/host/linux-x86
 test -f source/kernel_platform/prebuilts/clang/host/linux-x86/kleaf/clang_toolchain_repository.bzl
