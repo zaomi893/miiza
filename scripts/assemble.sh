@@ -207,3 +207,23 @@ assert s.count(old) == 1
 open(p, "w").write(s.replace(old, new, 1))
 PY
 grep -q 'seen_kconfigs=' source/kernel_platform/build/kernel/kleaf/impl/ddk/ddk_config/create_kconfig_ext_step.bzl
+# Rust procedural macros are host DSOs loaded into the glibc-linked rustc.
+# Kleaf's selected musl execution platform makes Kbuild's HOSTCC produce a musl
+# libmacros.so; rustc then reports the opaque E0463 "can't find crate" when
+# dlopen rejects it. Build this host-only DSO with the runner's glibc compiler.
+python3 - <<'PY'
+p = "source/kernel_platform/common/rust/Makefile"
+s = open(p).read()
+old = '''\t$(RUSTC_OR_CLIPPY) $(rust_common_flags) \\
+\t\t-Clinker-flavor=gcc -Clinker=$(HOSTCC) \\
+\t\t-Clink-args='$(call escsq,$(KBUILD_PROCMACROLDFLAGS))' \\
+\t\t--emit=dep-info=$(depfile) --emit=link=$@ --extern proc_macro \
+'''
+new = '''\t$(RUSTC_OR_CLIPPY) $(rust_common_flags) \\
+\t\t-Clinker-flavor=gcc -Clinker=/usr/bin/cc \\
+\t\t--emit=dep-info=$(depfile) --emit=link=$@ --extern proc_macro \
+'''
+assert s.count(old) == 1
+open(p, "w").write(s.replace(old, new, 1))
+PY
+grep -Fq -- '-Clinker=/usr/bin/cc' source/kernel_platform/common/rust/Makefile
