@@ -74,6 +74,32 @@ assert s.count(old) == 1
 open(p, "w").write(s.replace(old, new, 1))
 FIX_KCONFIG_PREFIX
 grep -Fq 'KCONFIG_EXT_PREFIX=$$(dirname $(location Kconfig.msm))/' source/kernel_platform/msm-kernel/BUILD.bazel
+# A workspace symlink is not a Bazel alias: //soc-repo and //msm-kernel create
+# distinct configured targets and duplicate Kconfig/defconfig depsets. Keep the
+# filesystem alias for vendor scripts, but canonicalize Bazel labels.
+python3 - <<'CANONICALIZE_SOC_LABELS'
+import os
+root = "source/kernel_platform"
+old, new = b"//soc-repo", b"//msm-kernel"
+changed = 0
+for directory, subdirs, files in os.walk(root):
+    subdirs[:] = [name for name in subdirs if name != ".git"]
+    for name in files:
+        path = os.path.join(directory, name)
+        if os.path.islink(path):
+            continue
+        try:
+            data = open(path, "rb").read()
+        except OSError:
+            continue
+        if old not in data:
+            continue
+        open(path, "wb").write(data.replace(old, new))
+        changed += 1
+assert changed > 0
+print(f"canonicalized //soc-repo labels in {changed} files")
+CANONICALIZE_SOC_LABELS
+! grep -R -I -q --exclude-dir=.git '//soc-repo' source/kernel_platform
 # Kleaf toolchain extension and common build.config.constants require clang-r536225.
 git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 source/kernel_platform/prebuilts/clang/host/linux-x86
 test -f source/kernel_platform/prebuilts/clang/host/linux-x86/kleaf/clang_toolchain_repository.bzl
