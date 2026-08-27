@@ -158,11 +158,9 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
 test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
 test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
-# musl sysroot. The published gendwarfksyms dependencies are glibc-linked, so
-# select the bundled musl variants instead of globally changing host libc.
-for f in \
-  source/kernel_platform/prebuilts/kernel-build-tools/BUILD.bazel \
-  source/kernel_platform/prebuilts/kernel-build-tools/BUILD; do
-  [[ -f "$f" ]] || continue
-  sed -i 's#linux-x86/lib64/libdw\.so#linux_musl-x86/lib64/libdw.so#g; s#linux-x86/lib64/libelf\.so#linux_musl-x86/lib64/libelf.so#g; s#linux-x86/lib64/libc++\.so#linux_musl-x86/lib64/libc++.so#g' "$f"
+# musl sysroot. Kbuild nevertheless hardcodes the linux-x86 runpath for
+# gendwarfksyms, so place the matching musl libraries at that exact runpath.
+for lib in libdw.so libelf.so libc++.so; do
+  cp -f "source/kernel_platform/prebuilts/kernel-build-tools/linux_musl-x86/lib64/$lib" \
+    "source/kernel_platform/prebuilts/kernel-build-tools/linux-x86/lib64/$lib"
 done
