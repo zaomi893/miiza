@@ -62,3 +62,6 @@ jobs:
             hmbird-targets.txt
           if-no-files-found: warn
           retention-days: 14
+      - name: Fail workflow if Kleaf build failed
+        if: always() && inputs.run_build && steps.build.outcome != 'success'
+        run: exit 1
