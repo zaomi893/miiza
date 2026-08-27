@@ -176,3 +176,34 @@ assert s.count(old) == 1
 open(p, "w").write(s.replace(old, new, 1))
 PY
 grep -q 'if false && {has_parent}' source/kernel_platform/build/kernel/kleaf/impl/ddk/ddk_config/create_oldconfig_step.bzl
+# msm-kernel is also mounted as soc-repo by the vendor workspace. Some generated
+# DDK depsets consequently contain two byte-identical flattened Kconfig.ext
+# files. Sourcing both duplicates a choice block and makes olddefconfig reject
+# its members as prompts outside their choice. Deduplicate identical Kconfigs.
+python3 - <<'PY'
+p = "source/kernel_platform/build/kernel/kleaf/impl/ddk/ddk_config/create_kconfig_ext_step.bzl"
+s = open(p).read()
+old = '''        for kconfig in $(cat ${{combined_kconfig_depset_file}}); do
+            mod_kconfig_rel=$(realpath ${{ROOT_DIR}} --relative-to ${{ROOT_DIR}}/${{KERNEL_DIR}})/${{kconfig}}
+            echo 'source "'"${{mod_kconfig_rel}}"'"' >> ${{kconfig_ext_dir}}/Kconfig.ext
+        done'''
+new = '''        seen_kconfigs=""
+        for kconfig in $(cat ${{combined_kconfig_depset_file}}); do
+            duplicate=0
+            for seen in ${{seen_kconfigs}}; do
+                if cmp -s "${{kconfig}}" "${{seen}}"; then
+                    duplicate=1
+                    break
+                fi
+            done
+            if [[ ${{duplicate}} == 1 ]]; then
+                continue
+            fi
+            seen_kconfigs="${{seen_kconfigs}} ${{kconfig}}"
+            mod_kconfig_rel=$(realpath ${{ROOT_DIR}} --relative-to ${{ROOT_DIR}}/${{KERNEL_DIR}})/${{kconfig}}
+            echo 'source "'"${{mod_kconfig_rel}}"'"' >> ${{kconfig_ext_dir}}/Kconfig.ext
+        done'''
+assert s.count(old) == 1
+open(p, "w").write(s.replace(old, new, 1))
+PY
+grep -q 'seen_kconfigs=' source/kernel_platform/build/kernel/kleaf/impl/ddk/ddk_config/create_kconfig_ext_step.bzl
