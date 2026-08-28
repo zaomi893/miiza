@@ -23,12 +23,7 @@ jobs:
       - name: Free disk
         run: sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet
       - name: Prepare cache directories
-        run: mkdir -p ~/.cache/kernel-deps ~/.cache/bazel-repo ~/.cache/bazel-disk
-      - name: Cache immutable source dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/kernel-deps
-          key: kernel-deps-v1-${{ runner.os }}-${{ runner.arch }}-ndk-r26-main-kernel-2025
+        run: mkdir -p ~/.cache/bazel-repo ~/.cache/bazel-disk
       - name: Restore Bazel caches
         id: bazel-cache
         uses: actions/cache/restore@v4
@@ -40,8 +35,6 @@ jobs:
           restore-keys: |
             bazel-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.branch }}-
       - name: Assemble aligned official sources
-        env:
-          KERNEL_DEPS_CACHE: /home/runner/.cache/kernel-deps
         run: ./scripts/assemble.sh
       - name: Verify HMBIRD II
         run: ./scripts/check_hmbird.sh
