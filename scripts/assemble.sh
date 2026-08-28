@@ -171,7 +171,6 @@ for attempt in 1 2 3; do
 done
 test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
 test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
-git -C source/kernel_platform/prebuilts/ndk-r26 fsck --no-dangling
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
 # musl sysroot. Kbuild nevertheless hardcodes the linux-x86 runpath for
 # gendwarfksyms, so place the matching musl libraries at that exact runpath.
