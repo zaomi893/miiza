@@ -167,9 +167,20 @@ if [[ ! -f "$ndk_zip" ]] || ! echo '7faebe2ebd3590518f326c82992603170f07c96e  '"
     https://dl.google.com/android/repository/android-ndk-r26c-linux.zip
   echo '7faebe2ebd3590518f326c82992603170f07c96e  '"$ndk_zip" | sha1sum -c -
 fi
-rm -rf source/kernel_platform/prebuilts/ndk-r26 source/kernel_platform/prebuilts/android-ndk-r26c
+rm -rf source/kernel_platform/prebuilts/ndk-r26 source/kernel_platform/prebuilts/android-ndk-r26*
+# Info-ZIP returns 1 for non-fatal warnings in this archive (for example
+# restored symlink metadata). Validate the extracted payload below.
+set +e
 unzip -q "$ndk_zip" -d source/kernel_platform/prebuilts
-mv source/kernel_platform/prebuilts/android-ndk-r26c source/kernel_platform/prebuilts/ndk-r26
+unzip_rc=$?
+set -e
+(( unzip_rc <= 1 ))
+# The archive root has historically been named android-ndk-r26c, while some
+# repacks use android-ndk-r26. Resolve it by its source.properties marker.
+ndk_root="$(find source/kernel_platform/prebuilts -mindepth 2 -maxdepth 2 \
+  -type f -name source.properties -path '*/android-ndk-r26*/*' -printf '%h\n' | head -n1)"
+[[ -n "$ndk_root" ]]
+mv "$ndk_root" source/kernel_platform/prebuilts/ndk-r26
 test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
 test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
