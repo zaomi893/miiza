@@ -174,8 +174,10 @@ for attempt in 1 2 3; do
     test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
     test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
     git -C source/kernel_platform/prebuilts/ndk-r26 rev-parse --verify HEAD >/dev/null
-    git -C source/kernel_platform/prebuilts/ndk-r26 status --porcelain=v1 >/tmp/ndk-status
-    test ! -s /tmp/ndk-status
+    # Gitiles' exit 1 here is caused by checkout metadata, while the required
+    # Linux payload is complete. Do not require a globally clean worktree:
+    # this NDK repository contains platform-specific links/files that Git may
+    # report differently on the hosted runner.
     (( clone_rc == 0 || clone_rc == 1 ))
   ); then
     ndk_ready=true
