@@ -156,33 +156,26 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/BUILD.bazel
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot/usr/include/stdio.h
-# Kleaf accepts ndk-r27 or ndk-r26; use Google's immutable r26c archive.
-# Gitiles now materializes all 7925 paths but repeatedly exits non-zero.
-ndk_zip="${NDK_ARCHIVE_CACHE:-$HOME/.cache/android-ndk-r26c-linux.zip}"
-mkdir -p "$(dirname "$ndk_zip")" source/kernel_platform/prebuilts
-if [[ ! -f "$ndk_zip" ]] || ! echo '7faebe2ebd3590518f326c82992603170f07c96e  '"$ndk_zip" | sha1sum -c -; then
-  rm -f "$ndk_zip"
-  curl --fail --location --retry 10 --retry-all-errors --continue-at - \
-    --output "$ndk_zip" \
-    https://dl.google.com/android/repository/android-ndk-r26c-linux.zip
-  echo '7faebe2ebd3590518f326c82992603170f07c96e  '"$ndk_zip" | sha1sum -c -
-fi
-rm -rf source/kernel_platform/prebuilts/ndk-r26 source/kernel_platform/prebuilts/android-ndk-r26*
-# Extract only Kleaf's required NDK payload. The full archive includes Windows
-# paths that Info-ZIP cannot materialize on Linux and may return code 1 for.
-mkdir -p source/kernel_platform/prebuilts/ndk-r26
-unzip -q "$ndk_zip" \
-  'android-ndk-r26c/source.properties' \
-  'android-ndk-r26c/toolchains/llvm/prebuilt/linux-x86_64/*' \
-  -d source/kernel_platform/prebuilts/.ndk-extract
-test -f source/kernel_platform/prebuilts/.ndk-extract/android-ndk-r26c/source.properties
-mv source/kernel_platform/prebuilts/.ndk-extract/android-ndk-r26c/source.properties \
-  source/kernel_platform/prebuilts/ndk-r26/
-mv source/kernel_platform/prebuilts/.ndk-extract/android-ndk-r26c/toolchains \
-  source/kernel_platform/prebuilts/ndk-r26/
-rm -rf source/kernel_platform/prebuilts/.ndk-extract
-test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
-test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+# Use the NDK checkout method proven by runs 35-40. Retry the complete
+# operation because Gitiles may finish checkout yet return a transient error.
+ndk_ready=false
+for attempt in 1 2 3; do
+  rm -rf source/kernel_platform/prebuilts/ndk-r26
+  if (
+    # Kleaf accepts ndk-r27 or ndk-r26; r26 has an aligned public kernel branch.
+    git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+      https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
+      source/kernel_platform/prebuilts/ndk-r26
+    test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
+    test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+  ); then
+    ndk_ready=true
+    break
+  fi
+  echo "NDK Gitiles checkout attempt $attempt failed" >&2
+  sleep $((attempt * 10))
+done
+$ndk_ready
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
 # musl sysroot. Kbuild nevertheless hardcodes the linux-x86 runpath for
 # gendwarfksyms, so place the matching musl libraries at that exact runpath.
