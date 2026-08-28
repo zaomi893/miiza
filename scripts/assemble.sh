@@ -156,36 +156,29 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/BUILD.bazel
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot/usr/include/stdio.h
-# Use the NDK checkout method proven by runs 35-40. Retry the complete
-# operation because Gitiles may finish checkout yet return a transient error.
+# The NDK Gitiles checkout reaches 100% but exits 1 while materializing a
+# repository-wide cross-platform symlink. Kleaf only needs the Linux prebuilt
+# payload. Use sparse checkout so the problematic unrelated paths are never
+# materialized, while retaining the exact official branch and git transport.
 ndk_ready=false
 for attempt in 1 2 3; do
   rm -rf source/kernel_platform/prebuilts/ndk-r26
   if (
-    # Kleaf accepts ndk-r27 or ndk-r26; r26 has an aligned public kernel branch.
-    set +e
-    git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+    git clone --filter=blob:none --no-checkout --depth=1 -b main-kernel-2025 \
       https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
       source/kernel_platform/prebuilts/ndk-r26
-    clone_rc=$?
-    set -e
-    # Gitiles can return 1 after checkout has reached 100%. Accept that only
-    # when the exact files Kleaf needs are present and the worktree is valid.
+    git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout init --no-cone
+    git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout set \
+      /source.properties /toolchains/llvm/prebuilt/linux-x86_64/
+    git -C source/kernel_platform/prebuilts/ndk-r26 checkout --force
     test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
-    test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
-    # Git may stop while materializing a broken cross-platform symlink, after
-    # all Linux payload blobs are already present. A missing .git/HEAD is not
-    # relevant to Kleaf, which consumes this directory as a prebuilt package.
-    # Gitiles' exit 1 here is caused by checkout metadata, while the required
-    # Linux payload is complete. Do not require a globally clean worktree:
-    # this NDK repository contains platform-specific links/files that Git may
-    # report differently on the hosted runner.
-    (( clone_rc == 0 || clone_rc == 1 ))
+    test -x source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
+    test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
   ); then
     ndk_ready=true
     break
   fi
-  echo "NDK Gitiles checkout attempt $attempt failed" >&2
+  echo "NDK sparse Gitiles checkout attempt $attempt failed" >&2
   sleep $((attempt * 10))
 done
 $ndk_ready
