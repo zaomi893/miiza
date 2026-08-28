@@ -31,9 +31,10 @@ jobs:
           path: |
             ~/.cache/bazel-repo
             ~/.cache/bazel-disk
-          key: bazel-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.branch }}-${{ hashFiles('scripts/build.sh') }}
+            ~/.cache/android-ndk-r26c-linux.zip
+          key: sources-v3-${{ runner.os }}-${{ runner.arch }}-${{ inputs.branch }}-${{ hashFiles('scripts/build.sh') }}
           restore-keys: |
-            bazel-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.branch }}-
+            sources-v3-${{ runner.os }}-${{ runner.arch }}-${{ inputs.branch }}-
       - name: Assemble aligned official sources
         run: ./scripts/assemble.sh
       - name: Verify HMBIRD II
@@ -53,6 +54,7 @@ jobs:
           path: |
             ~/.cache/bazel-repo
             ~/.cache/bazel-disk
+            ~/.cache/android-ndk-r26c-linux.zip
           key: ${{ steps.bazel-cache.outputs.cache-primary-key }}
       - name: Record upstream limitation
         if: inputs.run_build && steps.build.outcome != 'success'

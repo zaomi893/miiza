@@ -156,10 +156,20 @@ git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/BUILD.bazel
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot/usr/include/stdio.h
-# Kleaf accepts ndk-r27 or ndk-r26; r26 has an aligned public kernel branch.
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
-  https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
-  source/kernel_platform/prebuilts/ndk-r26
+# Kleaf accepts ndk-r27 or ndk-r26; use Google's immutable r26c archive.
+# Gitiles now materializes all 7925 paths but repeatedly exits non-zero.
+ndk_zip="${NDK_ARCHIVE_CACHE:-$HOME/.cache/android-ndk-r26c-linux.zip}"
+mkdir -p "$(dirname "$ndk_zip")" source/kernel_platform/prebuilts
+if [[ ! -f "$ndk_zip" ]] || ! echo '7faebe2ebd3590518f326c82992603170f07c96e  '"$ndk_zip" | sha1sum -c -; then
+  rm -f "$ndk_zip"
+  curl --fail --location --retry 10 --retry-all-errors --continue-at - \
+    --output "$ndk_zip" \
+    https://dl.google.com/android/repository/android-ndk-r26c-linux.zip
+  echo '7faebe2ebd3590518f326c82992603170f07c96e  '"$ndk_zip" | sha1sum -c -
+fi
+rm -rf source/kernel_platform/prebuilts/ndk-r26 source/kernel_platform/prebuilts/android-ndk-r26c
+unzip -q "$ndk_zip" -d source/kernel_platform/prebuilts
+mv source/kernel_platform/prebuilts/android-ndk-r26c source/kernel_platform/prebuilts/ndk-r26
 test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
 test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
