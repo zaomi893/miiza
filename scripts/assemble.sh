@@ -162,7 +162,9 @@ for attempt in 1 2 3; do
   if git -c http.version=HTTP/1.1 clone --depth=1 --no-checkout -b main-kernel-2025 \
       https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
       source/kernel_platform/prebuilts/ndk-r26; then
-    if git -C source/kernel_platform/prebuilts/ndk-r26 checkout -f HEAD; then
+    if git -C source/kernel_platform/prebuilts/ndk-r26 reset --hard HEAD &&
+       test -f source/kernel_platform/prebuilts/ndk-r26/source.properties &&
+       test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot; then
       break
     fi
   fi
