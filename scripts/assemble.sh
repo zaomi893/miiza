@@ -163,11 +163,20 @@ for attempt in 1 2 3; do
   rm -rf source/kernel_platform/prebuilts/ndk-r26
   if (
     # Kleaf accepts ndk-r27 or ndk-r26; r26 has an aligned public kernel branch.
+    set +e
     git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
       https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
       source/kernel_platform/prebuilts/ndk-r26
+    clone_rc=$?
+    set -e
+    # Gitiles can return 1 after checkout has reached 100%. Accept that only
+    # when the exact files Kleaf needs are present and the worktree is valid.
     test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
     test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+    git -C source/kernel_platform/prebuilts/ndk-r26 rev-parse --verify HEAD >/dev/null
+    git -C source/kernel_platform/prebuilts/ndk-r26 status --porcelain=v1 >/tmp/ndk-status
+    test ! -s /tmp/ndk-status
+    (( clone_rc == 0 || clone_rc == 1 ))
   ); then
     ndk_ready=true
     break
