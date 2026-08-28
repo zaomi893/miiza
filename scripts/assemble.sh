@@ -173,7 +173,9 @@ for attempt in 1 2 3; do
     # when the exact files Kleaf needs are present and the worktree is valid.
     test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
     test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot
-    git -C source/kernel_platform/prebuilts/ndk-r26 rev-parse --verify HEAD >/dev/null
+    # Git may stop while materializing a broken cross-platform symlink, after
+    # all Linux payload blobs are already present. A missing .git/HEAD is not
+    # relevant to Kleaf, which consumes this directory as a prebuilt package.
     # Gitiles' exit 1 here is caused by checkout metadata, while the required
     # Linux payload is complete. Do not require a globally clean worktree:
     # this NDK repository contains platform-specific links/files that Git may
