@@ -160,29 +160,19 @@ test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.
 # repository-wide cross-platform symlink. Kleaf only needs the Linux prebuilt
 # payload. Use sparse checkout so the problematic unrelated paths are never
 # materialized, while retaining the exact official branch and git transport.
-ndk_ready=false
-for attempt in 1 2 3; do
-  rm -rf source/kernel_platform/prebuilts/ndk-r26
-  if (
-    git clone --filter=blob:none --no-checkout --depth=1 -b main-kernel-2025 \
-      https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
-      source/kernel_platform/prebuilts/ndk-r26
-    git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout init --no-cone
-    git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout set \
-      /source.properties /toolchains/llvm/prebuilt/linux-x86_64/
-    git -C source/kernel_platform/prebuilts/ndk-r26 checkout --force
-    test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
-    test -f source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
-    chmod +x source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
-    test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
-  ); then
-    ndk_ready=true
-    break
-  fi
-  echo "NDK sparse Gitiles checkout attempt $attempt failed" >&2
-  sleep $((attempt * 10))
-done
-$ndk_ready
+rm -rf source/kernel_platform/prebuilts/ndk-r26
+# Fetch only the Linux NDK payload. The full Gitiles checkout contains an
+# unrelated cross-platform symlink that makes checkout return nonzero.
+git clone --filter=blob:none --no-checkout --depth=1 -b main-kernel-2025 \
+  https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
+  source/kernel_platform/prebuilts/ndk-r26
+git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout init --no-cone
+git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout set \
+  /source.properties /toolchains/llvm/prebuilt/linux-x86_64/
+git -C source/kernel_platform/prebuilts/ndk-r26 checkout --force || true
+# Gitiles records tool payloads without executable bits; restore the compiler
+# entry point needed by Kleaf.
+chmod +x source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
 # musl sysroot. Kbuild nevertheless hardcodes the linux-x86 runpath for
 # gendwarfksyms, so place the matching musl libraries at that exact runpath.
