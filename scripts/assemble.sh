@@ -172,7 +172,7 @@ for attempt in 1 2 3; do
       /source.properties /toolchains/llvm/prebuilt/linux-x86_64/
     git -C source/kernel_platform/prebuilts/ndk-r26 checkout --force
     test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
-    test -x source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
+    test -f source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
     test -d source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
   ); then
     ndk_ready=true
