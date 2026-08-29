@@ -169,9 +169,11 @@ git clone --filter=blob:none --no-checkout --depth=1 -b main-kernel-2025 \
 git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout init --no-cone
 git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout set \
   /source.properties /toolchains/llvm/prebuilt/linux-x86_64/
-git -C source/kernel_platform/prebuilts/ndk-r26 checkout --force || true
-# Gitiles records tool payloads without executable bits; restore the compiler
-# entry point needed by Kleaf.
+# --no-checkout leaves an empty work tree. Apply sparse rules through read-tree,
+# which materializes only the selected Linux payload.
+git -C source/kernel_platform/prebuilts/ndk-r26 read-tree -mu HEAD
+test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
+test -f source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
 chmod +x source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
 # musl sysroot. Kbuild nevertheless hardcodes the linux-x86 runpath for
