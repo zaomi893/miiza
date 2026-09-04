@@ -3,8 +3,9 @@
 自定义 **boot 分区内核（Image）**，**保留官方 init_boot / vendor_boot / vendor_dlkm 全部不动**。
 风驰内核调速器（HMBIRD II）由 ColorOS 用户态服务运行时加载的 **sched_ext BPF 调度器**，
 只需内核提供 `CONFIG_SCHED_CLASS_EXT=y`，官方 boot GKI 即具备。
+**内置 ReSukiSU (KernelSU) root 权限**（集成方式参考 oplus_sm8850 仓库的 ReSukiSU setup.sh）。
 Actions 中运行 **Build OnePlus 15 HMBIRD kernel**。流程：同步组装官方源码 → 校验风驰内核源码链路 →
-Kleaf 构建 `//common:kernel_aarch64`（OnePlus common GKI，含 sched_ext）→ 打包为可刷 boot 的 zip。
+Kleaf 构建 `//common:kernel_aarch64`（OnePlus common GKI，含 sched_ext + KernelSU root）→ 打包为可刷 boot 的 zip。
 ## 为什么构建 OnePlus common GKI（不是 msm-kernel 厂商内核）
 - **官方 boot.img 就是 OnePlus common 分支构建的 GKI 内核**（版本 `6.12.23-android16-5-gb2a876903b49-ab14541642-4k`，
   Kleaf 构建、无 oplus 标记）。用户刷 cctv18 到 boot 分区会替换运行内核（风驰"有但不工作"），
@@ -16,13 +17,13 @@ Kleaf 构建 `//common:kernel_aarch64`（OnePlus common GKI，含 sched_ext）�
 - 之前的 msm-kernel（`canoe_perf`）路线产出 vendor_boot.img（厂商内核/OKI GKI），与官方 boot.img
   （GKI）不是同一回事，方向已修正。
 ## 刷入内容
-- **boot** ← `artifacts/Image`（OnePlus common GKI 内核，含 sched_ext）
+- **boot** ← `artifacts/Image`（OnePlus common GKI 内核，含 sched_ext + **ReSukiSU/KernelSU root**）
 - **保留官方** init_boot（GKI ramdisk）/ vendor_boot / vendor_dlkm（全部不动）
 ## 构建流程
 ```
 assemble.sh            同步三个官方仓库到统一分支（common + msm-kernel + modules/devicetree）
 check_hmbird.sh        校验风驰内核源码链路（sched_ext/hmbird_II_freqgov 齐全）
-build.sh               Kleaf 构建 //common:kernel_aarch64 -> artifacts/Image（含 sched_ext）
+build.sh               ReSukiSU 集成 + Kleaf 构建 //common:kernel_aarch64 -> artifacts/Image（含 sched_ext + KernelSU）
 package.sh             打包 Image -> oneplus15-hmbird2-*.zip（AnyKernel3，只刷 boot 内核）
 ```
 ## 刷机（scripts/package.sh）

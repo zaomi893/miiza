@@ -32,7 +32,28 @@ bazel() {
 }
 # 保留诊断信息（grep 无匹配不阻断构建）
 bazel query '//common:all' 2>&1 | tee ../../logs/bazel-targets-all.log | grep -E 'kernel_aarch64' | tee ../../logs/bazel-targets.log || true
-echo "Building //common:kernel_aarch64 (OnePlus common GKI, 含 sched_ext = 风驰可用)" | tee ../../logs/build-status.txt
+# ---- 集成 ReSukiSU (KernelSU root) ----
+# 学习 oplus_sm8850 的方法：ReSukiSU setup.sh 在 common/drivers 集成 kernelsu 驱动 + CONFIG_KSU=y。
+# 用 cp 复制而非 symlink（Kleaf 打包源码树时不跟随 symlink），更稳。
+echo "集成 ReSukiSU (KernelSU root) ..."
+cd common
+if [[ ! -d drivers/kernelsu ]]; then
+  git clone --depth=1 https://github.com/ReSukiSU/ReSukiSU KernelSU 2>&1 | tail -1 || true
+  if [[ -d KernelSU/kernel ]]; then
+    cp -r KernelSU/kernel drivers/kernelsu
+    rm -rf KernelSU
+  fi
+fi
+if [[ -d drivers/kernelsu ]]; then
+  grep -q "kernelsu" drivers/Makefile || printf "\nobj-\$(CONFIG_KSU) += kernelsu/\n" >> drivers/Makefile
+  grep -q 'drivers/kernelsu/Kconfig' drivers/Kconfig || sed -i "/endmenu/i\source \"drivers/kernelsu/Kconfig\"" drivers/Kconfig
+  grep -q '^CONFIG_KSU=y' arch/arm64/configs/gki_defconfig || echo 'CONFIG_KSU=y' >> arch/arm64/configs/gki_defconfig
+  echo "ReSukiSU 已集成到 common/drivers/kernelsu"
+else
+  echo "警告: ReSukiSU 集成失败（无 drivers/kernelsu），继续构建无 root 内核" >&2
+fi
+cd ..
+echo "Building //common:kernel_aarch64 (OnePlus common GKI, 含 sched_ext + KernelSU root)" | tee ../../logs/build-status.txt
 bazel build //common:kernel_aarch64 2>&1 | tee ../../logs/build.log
 # 取内核 Image（bazel-bin 是符号链接，普通 find 不跟随，用 find -L 兜底）
 IMAGE="$(find -L "$PWD/bazel-bin/common" -type f -name 'Image' -path '*kernel_aarch64*' 2>/dev/null | head -1)"
@@ -53,5 +74,14 @@ fi
 if command -v strings >/dev/null 2>&1; then
   VER="$(strings -a "$IMAGE" 2>/dev/null | grep -a -m1 'Linux version' || true)"
   echo "内核版本: $VER" | tee ../../logs/kernel-version.txt
+  # 验证 root (KSU) 与风驰 (sched_ext)
+  if strings -a "$IMAGE" 2>/dev/null | grep -a -qi 'kernelsu\|ksu_handle'; then
+    echo "KernelSU (ReSukiSU root): OK" | tee -a ../../logs/build-status.txt
+  else
+    echo "警告: Image 中未检测到 KernelSU 符号" | tee -a ../../logs/build-status.txt
+  fi
+  if strings -a "$IMAGE" 2>/dev/null | grep -a -q 'sched_ext'; then
+    echo "sched_ext (风驰): OK" | tee -a ../../logs/build-status.txt
+  fi
 fi
 find ../../artifacts -type f -printf '%P\n' | sort | tee ../../logs/artifacts.txt
