@@ -20,7 +20,8 @@ set -euo pipefail
 DIST="${1:-artifacts}"
 OUT="${2:-oneplus15-hmbird2-$(date +%Y%m%d).zip}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-AK3_URL="https://github.com/cctv18/AnyKernel3"
+AK3_URL="https://github.com/cvhhji/AnyKernel3"
+AK3_BRANCH="master"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 SRC_IMG="$ROOT/$DIST/Image"
@@ -28,36 +29,22 @@ if [[ ! -f "$SRC_IMG" ]]; then
   echo "error: 缺少 $DIST/Image —— 请先跑 ./scripts/build.sh" >&2
   exit 1
 fi
-echo "==> 拉取 AnyKernel3 (cctv18 分支)"
-if ! git clone --quiet --depth=1 "$AK3_URL" "$STAGE/ak3" 2>/dev/null; then
-  echo "error: 拉取 $AK3_URL 失败" >&2
+echo "==> 拉取 AnyKernel3 (cvhhji/AnyKernel3 @ $AK3_BRANCH)"
+AK3_CLONE_URL="$AK3_URL"
+# 私有仓库需要 token 认证：优先用 GH_TOKEN，其次 GITHUB_TOKEN
+if [[ -n "${GH_TOKEN:-}" ]]; then
+  AK3_CLONE_URL="https://x-access-token:${GH_TOKEN}@github.com/cvhhji/AnyKernel3"
+elif [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  AK3_CLONE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/cvhhji/AnyKernel3"
+fi
+if ! git clone --quiet --depth=1 --branch "$AK3_BRANCH" "$AK3_CLONE_URL" "$STAGE/ak3" 2>/dev/null; then
+  echo "error: 拉取 $AK3_URL 失败（如需认证请设置 GH_TOKEN 环境变量）" >&2
   exit 1
 fi
 cd "$STAGE/ak3"
 rm -rf .git
 rm -f Image zImage* dtb* boot.img vendor_boot.img 2>/dev/null || true
-cat > anykernel.sh <<'AKEOF'
-properties() { '
-kernel.string=OnePlus15 SM8850 风驰 GKI 内核 (OnePlus common; 保留官方 init_boot/vendor_boot/vendor_dlkm)
-do.devicecheck=0
-do.modules=0
-do.systemless=0
-do.cleanup=1
-do.cleanuponabort=0
-supported.versions=16
-'; }
-BLOCK=boot
-IS_SLOT_DEVICE=auto
-NO_MAGISK_CHECK=1
-. tools/ak3-core.sh
-ui_print "刷入 OnePlus15 风驰 GKI 内核 (boot 分区)..."
-ui_print "保留官方 init_boot / vendor_boot / vendor_dlkm"
-# 必须先 dump_boot：dump 当前 boot 分区并用 magiskboot unpack 生成 split_img，
-# flash_boot 才能基于官方 boot 组件 + 新 Image 重建 boot（只替换内核）。
-dump_boot;
-flash_boot;
-sync
-AKEOF
+# 直接使用 cvhhji/AnyKernel3 仓库自带的 anykernel.sh（BLOCK=boot, split_boot, flash_boot, NO_MAGISK_CHECK=1），不覆盖
 cp "$SRC_IMG" Image
 chmod a+x anykernel.sh tools/* META-INF/com/google/android/update-binary 2>/dev/null || true
 echo "==> 打包 $OUT"

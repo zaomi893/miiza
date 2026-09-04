@@ -101,6 +101,8 @@ jobs:
         run: bash scripts/build_make.sh
 
       - name: 打包可刷 zip
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: bash scripts/package.sh artifacts oneplus15-hmbird2-${{ github.run_number }}.zip
 
       - name: 保存 ccache 缓存
