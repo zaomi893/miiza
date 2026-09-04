@@ -96,16 +96,13 @@ jobs:
             ccache-hmbird-6.12.23-
             ccache-hmbird-
 
-      - name: make + ccache 构建内核 (OnePlus common GKI, 含 sched_ext + KernelSU)
+      - name: make + ccache 构建内核 + 打包 (OnePlus common GKI, 含 sched_ext + KernelSU + 所有自定义功能)
         env:
           CCACHE_DIR: ${{ runner.temp }}/ccache_6.12.23
           KERNEL_NAME: ${{ env.KERNEL_NAME }}
-        run: bash scripts/build_make.sh
-
-      - name: 打包可刷 zip
-        env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: bash scripts/package.sh artifacts oneplus15-hmbird2-${{ github.run_number }}.zip
+          KSU_TYPE: ${{ inputs.ksu_type }}
+        run: bash scripts/build_make.sh
 
       - name: 保存 ccache 缓存
         if: always() && (inputs.ccache_update == 'true' || steps.cc-restore.outputs.cache-hit != 'true')
