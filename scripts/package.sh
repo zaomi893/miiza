@@ -52,6 +52,9 @@ NO_MAGISK_CHECK=1
 . tools/ak3-core.sh
 ui_print "刷入 OnePlus15 风驰 GKI 内核 (boot 分区)..."
 ui_print "保留官方 init_boot / vendor_boot / vendor_dlkm"
+# 必须先 dump_boot：dump 当前 boot 分区并用 magiskboot unpack 生成 split_img，
+# flash_boot 才能基于官方 boot 组件 + 新 Image 重建 boot（只替换内核）。
+dump_boot;
 flash_boot;
 sync
 AKEOF

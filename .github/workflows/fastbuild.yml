@@ -1,0 +1,122 @@
+name: Fast Build OnePlus 15 (make+ccache+ReSukiSU)
+on:
+  workflow_dispatch:
+    inputs:
+      ksu_type:
+        description: 'KernelSU 分支 (默认 ReSukiSU)'
+        required: true
+        type: choice
+        default: 'resukisu'
+        options:
+          - 'resukisu'
+          - 'ksu'
+          - 'none'
+      ccache_update:
+        description: '更新 ccache 缓存 (更改编译配置/源码时开启)'
+        required: true
+        type: boolean
+        default: 'false'
+env:
+  TZ: Asia/Shanghai
+  KERNEL_NAME: android16-5-gb2a876903b49-ab14541642-4k
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安装构建依赖
+        run: |
+          sudo apt-get -o Acquire::http::Timeout=30 -o Acquire::Retries=2 update
+          sudo apt-get install -y --no-install-recommends curl bison flex binutils dwarves git lld pahole zip perl make gcc python3 python-is-python3 bc libssl-dev libelf-dev libdw-dev cpio xz-utils tar unzip aria2
+          # 使用仓库自带最新版 ccache
+          sudo cp -f lib/ccache-x86-64 /usr/bin/ccache && sudo chmod +x /usr/bin/ccache
+
+      - name: 恢复工具链缓存 (clang19/rust/build-tools)
+        id: tc
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            kernel_workspace/clang19
+            kernel_workspace/rust
+            kernel_workspace/build-tools
+          key: toolchain-clang19-r536225-v1
+
+      - name: 下载 Clang19 + Rust + 构建工具
+        if: steps.tc.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p kernel_workspace && cd kernel_workspace
+          aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/clang-r536225.zip -o clang.zip
+          unzip -q clang.zip -d clang19 && rm -f clang.zip
+          mkdir -p rust
+          aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/rust.zip -o rust.zip
+          unzip -q rust.zip -d rust && rm -f rust.zip
+          aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/build-tools.zip -o build-tools.zip
+          unzip -q build-tools.zip && rm -f build-tools.zip
+          ls clang19/bin/clang rust/bin/rustc build-tools/bin >/dev/null 2>&1
+
+      - name: 保存工具链缓存
+        if: steps.tc.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            kernel_workspace/clang19
+            kernel_workspace/rust
+            kernel_workspace/build-tools
+          key: toolchain-clang19-r536225-v1
+
+      - name: 克隆官方 OnePlus common 源码 (make 输入)
+        run: |
+          mkdir -p source/kernel_platform
+          git clone --filter=blob:none --depth=1 \
+            -b oneplus/sm8850_b_16.0.0_oneplus_15 \
+            https://github.com/OnePlusOSS/android_kernel_common_oneplus_sm8850.git \
+            source/kernel_platform/common
+          test -f source/kernel_platform/common/arch/arm64/configs/gki_defconfig
+
+      - name: 配置并恢复 ccache 缓存
+        id: cc
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache_6.12.23
+        run: |
+          mkdir -p "$CCACHE_DIR"
+          echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
+          echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=3G" >> $GITHUB_ENV
+      - uses: actions/cache/restore@v4
+        id: cc-restore
+        with:
+          path: ${{ runner.temp }}/ccache_6.12.23
+          key: ccache-hmbird-6.12.23-${{ runner.os }}
+          restore-keys: |
+            ccache-hmbird-6.12.23-
+            ccache-hmbird-
+
+      - name: make + ccache 构建内核 (OnePlus common GKI, 含 sched_ext + KernelSU)
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache_6.12.23
+          KERNEL_NAME: ${{ env.KERNEL_NAME }}
+        run: ./scripts/build_make.sh
+
+      - name: 打包可刷 zip
+        run: ./scripts/package.sh artifacts oneplus15-hmbird2-${{ github.run_number }}.zip
+
+      - name: 保存 ccache 缓存
+        if: inputs.ccache_update == 'true' || steps.cc-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache_6.12.23
+          key: ccache-hmbird-6.12.23-${{ runner.os }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oneplus15-hmbird-${{ github.run_number }}
+          path: |
+            artifacts/**
+            logs/**
+            oneplus15-hmbird2-*.zip
+          if-no-files-found: warn
+          retention-days: 14
