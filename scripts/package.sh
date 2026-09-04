@@ -23,7 +23,8 @@ AK3_URL="https://github.com/cctv18/AnyKernel3"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-if [[ ! -f "$DIST/vendor_boot.img" ]]; then
+SRC_VB="$ROOT/$DIST/vendor_boot.img"
+if [[ ! -f "$SRC_VB" ]]; then
   echo "error: 缺少 $DIST/vendor_boot.img —— 请先跑 ./scripts/build.sh" >&2
   exit 1
 fi
@@ -56,7 +57,7 @@ flash_generic vendor_boot;
 sync
 AKEOF
 
-cp "$DIST/vendor_boot.img" vendor_boot.img
+cp "$SRC_VB" vendor_boot.img
 
 chmod a+x anykernel.sh tools/* META-INF/com/google/android/update-binary 2>/dev/null || true
 
