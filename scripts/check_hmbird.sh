@@ -14,13 +14,10 @@ req=(
 for f in "${req[@]}"; do test -f "$f" || { echo "missing: $f"; exit 1; }; done
 grep -q 'name = "oplus_bsp_sched_ext"' vendor/oplus/kernel/cpu/oplus_local_modules.bzl
 grep -q 'name = "oplus_bsp_sched_assist"' vendor/oplus/kernel/cpu/oplus_local_modules.bzl
-# The proprietary vendor/oplus/kernel/synchronize package is not published by
-# OnePlus; the trim step must have removed its dependency from the sched_ext
-# module graph (the locking strategy is an optional runtime hook).
-if grep -q 'kernel/synchronize' vendor/oplus/kernel/cpu/oplus_local_modules.bzl; then
-  echo "error: proprietary //vendor/oplus/kernel/synchronize still referenced" >&2
-  exit 1
-fi
+# Boot-only strategy: canoe_perf_images never builds the oplus DDK modules, so
+# the proprietary vendor/oplus/kernel/synchronize dep inside the unbuilt
+# sched_ext module graph is never resolved and is left exactly as published;
+# the working module ships in the official vendor_dlkm we keep on device.
 # 风驰内核调速器完整链路校验：WALT(sched-walt) -> sched_assist -> sched_ext(HMBIRD II)
 test -f kernel_platform/msm-kernel/kernel/sched/walt/modules.bzl
 grep -q 'CONFIG_SCHED_WALT' kernel_platform/msm-kernel/configs/canoe_perf.bzl
