@@ -75,6 +75,12 @@ chmod +x fake-env cc-wrapper ld-wrapper
 KERNEL_NAME="${KERNEL_NAME:-android16-5-gb2a876903b49-ab14541642-4k}"
 sed -i "s/-4k/-$KERNEL_NAME/g" arch/arm64/configs/gki_defconfig
 grep -q '^CONFIG_LOCALVERSION_AUTO' arch/arm64/configs/gki_defconfig || echo 'CONFIG_LOCALVERSION_AUTO=n' >> arch/arm64/configs/gki_defconfig
+# 去除 dirty/+ 后缀，版本字符串与官方 boot.img 完全一致（如 ...-4k 无 +）
+if [[ -f scripts/setlocalversion ]]; then
+  sed -i 's/ -dirty//g' scripts/setlocalversion
+  sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' scripts/setlocalversion
+  sed -i 's/${scm_version}//' scripts/setlocalversion
+fi
 
 # ---- 集成 ReSukiSU (KernelSU root)，保留风驰(sched_ext 在 defconfig 默认开启)----
 # ReSukiSU 的 Kbuild 检查 $(KSU_SRC)/../.git（必须保留 git 仓库，直接 cp 复制代码会报
