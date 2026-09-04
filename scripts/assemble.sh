@@ -341,17 +341,14 @@ PY
 test -f source/kernel_platform/common/include/dt-bindings/arm/msm/qcom_dma_heap_dt_constants.h
 grep -Fq '//common:include/dt-bindings/arm/msm/qcom_dma_heap_dt_constants.h' source/kernel_platform/msm-kernel/kleaf-scripts/dtbs.bzl
 # ============================================================================
-# OnePlus publishes only a subset of its SM8850 vendor kernel modules
-# (vendor/oplus/kernel: audio, boot, camera, charger, cpu, device_info).
-# The aggregate target kernel_platform/oplus/bazel/oplus_modules.bzl still
-# lists ~130 oplus DDK targets, ~108 of which point at packages that do not
-# exist in the public repo (dfr, dft, mm, network, storage, synchronize,
-# touchpanel, tp, vibrator, wifi, sensor, nfc, ...).  Building canoe_perf_dist
-# therefore fails at Bazel analysis with "no such package".  Trim the module
-# graph to the published packages, and drop the proprietary
-# vendor/oplus/kernel/synchronize:oplus_locking_strategy dependency from the
-# CPU sched_ext module (verified optional: sched_assist only consumes the
-# locking ops through register_sched_assist_locking_ops(), no public source
-# references any symbol it exports).
+# The msm-kernel package loads //build/kernel/oplus:oplus_modules.bzl at the
+# top of android_build.bzl (a symlink to ../../oplus/bazel/oplus_modules.bzl).
+# That macro instantiates pkg_files/pkg_install targets for ~130 oplus DDK
+# modules, ~108 of which point at packages OnePlus does not publish (dfr, dft,
+# mm, network, storage, synchronize, touchpanel, wifi, sensor, ...).  For the
+# boot-only canoe_perf_images target those rules are created but never
+# analyzed, so only syntactic validity of the .bzl matters: it must be left
+# byte-identical to the official file.  A previous trim_public_oplus.py rewrite
+# corrupted it (double-quoted list entries -> Starlark syntax error at '='),
+# so no trimming is performed here.
 # ============================================================================
-python3 scripts/trim_public_oplus.py
