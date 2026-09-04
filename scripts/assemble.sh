@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# On any command failure (set -e would otherwise exit silently), print the exact
+# failing line and command so CI logs are self-diagnosing.
+trap 'rc=$?; echo "ASSEMBLE ERROR at line $LINENO: $BASH_COMMAND (rc=$rc)" >&2; exit $rc' ERR
 B=${BRANCH:-oneplus/sm8850_b_16.0.0_oneplus_15}
 
 # Gitiles/GitHub partial-clone 偶发 502 / RPC 断流（blob 按需拉取时可能瞬时失败）。
@@ -224,7 +227,13 @@ chmod +x source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
 # musl sysroot. Kbuild nevertheless hardcodes the linux-x86 runpath for
 # gendwarfksyms, so place the matching musl libraries at that exact runpath.
+# Skip a lib (with a notice) when it is absent from the musl tree; if it is
+# really required, gendwarfksyms/linker will name it explicitly at build time.
 for lib in libdw.so libelf.so libc++.so libcrypto-host.so; do
+  if [[ ! -f "source/kernel_platform/prebuilts/kernel-build-tools/linux_musl-x86/lib64/$lib" ]]; then
+    echo "note: musl lib $lib not found, skipping" >&2
+    continue
+  fi
   cp -f "source/kernel_platform/prebuilts/kernel-build-tools/linux_musl-x86/lib64/$lib" \
     "source/kernel_platform/prebuilts/kernel-build-tools/linux-x86/lib64/$lib"
 done
