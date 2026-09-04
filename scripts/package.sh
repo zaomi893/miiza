@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# 把自编内核 boot.img 打包成 OnePlus 15 (SM8850/canoe) 可直接刷入的 AnyKernel3 zip。
+# 把自编内核 vendor_boot.img 打包成 OnePlus 15 (SM8850/canoe) 可直接刷入的 AnyKernel3 zip。
 #
-# 只刷 boot（内核）：官方 vendor_dlkm / vendor_boot 保留不动。
-#   - 风驰内核调速器(HMBIRD II) 的 sched-walt/sched_assist/sched_ext 模块在官方 vendor_dlkm 里，
-#     官方 vendor_boot 里有正确的设备 DTB 与 vendor ramdisk。本内核与官方同分支同配置构建，
-#     KMI 匹配，官方模块直接加载，因此无需刷 vendor 分区。
-#   - 采用整镜像刷入(flash_generic boot)，保留构建产物原始 AVB 签名与 GKI ramdisk。
+# 只刷 vendor_boot（该机型内核 Image 就在 vendor_boot 分区，非 boot 分区）：
+# 官方 vendor_dlkm 保留不动（风驰内核调速器 sched-walt/sched_assist/sched_ext 模块在
+# 官方 vendor_dlkm 里）。本 vendor_boot 由与官方同分支同配置的源码构建，内含
+# 自编内核 + 同源 vendor ramdisk + DTB；KMI 与官方一致，官方模块直接加载。
+#   - 采用整镜像刷入(flash_generic vendor_boot)，保留构建产物原始 AVB 签名与 ramdisk。
 #
 # 用法: bash scripts/package.sh [dist_dir=artifacts] [out_zip]
 #   示例: bash scripts/package.sh artifacts oneplus15-hmbird2.zip
@@ -18,8 +18,8 @@ AK3_URL="https://github.com/cctv18/AnyKernel3"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-if [[ ! -f "$DIST/boot.img" ]]; then
-  echo "error: 缺少 $DIST/boot.img —— 请先跑 ./scripts/build.sh" >&2
+if [[ ! -f "$DIST/vendor_boot.img" ]]; then
+  echo "error: 缺少 $DIST/vendor_boot.img —— 请先跑 ./scripts/build.sh" >&2
   exit 1
 fi
 
@@ -33,7 +33,7 @@ rm -f Image zImage* dtb* 2>/dev/null || true
 
 cat > anykernel.sh <<'AKEOF'
 properties() { '
-kernel.string=OnePlus15 SM8850 风驰内核 boot-only (保留官方 vendor_dlkm/vendor_boot)
+kernel.string=OnePlus15 SM8850 风驰内核 vendor_boot-only (保留官方 vendor_dlkm)
 do.devicecheck=0
 do.modules=0
 do.systemless=0
@@ -41,17 +41,17 @@ do.cleanup=1
 do.cleanuponabort=0
 supported.versions=16
 '; }
-BLOCK=boot
+BLOCK=vendor_boot
 IS_SLOT_DEVICE=auto
 NO_MAGISK_CHECK=1
 . tools/ak3-core.sh
-ui_print "刷入 OnePlus15 风驰内核(内核层)..."
-ui_print "保留官方 vendor_dlkm/vendor_boot（风驰内核调速器在其中）"
-flash_generic boot;
+ui_print "刷入 OnePlus15 风驰内核(vendor_boot 内核层)..."
+ui_print "该机型内核在 vendor_boot 分区；官方 vendor_dlkm 保留（风驰内核调速器在其中）"
+flash_generic vendor_boot;
 sync
 AKEOF
 
-cp "$DIST/boot.img" boot.img
+cp "$DIST/vendor_boot.img" vendor_boot.img
 
 chmod a+x anykernel.sh tools/* META-INF/com/google/android/update-binary 2>/dev/null || true
 
