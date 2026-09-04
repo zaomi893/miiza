@@ -104,7 +104,7 @@ jobs:
         run: bash scripts/package.sh artifacts oneplus15-hmbird2-${{ github.run_number }}.zip
 
       - name: 保存 ccache 缓存
-        if: inputs.ccache_update == 'true' || steps.cc-restore.outputs.cache-hit != 'true'
+        if: always() && (inputs.ccache_update == 'true' || steps.cc-restore.outputs.cache-hit != 'true')
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/ccache_6.12.23

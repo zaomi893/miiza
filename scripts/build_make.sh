@@ -77,18 +77,20 @@ sed -i "s/-4k/-$KERNEL_NAME/g" arch/arm64/configs/gki_defconfig
 grep -q '^CONFIG_LOCALVERSION_AUTO' arch/arm64/configs/gki_defconfig || echo 'CONFIG_LOCALVERSION_AUTO=n' >> arch/arm64/configs/gki_defconfig
 
 # ---- 集成 ReSukiSU (KernelSU root)，保留风驰(sched_ext 在 defconfig 默认开启)----
-if [[ ! -d drivers/kernelsu ]]; then
-  git clone --depth=1 https://github.com/ReSukiSU/ReSukiSU KernelSU 2>&1 | tail -1 || true
-  if [[ -d KernelSU/kernel ]]; then
-    cp -r KernelSU/kernel drivers/kernelsu
-    rm -rf KernelSU
-  fi
+# ReSukiSU 的 Kbuild 检查 $(KSU_SRC)/../.git（必须保留 git 仓库，直接 cp 复制代码会报
+# "You should use ReSukiSU as a git submodule instead of copying code"），
+# 故用 symlink 方式（ReSukiSU setup.sh 原版）：drivers/kernelsu -> ../KernelSU/kernel，KernelSU/ 保留 .git。
+if [[ ! -d KernelSU ]]; then
+  echo "clone ReSukiSU ..."
+  git clone https://github.com/ReSukiSU/ReSukiSU KernelSU 2>&1 | tail -1 || true
 fi
-if [[ -d drivers/kernelsu ]]; then
+if [[ -d KernelSU/kernel ]]; then
+  rm -f drivers/kernelsu
+  ln -sf ../KernelSU/kernel drivers/kernelsu
   grep -q "kernelsu" drivers/Makefile || printf "\nobj-\$(CONFIG_KSU) += kernelsu/\n" >> drivers/Makefile
   grep -q 'drivers/kernelsu/Kconfig' drivers/Kconfig || sed -i "/endmenu/i\source \"drivers/kernelsu/Kconfig\"" drivers/Kconfig
   grep -q '^CONFIG_KSU=y' arch/arm64/configs/gki_defconfig || echo 'CONFIG_KSU=y' >> arch/arm64/configs/gki_defconfig
-  echo "ReSukiSU 已集成到 drivers/kernelsu"
+  echo "ReSukiSU 已集成（symlink -> KernelSU/kernel）"
 else
   echo "警告: ReSukiSU 集成失败，将构建无 root 内核" >&2
 fi
