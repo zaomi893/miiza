@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# 把自编内核 vendor_boot.img 打包成 OnePlus 15 (SM8850/canoe) 可直接刷入的 AnyKernel3 zip。
+# 把自编内核镜像打包成 OnePlus 15 (SM8850/canoe) 可直接刷入的 AnyKernel3 zip。
 #
-# 只刷 vendor_boot（该机型内核 Image 就在 vendor_boot 分区，非 boot 分区）：
-# 官方 vendor_dlkm 保留不动（风驰内核调速器 sched-walt/sched_assist/sched_ext 模块在
-# 官方 vendor_dlkm 里）。本 vendor_boot 由与官方同分支同配置的源码构建，内含
-# 自编内核 + 同源 vendor ramdisk + DTB；KMI 与官方一致，官方模块直接加载。
-#   - 采用整镜像刷入(flash_generic vendor_boot)，保留构建产物原始 AVB 签名与 ramdisk。
+# 刷入内容：
+#   - boot        <- artifacts/boot.img        (厂商内核/OKI GKI，含 WALT，风驰调速器可工作)
+#   - vendor_boot <- artifacts/vendor_boot.img (同源厂商内核 + vendor ramdisk + DTB，兼容启动布局)
+# 保留官方 vendor_dlkm（风驰链 sched-walt/sched_assist/sched_ext 模块在官方 vendor_dlkm 中）。
+#
+# 为什么这样刷：
+#   - 风驰(HMBIRD II) 是 sched_ext BPF 调度器，依赖内核 WALT。官方 boot.img 内核就是带 WALT
+#     的厂商内核(OKI GKI)。本产物与官方同分支同配置构建，KMI 匹配 → 官方模块直接加载并工作。
+#   - 同时刷 boot 与 vendor_boot 覆盖两种启动布局；两个镜像内都是带 WALT 的厂商内核。
 #
 # 用法: bash scripts/package.sh [dist_dir=artifacts] [out_zip]
 #   示例: bash scripts/package.sh artifacts oneplus15-hmbird2.zip
@@ -18,8 +22,8 @@ AK3_URL="https://github.com/cctv18/AnyKernel3"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-if [[ ! -f "$DIST/vendor_boot.img" ]]; then
-  echo "error: 缺少 $DIST/vendor_boot.img —— 请先跑 ./scripts/build.sh" >&2
+if [[ ! -f "$DIST/boot.img" ]]; then
+  echo "error: 缺少 $DIST/boot.img —— 请先跑 ./scripts/build.sh" >&2
   exit 1
 fi
 
@@ -29,11 +33,11 @@ if ! git clone --quiet --depth=1 "$AK3_URL" "$STAGE/ak3" 2>/dev/null; then
   exit 1
 fi
 cd "$STAGE/ak3"
-rm -f Image zImage* dtb* 2>/dev/null || true
+rm -f Image zImage* dtb* boot.img vendor_boot.img 2>/dev/null || true
 
 cat > anykernel.sh <<'AKEOF'
 properties() { '
-kernel.string=OnePlus15 SM8850 风驰内核 vendor_boot-only (保留官方 vendor_dlkm)
+kernel.string=OnePlus15 SM8850 风驰内核 (厂商内核/OKI GKI, 含WALT; 保留官方 vendor_dlkm)
 do.devicecheck=0
 do.modules=0
 do.systemless=0
@@ -41,17 +45,24 @@ do.cleanup=1
 do.cleanuponabort=0
 supported.versions=16
 '; }
-BLOCK=vendor_boot
+BLOCK=boot
 IS_SLOT_DEVICE=auto
 NO_MAGISK_CHECK=1
 . tools/ak3-core.sh
-ui_print "刷入 OnePlus15 风驰内核(vendor_boot 内核层)..."
-ui_print "该机型内核在 vendor_boot 分区；官方 vendor_dlkm 保留（风驰内核调速器在其中）"
-flash_generic vendor_boot;
+ui_print "刷入 OnePlus15 风驰内核 (厂商内核, 含 WALT)..."
+ui_print "刷 boot + vendor_boot；官方 vendor_dlkm 保留（风驰模块在其中）"
+flash_generic boot;
+if [ -f vendor_boot.img ]; then
+  ui_print "刷 vendor_boot（兼容启动布局）..."
+  flash_generic vendor_boot;
+fi
 sync
 AKEOF
 
-cp "$DIST/vendor_boot.img" vendor_boot.img
+cp "$DIST/boot.img" boot.img
+if [[ -f "$DIST/vendor_boot.img" ]]; then
+  cp "$DIST/vendor_boot.img" vendor_boot.img
+fi
 
 chmod a+x anykernel.sh tools/* META-INF/com/google/android/update-binary 2>/dev/null || true
 

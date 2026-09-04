@@ -58,7 +58,7 @@ jobs:
         if: inputs.run_build && steps.build.outcome != 'success'
         run: |
           mkdir -p logs
-          printf '%s\n' 'Kernel-only build (canoe_perf_images) failed; check logs/build.log.' 'Official vendor_dlkm kept on device (风驰内核调速器 in stock vendor_dlkm); kernel lives in vendor_boot.' > logs/LIMITATION.txt
+          printf '%s\n' 'Kernel-only build failed; check logs/build.log.' 'boot.img = vendor kernel (OKI GKI, WALT) via canoe_perf_dtb_build gki_artifacts; vendor_dlkm kept official (风驰 modules).' > logs/LIMITATION.txt
       - name: Package flashable zip
         if: inputs.run_build && steps.build.outcome == 'success'
         run: ./scripts/package.sh artifacts oneplus15-hmbird2-${{ github.run_number }}.zip
