@@ -244,7 +244,8 @@ export LD="$CLANG_DIR/ld.lld"
 export AR="$CLANG_DIR/llvm-ar" NM="$CLANG_DIR/llvm-nm" AS=clang READELF="$CLANG_DIR/llvm-readelf"
 export OBJCOPY="$CLANG_DIR/llvm-objcopy" OBJDUMP="$CLANG_DIR/llvm-objdump" OBJSIZE="$CLANG_DIR/llvm-size"
 export STRIP="$CLANG_DIR/llvm-strip"
-source ./_setup_env.sh 2>/dev/null || true
+# 注意：不 source _setup_env.sh（Kleaf 环境脚本，KERNEL_DIR 为空时会 exit 1 终止当前 shell）
+# make 构建不需要 Kleaf 环境
 echo "[DEBUG] 环境变量就绪, CLANG_DIR=$CLANG_DIR, CLANG存在=$(test -f $CLANG_DIR/clang && echo yes || echo no)"
 
 echo "=== make gki_defconfig ===" | tee $WORKDIR/logs/make-status.txt
