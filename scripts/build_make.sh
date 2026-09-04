@@ -236,15 +236,15 @@ export OBJCOPY="$CLANG_DIR/llvm-objcopy" OBJDUMP="$CLANG_DIR/llvm-objdump" OBJSI
 export STRIP="$CLANG_DIR/llvm-strip"
 source ./_setup_env.sh 2>/dev/null || true
 
-echo "=== make gki_defconfig ===" | tee ../../logs/make-status.txt
+echo "=== make gki_defconfig ===" | tee $WORKDIR/logs/make-status.txt
 make -j"$(nproc --all)" LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
   CC="$CLANG_DIR/clang" LD="$CLANG_DIR/ld.lld" OBJCOPY="$CLANG_DIR/llvm-objcopy" \
-  O=out gki_defconfig 2>&1 | tee ../../logs/make-defconfig.log || { echo "defconfig 失败" >&2; exit 1; }
+  O=out gki_defconfig 2>&1 | tee $WORKDIR/logs/make-defconfig.log || { echo "defconfig 失败" >&2; exit 1; }
 
-echo "=== make Image (ccache) ===" | tee -a ../../logs/make-status.txt
+echo "=== make Image (ccache) ===" | tee -a $WORKDIR/logs/make-status.txt
 make -j"$(nproc --all)" LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
   CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="$CLANG_DIR/llvm-objcopy" \
-  O=out Image 2>&1 | tee ../../logs/make-build.log || { echo "Image 编译失败" >&2; exit 1; }
+  O=out Image 2>&1 | tee $WORKDIR/logs/make-build.log || { echo "Image 编译失败" >&2; exit 1; }
 
 # ---- 产物 ----
 IMAGE="$(pwd)/out/arch/arm64/boot/Image"
