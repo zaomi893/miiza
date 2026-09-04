@@ -34,6 +34,7 @@ if ! git clone --quiet --depth=1 "$AK3_URL" "$STAGE/ak3" 2>/dev/null; then
   exit 1
 fi
 cd "$STAGE/ak3"
+rm -rf .git
 rm -f Image zImage* dtb* boot.img vendor_boot.img 2>/dev/null || true
 cat > anykernel.sh <<'AKEOF'
 properties() { '
