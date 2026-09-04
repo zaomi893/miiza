@@ -1,2 +1,8 @@
 __pycache__/
 *.pyc
+
+# 构建产物
+artifacts/
+*.zip
+!zram_patch/*.patch
+!other_patch/*.patch
