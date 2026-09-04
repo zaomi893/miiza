@@ -47,11 +47,15 @@ bazel query '//msm-kernel:all' 2>&1 | tee ../../logs/bazel-targets-all.log | gre
 echo "Building //msm-kernel:canoe_perf_images (vendor_boot.img = 厂商内核/OKI GKI, 含WALT)" | tee ../../logs/build-status.txt
 bazel build //msm-kernel:canoe_perf_images 2>&1 | tee ../../logs/build.log
 
-# 厂商内核 vendor_boot.img 位于 canoe_perf_images_boot_images/，默认输出组即包含
-VB_IMG="$(find "$PWD/bazel-bin" "$PWD/bazel-out" -name 'vendor_boot.img' -path '*canoe*' 2>/dev/null | head -1)"
+# 厂商内核 vendor_boot.img 位于 canoe_perf_images_boot_images/（bazel-bin 是符号链接，
+# 普通 find 不跟随，故直接用确切路径，再以 find -L 兜底）
+VB_IMG="$PWD/bazel-bin/msm-kernel/canoe_perf_images_boot_images/vendor_boot.img"
+if [[ ! -f "$VB_IMG" ]]; then
+  VB_IMG="$(find -L "$PWD/bazel-bin" "$PWD/bazel-out" -name 'vendor_boot.img' -path '*canoe*' 2>/dev/null | head -1)"
+fi
 if [[ -z "$VB_IMG" || ! -f "$VB_IMG" ]]; then
   echo "error: 未找到 vendor_boot.img 产物，请检查 logs/build.log" >&2
-  find "$PWD/bazel-bin" -name '*.img' -path '*canoe*' 2>/dev/null | head -30 || true
+  find -L "$PWD/bazel-bin" -name '*.img' 2>/dev/null | head -30 || true
   exit 1
 fi
 cp "$VB_IMG" ../../artifacts/vendor_boot.img
