@@ -179,24 +179,47 @@ clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/BUILD.bazel
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/sysroot/usr/include/stdio.h
-# The NDK Gitiles checkout reaches 100% but exits 1 while materializing a
-# repository-wide cross-platform symlink. Kleaf only needs the Linux prebuilt
-# payload. Use sparse checkout so the problematic unrelated paths are never
-# materialized, while retaining the exact official branch and git transport.
-rm -rf source/kernel_platform/prebuilts/ndk-r26
-# Fetch only the Linux NDK payload. The full Gitiles checkout contains an
-# unrelated cross-platform symlink that makes checkout return nonzero.
-clone_retry git clone --filter=blob:none --no-checkout --depth=1 -b main-kernel-2025 \
-  https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
-  source/kernel_platform/prebuilts/ndk-r26
-git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout init --no-cone
-git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout set \
-  /source.properties /toolchains/llvm/prebuilt/linux-x86_64/
-# --no-checkout leaves an empty work tree. Apply sparse rules through read-tree,
-# which materializes only the selected Linux payload.
-git -C source/kernel_platform/prebuilts/ndk-r26 read-tree -mu HEAD
+# The NDK Gitiles checkout (toolchain/prebuilts/ndk/r26) is a huge repo; its
+# git clone + promisor blob fetch intermittently OOMs / hits Gitiles 502 on the
+# runner. Kleaf only needs the Linux prebuilt payload, which the official NDK
+# r26 release zip publishes in the identical toolchains/llvm/prebuilt/linux-x86_64
+# layout. Download the zip from dl.google.com and extract just those paths.
+rm -rf source/kernel_platform/prebuilts/ndk-r26 /tmp/android-ndk-r26.zip
+mkdir -p source/kernel_platform/prebuilts/ndk-r26
+curl -fL --retry 5 --retry-delay 10 --connect-timeout 30 \
+  -o /tmp/android-ndk-r26.zip \
+  https://dl.google.com/android/repository/android-ndk-r26-linux.zip
+python3 - <<'PY'
+import os, stat, zipfile
+src = "/tmp/android-ndk-r26.zip"
+dst = "source/kernel_platform/prebuilts/ndk-r26"
+prefix = "android-ndk-r26/"
+count = 0
+with zipfile.ZipFile(src) as z:
+    for info in z.infolist():
+        name = info.filename
+        if not name.startswith(prefix):
+            continue
+        rel = name[len(prefix):]
+        if rel == "source.properties" or rel.startswith("toolchains/llvm/prebuilt/linux-x86_64/"):
+            out = os.path.join(dst, rel)
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            mode = info.external_attr >> 16
+            if stat.S_ISLNK(mode):
+                target = z.open(info).read().decode()
+                os.symlink(target, out)
+            elif info.is_dir():
+                os.makedirs(out, exist_ok=True)
+            else:
+                with z.open(info) as f, open(out, "wb") as g:
+                    g.write(f.read())
+                os.chmod(out, mode or 0o644)
+            count += 1
+print("NDK linux-x86_64 payload extracted, entries:", count)
+PY
+rm -f /tmp/android-ndk-r26.zip
 test -f source/kernel_platform/prebuilts/ndk-r26/source.properties
-test -f source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
+test -x source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
 chmod +x source/kernel_platform/prebuilts/ndk-r26/toolchains/llvm/prebuilt/linux-x86_64/bin/clang
 # Keep Kleaf's musl execution platform: its hermetic C++ wrappers require the
 # musl sysroot. Kbuild nevertheless hardcodes the linux-x86 runpath for
