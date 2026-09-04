@@ -279,3 +279,18 @@ open(p, "w").write(s.replace(old, new, 1))
 PY
 test -f source/kernel_platform/common/include/dt-bindings/arm/msm/qcom_dma_heap_dt_constants.h
 grep -Fq '//common:include/dt-bindings/arm/msm/qcom_dma_heap_dt_constants.h' source/kernel_platform/msm-kernel/kleaf-scripts/dtbs.bzl
+# ============================================================================
+# OnePlus publishes only a subset of its SM8850 vendor kernel modules
+# (vendor/oplus/kernel: audio, boot, camera, charger, cpu, device_info).
+# The aggregate target kernel_platform/oplus/bazel/oplus_modules.bzl still
+# lists ~130 oplus DDK targets, ~108 of which point at packages that do not
+# exist in the public repo (dfr, dft, mm, network, storage, synchronize,
+# touchpanel, tp, vibrator, wifi, sensor, nfc, ...).  Building canoe_perf_dist
+# therefore fails at Bazel analysis with "no such package".  Trim the module
+# graph to the published packages, and drop the proprietary
+# vendor/oplus/kernel/synchronize:oplus_locking_strategy dependency from the
+# CPU sched_ext module (verified optional: sched_assist only consumes the
+# locking ops through register_sched_assist_locking_ops(), no public source
+# references any symbol it exports).
+# ============================================================================
+python3 scripts/trim_public_oplus.py

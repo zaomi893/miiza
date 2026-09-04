@@ -58,7 +58,10 @@ jobs:
         if: inputs.run_build && steps.build.outcome != 'success'
         run: |
           mkdir -p logs
-          printf '%s\n' 'Official oplus_build.sh requires a previously built proprietary VND Android environment.' 'No incomplete output is represented as flashable vendor_dlkm.' > logs/LIMITATION.txt
+          printf '%s\n' 'Kernel-only build (canoe_perf_images) failed; check logs/build.log.' 'Official vendor_dlkm/vendor_boot are kept on device (风驰内核调速器 in stock vendor_dlkm).' > logs/LIMITATION.txt
+      - name: Package flashable zip
+        if: inputs.run_build && steps.build.outcome == 'success'
+        run: ./scripts/package.sh artifacts oneplus15-hmbird2-${{ github.run_number }}.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -67,6 +70,7 @@ jobs:
             artifacts/**
             logs/**
             hmbird-targets.txt
+            oneplus15-hmbird2-*.zip
           if-no-files-found: warn
           retention-days: 14
       - name: Fail workflow if Kleaf build failed
