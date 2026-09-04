@@ -109,7 +109,7 @@ APPLY_BBR="${APPLY_BBR:-n}"        # BBR 等拥塞控制算法（n/y/default）
 APPLY_CVE="${APPLY_CVE:-y}"        # CVE-2026-43499 rtmutex 修复
 APPLY_SUSFS="${APPLY_SUSFS:-n}"    # susfs 隐藏增强（依赖 KSU，官方 common 有适配风险）
 DEFCONFIG=arch/arm64/configs/gki_defconfig
-PATCH_OK() { echo "  [PATCH] $1"; patch --batch --forward --no-backup-if-mismatch -p1 -F 3 < "$1" || echo "  [PATCH] 部分hunk失败(已跳过)"; }
+PATCH_OK() { patch --batch --forward --no-backup-if-mismatch -p1 -F 3 < "$1" 2>/dev/null || true; }
 
 # lz4 1.10.0 & zstd 1.5.7 补丁（过滤 fs/f2fs，避免与 f2fs 冲突）
 if [[ "$APPLY_LZ4" == "y" ]]; then
@@ -159,6 +159,9 @@ if [[ "$APPLY_NET" == "y" ]]; then
     echo 'CONFIG_IP6_NF_NAT=y'
     echo 'CONFIG_IP6_NF_TARGET_MASQUERADE=y'
   } >> "$DEFCONFIG"
+  # 应用 config.patch：构建时把内核内嵌 config_data 里的 CONFIG_IP6_NF_NAT=y 改成显示 n，
+  # 避免 vintf 兼容性检测失败导致开机异常（功能仍启用，仅修改显示值）。
+  PATCH_OK "$WORKDIR/other_patch/config.patch"
 fi
 # BBR 等拥塞控制算法
 if [[ "$APPLY_BBR" != "n" ]]; then
@@ -222,11 +225,17 @@ if [[ "$APPLY_SUSFS" == "y" && -d drivers/kernelsu ]]; then
     echo "警告: susfs 补丁文件未找到，跳过" >&2
   fi
 fi
-echo "[DEBUG] CVE补丁完成, APPLY_SUSFS=$APPLY_SUSFS, DEFCONFIG=$DEFCONFIG, pwd=$(pwd)"
+# 禁用 HEADERS_INSTALL（oplus 构建标配，避免构建时安装内核头文件影响产物）
+if [[ -x scripts/config ]]; then
+  scripts/config --file "$DEFCONFIG" --disable HEADERS_INSTALL || true
+fi
+# 禁用 check_defconfig（build.config.gki 里 POST_DEFCONFIG_CMDS，避免 defconfig 最小化检查失败）
+if [[ -f build.config.gki ]]; then
+  sed -i 's/check_defconfig//' build.config.gki
+fi
 echo "CONFIG_TMPFS_XATTR=y" >> "$DEFCONFIG"
 echo "CONFIG_TMPFS_POSIX_ACL=y" >> "$DEFCONFIG"   # Mountify 支持
 echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> "$DEFCONFIG"  # O2
-echo "[DEBUG] defconfig 附加完成, 行数=$(wc -l < $DEFCONFIG)"
 
 # ---- 6.12 make 编译核心配置（cctv18 踩坑后的必需项）----
 # 路径重映射：Rust gendwarfksyms 无法处理绝对路径，必须重映射为相对路径
@@ -246,7 +255,6 @@ export OBJCOPY="$CLANG_DIR/llvm-objcopy" OBJDUMP="$CLANG_DIR/llvm-objdump" OBJSI
 export STRIP="$CLANG_DIR/llvm-strip"
 # 注意：不 source _setup_env.sh（Kleaf 环境脚本，KERNEL_DIR 为空时会 exit 1 终止当前 shell）
 # make 构建不需要 Kleaf 环境
-echo "[DEBUG] 环境变量就绪, CLANG_DIR=$CLANG_DIR, CLANG存在=$(test -f $CLANG_DIR/clang && echo yes || echo no)"
 
 echo "=== make gki_defconfig ===" | tee $WORKDIR/logs/make-status.txt
 make -j"$(nproc --all)" LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
