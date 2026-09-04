@@ -109,7 +109,7 @@ APPLY_BBR="${APPLY_BBR:-n}"        # BBR 等拥塞控制算法（n/y/default）
 APPLY_CVE="${APPLY_CVE:-y}"        # CVE-2026-43499 rtmutex 修复
 APPLY_SUSFS="${APPLY_SUSFS:-n}"    # susfs 隐藏增强（依赖 KSU，官方 common 有适配风险）
 DEFCONFIG=arch/arm64/configs/gki_defconfig
-PATCH_OK() { patch --batch --forward --no-backup-if-mismatch -p1 -F 3 < "$1" 2>/dev/null || true; }
+PATCH_OK() { echo "  [PATCH] $1"; patch --batch --forward --no-backup-if-mismatch -p1 -F 3 < "$1" || echo "  [PATCH] 部分hunk失败(已跳过)"; }
 
 # lz4 1.10.0 & zstd 1.5.7 补丁（过滤 fs/f2fs，避免与 f2fs 冲突）
 if [[ "$APPLY_LZ4" == "y" ]]; then
@@ -222,9 +222,11 @@ if [[ "$APPLY_SUSFS" == "y" && -d drivers/kernelsu ]]; then
     echo "警告: susfs 补丁文件未找到，跳过" >&2
   fi
 fi
+echo "[DEBUG] CVE补丁完成, APPLY_SUSFS=$APPLY_SUSFS, DEFCONFIG=$DEFCONFIG, pwd=$(pwd)"
 echo "CONFIG_TMPFS_XATTR=y" >> "$DEFCONFIG"
 echo "CONFIG_TMPFS_POSIX_ACL=y" >> "$DEFCONFIG"   # Mountify 支持
 echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> "$DEFCONFIG"  # O2
+echo "[DEBUG] defconfig 附加完成, 行数=$(wc -l < $DEFCONFIG)"
 
 # ---- 6.12 make 编译核心配置（cctv18 踩坑后的必需项）----
 # 路径重映射：Rust gendwarfksyms 无法处理绝对路径，必须重映射为相对路径
@@ -243,6 +245,7 @@ export AR="$CLANG_DIR/llvm-ar" NM="$CLANG_DIR/llvm-nm" AS=clang READELF="$CLANG_
 export OBJCOPY="$CLANG_DIR/llvm-objcopy" OBJDUMP="$CLANG_DIR/llvm-objdump" OBJSIZE="$CLANG_DIR/llvm-size"
 export STRIP="$CLANG_DIR/llvm-strip"
 source ./_setup_env.sh 2>/dev/null || true
+echo "[DEBUG] 环境变量就绪, CLANG_DIR=$CLANG_DIR, CLANG存在=$(test -f $CLANG_DIR/clang && echo yes || echo no)"
 
 echo "=== make gki_defconfig ===" | tee $WORKDIR/logs/make-status.txt
 make -j"$(nproc --all)" LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
