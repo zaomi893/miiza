@@ -67,12 +67,14 @@ jobs:
             kernel_workspace/build-tools
           key: toolchain-clang19-r536225-v1
 
-      - name: 克隆官方 OnePlus common 源码 (make 输入)
+      - name: 克隆 OnePlus common 源码 (用户 fork, 已剔除导致不开机的提交)
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           mkdir -p source/kernel_platform
           git clone --filter=blob:none --depth=1 \
-            -b oneplus/sm8850_b_16.0.0_oneplus_15 \
-            https://github.com/OnePlusOSS/android_kernel_common_oneplus_sm8850.git \
+            -b oneplus/sm8850_v_16.0.0_oneplus_15 \
+            "https://x-access-token:${GH_TOKEN}@github.com/cvhhji/android_kernel_common_oneplus_sm8850.git" \
             source/kernel_platform/common
           test -f source/kernel_platform/common/arch/arm64/configs/gki_defconfig
 
