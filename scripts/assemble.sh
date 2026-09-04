@@ -1,18 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 B=${BRANCH:-oneplus/sm8850_b_16.0.0_oneplus_15}
-git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850.git source
+
+# Gitiles/GitHub partial-clone 偶发 502 / RPC 断流（blob 按需拉取时可能瞬时失败）。
+# 重试并清理不完整目标目录，避免 "already exists and is not an empty directory"。
+clone_retry() {
+  local attempt=0
+  while :; do
+    attempt=$((attempt + 1))
+    if "$@"; then return 0; fi
+    if [[ $attempt -ge 5 ]]; then
+      echo "error: clone 重试 $attempt 次仍失败: $*" >&2
+      return 1
+    fi
+    echo "警告: clone 尝试 #$attempt 失败，5s 后重试: $*" >&2
+    local args=("$@") n=${#args[@]} cwd="" target="${args[$((n - 1))]}"
+    if [[ "${args[0]}" == "git" && "${args[1]}" == "-C" && ${#args[@]} -ge 4 ]]; then
+      cwd="${args[2]}"
+    fi
+    if [[ -n "$cwd" ]]; then rm -rf "$cwd/$target" 2>/dev/null || true
+    else rm -rf "$target" 2>/dev/null || true; fi
+    sleep 5
+  done
+}
+
+clone_retry git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850.git source
 rm -rf source/kernel_platform/common source/kernel_platform/msm-kernel
-git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/android_kernel_common_oneplus_sm8850.git source/kernel_platform/common
-git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/android_kernel_oneplus_sm8850.git source/kernel_platform/msm-kernel
+clone_retry git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/android_kernel_common_oneplus_sm8850.git source/kernel_platform/common
+clone_retry git clone --filter=blob:none --depth=1 -b "$B" https://github.com/OnePlusOSS/android_kernel_oneplus_sm8850.git source/kernel_platform/msm-kernel
 # Kleaf expects prebuilts/build-tools/linux_musl-x86/bin/py3-cmd.
 # Clone the build-tools repository at its root, not inside linux_musl-x86.
 rm -rf source/kernel_platform/prebuilts/build-tools
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/prebuilts/build-tools source/kernel_platform/prebuilts/build-tools
+clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/prebuilts/build-tools source/kernel_platform/prebuilts/build-tools
 test -x source/kernel_platform/prebuilts/build-tools/linux_musl-x86/bin/py3-cmd
 # Bazel binary used by Kleaf is published separately under kernel/prebuilts.
 rm -rf source/kernel_platform/prebuilts/kernel-build-tools
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/kernel/prebuilts/build-tools source/kernel_platform/prebuilts/kernel-build-tools
+clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/kernel/prebuilts/build-tools source/kernel_platform/prebuilts/kernel-build-tools
 test -x source/kernel_platform/prebuilts/kernel-build-tools/bazel/linux-x86_64/bazel
 # OnePlus host tools are musl-linked while this target selects the linux-x86
 # runpath. Expose the published musl loader in that selected runpath as well.
@@ -21,7 +44,7 @@ cp -f source/kernel_platform/prebuilts/kernel-build-tools/linux_musl-x86/lib64/l
 test -f source/kernel_platform/prebuilts/kernel-build-tools/linux-x86/lib64/libc_musl.so
 # MODULE.bazel uses Android-tree local_path_override entries. Restore the public AOSP parts.
 while read -r path; do
-  git clone --filter=blob:none --depth=1 -b main-kernel-2025 "https://android.googlesource.com/platform/${path}" "source/kernel_platform/${path}"
+  clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 "https://android.googlesource.com/platform/${path}" "source/kernel_platform/${path}"
 done <<'PATHS'
 external/libcap
 external/libcap-ng
@@ -41,10 +64,10 @@ external/bazelbuild-rules_python
 external/bazelbuild-rules_shell
 PATHS
 # Kleaf pins an offline file registry under external/.
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/external/bazelbuild-bazel-central-registry source/kernel_platform/external/bazelbuild-bazel-central-registry
+clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/external/bazelbuild-bazel-central-registry source/kernel_platform/external/bazelbuild-bazel-central-registry
 
 # This dev-only module is absent from the registry selected by OnePlus .bazelrc.
-git clone --filter=blob:none --depth=1 -b 0.7.2 https://github.com/bazelbuild/stardoc.git source/kernel_platform/external/stardoc
+clone_retry git clone --filter=blob:none --depth=1 -b 0.7.2 https://github.com/bazelbuild/stardoc.git source/kernel_platform/external/stardoc
 cat >> source/kernel_platform/MODULE.bazel <<'MODULE'
 
 local_path_override(
@@ -53,7 +76,7 @@ local_path_override(
 )
 MODULE
 # Qualcomm target definitions load //build/bazel_common_rules/dist:dist.bzl.
-git clone --filter=blob:none --depth=1 -b android16-release https://android.googlesource.com/platform/build/bazel_common_rules source/kernel_platform/build/bazel_common_rules
+clone_retry git clone --filter=blob:none --depth=1 -b android16-release https://android.googlesource.com/platform/build/bazel_common_rules source/kernel_platform/build/bazel_common_rules
 # Qualcomm's manifest exposes the SoC kernel checkout under both msm-kernel and soc-repo,
 # then mounts the separate devicetree project below its arch tree.
 rm -rf source/kernel_platform/soc-repo
@@ -106,7 +129,7 @@ print(f"canonicalized //soc-repo labels in {changed} files")
 CANONICALIZE_SOC_LABELS
 ! grep -R -I -q --exclude-dir=.git '//soc-repo' source/kernel_platform
 # Kleaf toolchain extension and common build.config.constants require clang-r536225.
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 source/kernel_platform/prebuilts/clang/host/linux-x86
+clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 source/kernel_platform/prebuilts/clang/host/linux-x86
 test -f source/kernel_platform/prebuilts/clang/host/linux-x86/kleaf/clang_toolchain_repository.bzl
 test -x source/kernel_platform/prebuilts/clang/host/linux-x86/clang-r536225/bin/clang
 # OnePlus published workspace_status_stamp.py with Python 3.12 PEP 695 syntax,
@@ -133,25 +156,25 @@ ln -s ../../../prebuilts/build-tools/sysroots/x86_64-unknown-linux-musl \
   source/kernel_platform/build/kernel/build-tools/sysroot
 test -f source/kernel_platform/build/kernel/build-tools/sysroot/include/stdio.h
 # Kleaf boot_images references the standard Android mkbootimg package.
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   https://android.googlesource.com/platform/system/tools/mkbootimg \
   source/kernel_platform/tools/mkbootimg
 test -f source/kernel_platform/tools/mkbootimg/BUILD.bazel
 test -f source/kernel_platform/tools/mkbootimg/mkbootimg.py
 # Kleaf 2025 requires the AOSP bindgen/clang-tools Bazel package.
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   https://android.googlesource.com/platform/prebuilts/clang-tools \
   source/kernel_platform/prebuilts/clang-tools
 test -f source/kernel_platform/prebuilts/clang-tools/BUILD.bazel
 test -x source/kernel_platform/prebuilts/clang-tools/linux-x86/bin/bindgen
 # Kernel toolchain analysis requires the aligned Rust 1.82 host prebuilts.
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   https://android.googlesource.com/platform/prebuilts/rust \
   source/kernel_platform/prebuilts/rust
 test -f source/kernel_platform/prebuilts/rust/linux-x86/1.82.0/BUILD.bazel
 test -x source/kernel_platform/prebuilts/rust/linux-x86/1.82.0/bin/rustc
 # Clang's generated host toolchain uses this legacy glibc sysroot package.
-git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
+clone_retry git clone --filter=blob:none --depth=1 -b main-kernel-2025 \
   https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8 \
   source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8
 test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/BUILD.bazel
@@ -163,7 +186,7 @@ test -f source/kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.
 rm -rf source/kernel_platform/prebuilts/ndk-r26
 # Fetch only the Linux NDK payload. The full Gitiles checkout contains an
 # unrelated cross-platform symlink that makes checkout return nonzero.
-git clone --filter=blob:none --no-checkout --depth=1 -b main-kernel-2025 \
+clone_retry git clone --filter=blob:none --no-checkout --depth=1 -b main-kernel-2025 \
   https://android.googlesource.com/toolchain/prebuilts/ndk/r26 \
   source/kernel_platform/prebuilts/ndk-r26
 git -C source/kernel_platform/prebuilts/ndk-r26 sparse-checkout init --no-cone
