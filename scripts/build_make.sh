@@ -47,14 +47,14 @@ DEFCONFIG=arch/arm64/configs/gki_defconfig
 # ===== 自定义参数（学习 oplus 写法，环境变量控制）=====
 CUSTOM_SUFFIX="${KERNEL_NAME:-android16-5-gb2a876903b49-ab14541642-4k}"
 APPLY_LZ4="${APPLY_LZ4:-y}"
-APPLY_LZ4KD="${APPLY_LZ4KD:-n}"
+APPLY_LZ4KD="${APPLY_LZ4KD:-y}"
 APPLY_NET="${APPLY_NET:-y}"
-APPLY_BBR="${APPLY_BBR:-n}"
+APPLY_BBR="${APPLY_BBR:-d}"
 APPLY_CVE="${APPLY_CVE:-y}"
-APPLY_SUSFS="${APPLY_SUSFS:-n}"
+APPLY_SUSFS="${APPLY_SUSFS:-y}"
 APPLY_DROIDSPACES="${APPLY_DROIDSPACES:-n}"
-APPLY_ADIOS="${APPLY_ADIOS:-n}"
-APPLY_REKERNEL="${APPLY_REKERNEL:-n}"
+APPLY_ADIOS="${APPLY_ADIOS:-y}"
+APPLY_REKERNEL="${APPLY_REKERNEL:-y}"
 APPLY_BBG="${APPLY_BBG:-n}"
 USE_PATCH_LINUX="${USE_PATCH_LINUX:-n}"
 KSU_TYPE="${KSU_TYPE:-resukisu}"
@@ -72,36 +72,8 @@ export CCACHE_MAXSIZE="3G"
 export CCACHE_IS_KERNEL_COMPILING="true"
 ccache -M 3G >/dev/null 2>&1 || true
 
-# ===== 时间劫持：固定时间戳 -> ccache 跨构建命中 =====
-KBUILD_BUILD_TIMESTAMP="${KBUILD_BUILD_TIMESTAMP:-$(date -u +'%a %b %-d %H:%M:%S UTC %Y')}"
-export KBUILD_BUILD_TIMESTAMP
-FAKE_TS="$(date -u -d "$KBUILD_BUILD_TIMESTAMP" +'%Y-%m-%d %H:%M:%S' 2>/dev/null || date -u +'%Y-%m-%d %H:%M:%S')"
-export FAKESTAT="$FAKE_TS"
-export FAKETIME="@$FAKE_TS"
-chmod 777 "$WORKDIR/lib/"*.so 2>/dev/null || true
-PRELOAD_LIBS="$WORKDIR/lib/libfakestat.so $WORKDIR/lib/libfaketimeMT.so"
-REAL_CLANG_PATH="$CLANG_DIR/clang"
-
-cat > fake-env <<EOF
-#!/bin/bash
-export LD_PRELOAD="$PRELOAD_LIBS"
-exec "\$@"
-EOF
-cat > cc-wrapper <<EOF
-#!/bin/bash
-export FAKESTAT="$FAKESTAT"
-export FAKETIME="$FAKETIME"
-export CCACHE_PREFIX="$PWD/fake-env"
-exec ccache "$REAL_CLANG_PATH" "\$@"
-EOF
-cat > ld-wrapper <<EOF
-#!/bin/bash
-export LD_PRELOAD="$PRELOAD_LIBS"
-export FAKESTAT="$FAKESTAT"
-export FAKETIME="$FAKETIME"
-exec "$CLANG_DIR/ld.lld" "\$@"
-EOF
-chmod +x fake-env cc-wrapper ld-wrapper
+# 固定构建时间戳（不影响编译结果，仅让 ccache 跨构建命中）
+export KBUILD_BUILD_TIMESTAMP="${KBUILD_BUILD_TIMESTAMP:-Fri Dec  5 02:05:55 UTC 2025}"
 
 # ===== 替换版本后缀（学习 oplus 写法）=====
 echo ">>> 替换内核版本后缀..."
@@ -365,14 +337,14 @@ export KCFLAGS
 # 注意：不 source _setup_env.sh（Kleaf 脚本，KERNEL_DIR 为空时会 exit 1 终止当前 shell）
 # make 构建不需要 Kleaf 环境
 
-# ===== 编译（学习 oplus：gki_defconfig + Image 一步完成；ccache 包装器）=====
+# ===== 编译（学习 oplus：gki_defconfig + Image 一步完成；ccache 加速）=====
 make -j"$(nproc --all)" \
     LLVM=1 \
     ARCH=arm64 \
     CROSS_COMPILE=aarch64-linux-gnu- \
-    CC="$(pwd)/cc-wrapper" \
+    CC="ccache $CLANG_DIR/clang" \
     HOSTCC="$CLANG_DIR/clang" \
-    LD="$(pwd)/ld-wrapper" \
+    LD=ld.lld \
     HOSTLD=ld.lld \
     RUSTC="rustc" \
     OBJCOPY="llvm-objcopy" \
