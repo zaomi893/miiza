@@ -3,6 +3,11 @@ __pycache__/
 
 # 构建产物
 artifacts/
+ak3_workspace/
+source/
+kernel_workspace/
+.ccache/
+logs/
 *.zip
 !zram_patch/*.patch
 !other_patch/*.patch

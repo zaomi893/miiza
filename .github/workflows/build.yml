@@ -1,78 +1,99 @@
-name: Build OnePlus 15 HMBIRD kernel
+name: Build OnePlus 15 stock-HMBIRD GKI
+
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: Official aligned source branch
+      ksu_type:
+        description: Root implementation
+        type: choice
         required: true
-        default: oneplus/sm8850_b_16.0.0_oneplus_15
-      run_build:
-        description: Attempt public Kleaf canoe build
-        type: boolean
-        default: true
+        default: resukisu
+        options:
+          - resukisu
+          - none
+
 permissions:
   contents: read
+
+env:
+  STOCK_COMMIT: b2a876903b495c444a94b16f50d1463ffe953957
+  STOCK_RELEASE: 6.12.23-android16-5-gb2a876903b49-ab14541642-4k
+  TOOLCHAIN_URL: https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225
+
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 360
-    env:
-      BRANCH: ${{ inputs.branch }}
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
-      - name: Free disk
-        run: sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet
-      - name: Prepare cache directories
-        run: mkdir -p ~/.cache/bazel-repo ~/.cache/bazel-disk
-      - name: Restore Bazel caches
-        id: bazel-cache
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            aria2 bc binutils bison ccache cpio curl dwarves flex git \
+            libdw-dev libelf-dev libssl-dev lld make pahole perl \
+            python3 rustc unzip xz-utils zip
+
+      - name: Restore toolchain and compiler cache
+        id: cache
         uses: actions/cache/restore@v4
         with:
           path: |
-            ~/.cache/bazel-repo
-            ~/.cache/bazel-disk
-          key: bazel-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.branch }}-${{ hashFiles('scripts/build.sh') }}
+            kernel_workspace
+            .ccache
+          key: oneplus15-stock-gki-r536225-${{ env.STOCK_COMMIT }}-${{ inputs.ksu_type }}
           restore-keys: |
-            bazel-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.branch }}-
-      - name: Assemble aligned official sources
-        run: ./scripts/assemble.sh
-      - name: Verify HMBIRD II
-        run: ./scripts/check_hmbird.sh
-      - name: Attempt public Kleaf build
-        if: inputs.run_build
-        id: build
-        continue-on-error: true
+            oneplus15-stock-gki-r536225-${{ env.STOCK_COMMIT }}-
+
+      - name: Download Android clang 19 toolchain
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p kernel_workspace/clang19 kernel_workspace/rust
+          aria2c -q -x16 -s16 "$TOOLCHAIN_URL/clang-r536225.zip" -o clang.zip
+          unzip -q clang.zip -d kernel_workspace/clang19
+          aria2c -q -x16 -s16 "$TOOLCHAIN_URL/rust.zip" -o rust.zip
+          unzip -q rust.zip -d kernel_workspace/rust
+          aria2c -q -x16 -s16 "$TOOLCHAIN_URL/build-tools.zip" -o build-tools.zip
+          unzip -q build-tools.zip -d kernel_workspace
+          rm -f clang.zip rust.zip build-tools.zip
+          test -x kernel_workspace/clang19/bin/clang
+
+      - name: Fetch exact stock ACK source
+        run: |
+          mkdir -p source/kernel_platform/common
+          git -C source/kernel_platform/common init -q
+          git -C source/kernel_platform/common remote add origin https://android.googlesource.com/kernel/common
+          git -C source/kernel_platform/common fetch --depth=1 --filter=blob:none origin "$STOCK_COMMIT"
+          git -C source/kernel_platform/common checkout -q --detach FETCH_HEAD
+          test "$(git -C source/kernel_platform/common rev-parse HEAD)" = "$STOCK_COMMIT"
+
+      - name: Build and verify stock-compatible Image
         env:
-          BAZEL_REPOSITORY_CACHE: /home/runner/.cache/bazel-repo
-          BAZEL_DISK_CACHE: /home/runner/.cache/bazel-disk
-        run: ./scripts/build.sh
-      - name: Save Bazel caches
-        if: always() && steps.bazel-cache.outputs.cache-hit != 'true'
+          KSU_TYPE: ${{ inputs.ksu_type }}
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
+        run: bash scripts/build.sh
+
+      - name: Package boot-only flashable zip
+        run: bash scripts/package.sh artifacts/Image "${{ github.workspace }}/oneplus15-stock-hmbird-${{ github.run_number }}.zip"
+
+      - name: Save caches
+        if: always() && steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
-            ~/.cache/bazel-repo
-            ~/.cache/bazel-disk
-          key: ${{ steps.bazel-cache.outputs.cache-primary-key }}
-      - name: Record upstream limitation
-        if: inputs.run_build && steps.build.outcome != 'success'
-        run: |
-          mkdir -p logs
-          printf '%s\n' 'Kernel-only build failed; check logs/build.log.' 'Target: boot kernel Image = OnePlus common GKI (sched_ext) via //common:kernel_aarch64; official init_boot/vendor_boot/vendor_dlkm kept (风驰 works).' > logs/LIMITATION.txt
-      - name: Package flashable zip
-        if: inputs.run_build && steps.build.outcome == 'success'
-        run: ./scripts/package.sh artifacts oneplus15-hmbird2-${{ github.run_number }}.zip
+            kernel_workspace
+            .ccache
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: oneplus15-hmbird-${{ github.run_number }}
+          name: oneplus15-stock-hmbird-${{ github.run_number }}
           path: |
-            artifacts/**
-            logs/**
-            hmbird-targets.txt
-            oneplus15-hmbird2-*.zip
-          if-no-files-found: warn
+            artifacts/Image
+            artifacts/config
+            artifacts/System.map
+            logs/compatibility.txt
+            oneplus15-stock-hmbird-*.zip
+          if-no-files-found: error
           retention-days: 14
-      - name: Fail workflow if Kleaf build failed
-        if: always() && inputs.run_build && steps.build.outcome != 'success'
-        run: exit 1
