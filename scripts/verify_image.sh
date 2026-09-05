@@ -22,7 +22,8 @@ if [[ -n "$OUT" ]]; then
     die "build metadata is incomplete"
   grep -q '[[:space:]]init_sched_ext_class$' "$OUT/System.map" ||
     die "sched_ext class is not linked"
-  grep -q '[[:space:]]__tracepoint_android_vh_scx_restore_flags$' "$OUT/Module.symvers" ||
+  awk '$2 == "__tracepoint_android_vh_scx_restore_flags" { found = 1 }
+       END { exit !found }' "$OUT/Module.symvers" ||
     die "stock HMBIRD restore-flags hook is not exported"
 
   required="$OUT/oplus-required-symbols"
