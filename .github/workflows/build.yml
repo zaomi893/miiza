@@ -51,11 +51,11 @@ jobs:
         run: |
           mkdir -p kernel_workspace/clang19 kernel_workspace/rust
           aria2c -q -x16 -s16 "$TOOLCHAIN_URL/clang-r536225.zip" -o clang.zip
-          unzip -q clang.zip -d kernel_workspace/clang19
+          unzip -qo clang.zip -d kernel_workspace/clang19
           aria2c -q -x16 -s16 "$TOOLCHAIN_URL/rust.zip" -o rust.zip
-          unzip -q rust.zip -d kernel_workspace/rust
+          unzip -qo rust.zip -d kernel_workspace/rust
           aria2c -q -x16 -s16 "$TOOLCHAIN_URL/build-tools.zip" -o build-tools.zip
-          unzip -q build-tools.zip -d kernel_workspace
+          unzip -qo build-tools.zip -d kernel_workspace
           rm -f clang.zip rust.zip build-tools.zip
           test -x kernel_workspace/clang19/bin/clang
 
