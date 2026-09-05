@@ -843,12 +843,15 @@ jobs:
           grep -qx 'CONFIG_SCHED_CLASS_EXT=y' "$OUT/.config"
           grep -qx 'CONFIG_ANDROID_VENDOR_HOOKS=y' "$OUT/.config"
           grep -qx 'CONFIG_DEBUG_INFO_BTF=y' "$OUT/.config"
-          awk '$2 == "__tracepoint_android_vh_scx_restore_flags" { found=1 } END { exit !found }' "$OUT/Module.symvers"
+          SYMVERS="$OUT/Module.symvers"
+          [ -f "$SYMVERS" ] || SYMVERS="$OUT/vmlinux.symvers"
+          test -s "$SYMVERS"
+          grep -Eq '(^|[[:space:]])__tracepoint_android_vh_scx_restore_flags([[:space:]]|$)' "$SYMVERS"
           grep -q '[[:space:]]init_sched_ext_class$' "$OUT/System.map"
           echo 'PASS: bootable 6.12.23 chain retains HMBIRD sched_ext hooks'
 
       - name: 保存新的 ccache 缓存
-        if: inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true'
+        if: always() && (inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true')
         uses: actions/cache/save@v5
         with:
           path: ${{ env.CCACHE_DIR }}
