@@ -846,9 +846,24 @@ jobs:
           SYMVERS="$OUT/Module.symvers"
           [ -f "$SYMVERS" ] || SYMVERS="$OUT/vmlinux.symvers"
           test -s "$SYMVERS"
-          grep -Eq '(^|[[:space:]])__tracepoint_android_vh_scx_restore_flags([[:space:]]|$)' "$SYMVERS"
+          HMBIRD_HOOKS=(
+            __tracepoint_android_vh_dup_task_struct
+            __tracepoint_android_vh_scheduler_tick
+            __tracepoint_android_vh_scx_enabled
+            __tracepoint_android_vh_scx_fix_prev_slice
+            __tracepoint_android_vh_scx_ops_consider_migration
+            __tracepoint_android_vh_scx_ops_enable_state
+            __tracepoint_android_vh_scx_restore_flags
+            __tracepoint_android_vh_scx_set_cpus_allowed
+            __tracepoint_android_vh_scx_task_switch_finish
+            __tracepoint_android_vh_task_should_scx
+            __tracepoint_android_vh_tick_nohz_idle_stop_tick
+          )
+          for symbol in "${HMBIRD_HOOKS[@]}"; do
+            grep -Eq "(^|[[:space:]])${symbol}([[:space:]]|$)" "$SYMVERS"
+          done
           grep -q '[[:space:]]init_sched_ext_class$' "$OUT/System.map"
-          echo 'PASS: bootable 6.12.23 chain retains HMBIRD sched_ext hooks'
+          echo "PASS: bootable 6.12.23 chain retains all ${#HMBIRD_HOOKS[@]} stock HMBIRD sched_ext hooks"
 
       - name: 保存新的 ccache 缓存
         if: always() && (inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true')
