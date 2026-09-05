@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  STOCK_COMMIT: b2a876903b495c444a94b16f50d1463ffe953957
+  SOURCE_COMMIT: 6313a006d228a27bc33175f571f0561d93c2deb2
   STOCK_RELEASE: 6.12.23-android16-5-gb2a876903b49-ab14541642-4k
   TOOLCHAIN_URL: https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225
 
@@ -42,9 +42,9 @@ jobs:
           path: |
             kernel_workspace
             .ccache
-          key: oneplus15-stock-gki-r536225-${{ env.STOCK_COMMIT }}-${{ inputs.ksu_type }}
+          key: oneplus15-stock-gki-r536225-${{ env.SOURCE_COMMIT }}-${{ inputs.ksu_type }}
           restore-keys: |
-            oneplus15-stock-gki-r536225-${{ env.STOCK_COMMIT }}-
+            oneplus15-stock-gki-r536225-${{ env.SOURCE_COMMIT }}-
 
       - name: Download Android clang 19 toolchain
         if: steps.cache.outputs.cache-hit != 'true'
@@ -59,14 +59,14 @@ jobs:
           rm -f clang.zip rust.zip build-tools.zip
           test -x kernel_workspace/clang19/bin/clang
 
-      - name: Fetch exact stock ACK source
-        run: |
-          mkdir -p source/kernel_platform/common
-          git -C source/kernel_platform/common init -q
-          git -C source/kernel_platform/common remote add origin https://android.googlesource.com/kernel/common
-          git -C source/kernel_platform/common fetch --depth=1 --filter=blob:none origin "$STOCK_COMMIT"
-          git -C source/kernel_platform/common checkout -q --detach FETCH_HEAD
-          test "$(git -C source/kernel_platform/common rev-parse HEAD)" = "$STOCK_COMMIT"
+      - name: Fetch pinned OnePlus 15 kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: cvhhji/android_kernel_common_oneplus_sm8850
+          ref: ${{ env.SOURCE_COMMIT }}
+          token: ${{ secrets.GH_TOKEN }}
+          path: source/kernel_platform/common
+          fetch-depth: 1
 
       - name: Build and verify stock-compatible Image
         env:

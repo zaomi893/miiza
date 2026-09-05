@@ -9,7 +9,7 @@
 - 风驰本体是官方 `vendor_dlkm` 中的 `oplus_bsp_sched_ext.ko`，不是 boot 内置调度器。
 - 刷机包只替换 `boot` 中的 `Image`，不会写入 `init_boot`、`vendor_boot` 或 `vendor_dlkm`。
 
-因此，本项目固定使用原厂 ACK 提交、从用户提供的官方 `boot.img` 提取并校验的完整内核配置、原厂版本字符串、OPlus KMI 符号表以及风驰所需的 sched_ext/BPF/BTF 配置。不能用通用 `gki_defconfig` 代替该配置；任一关键检查失败，构建会直接失败，不会产出标称“支持风驰”的刷机包。
+因此，本项目固定使用 `cvhhji/android_kernel_common_oneplus_sm8850` 的一加 15 源码提交 `6313a006…`、从用户提供的官方 `boot.img` 提取并校验的完整内核配置、原厂版本字符串、OPlus KMI 符号表以及风驰所需的 sched_ext/BPF/BTF 配置。不能用通用 ACK common 或通用 `gki_defconfig` 代替；任一关键检查失败，构建会直接失败。
 
 ## 构建
 

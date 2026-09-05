@@ -3,8 +3,8 @@ set -euo pipefail
 
 # OnePlus 15 stock-compatible custom GKI build.
 # The stock HMBIRD II implementation stays in vendor_dlkm. This script only
-# replaces boot/Image and deliberately builds the exact ACK commit recorded in
-# the supplied stock boot image.
+# replaces boot/Image and deliberately builds the pinned OnePlus 15 source
+# which carries the OPlus boot fixes and HMBIRD scheduler hooks.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMMON="${COMMON:-$ROOT/source/kernel_platform/common}"
@@ -13,7 +13,7 @@ OUT="${OUT:-$COMMON/out}"
 ARTIFACTS="$ROOT/artifacts"
 LOGS="$ROOT/logs"
 
-STOCK_COMMIT="${STOCK_COMMIT:-b2a876903b495c444a94b16f50d1463ffe953957}"
+SOURCE_COMMIT="${SOURCE_COMMIT:-6313a006d228a27bc33175f571f0561d93c2deb2}"
 STOCK_RELEASE="${STOCK_RELEASE:-6.12.23-android16-5-gb2a876903b49-ab14541642-4k}"
 LOCAL_SUFFIX="${STOCK_RELEASE#6.12.23}"
 KSU_TYPE="${KSU_TYPE:-resukisu}"
@@ -23,8 +23,8 @@ require_file() { [[ -f "$1" ]] || die "missing $1"; }
 require_config() { grep -qx "$1" "$OUT/.config" || die "required config missing: $1"; }
 
 require_file "$COMMON/Makefile"
-[[ "$(git -C "$COMMON" rev-parse HEAD)" == "$STOCK_COMMIT" ]] ||
-  die "source is not the stock ACK commit $STOCK_COMMIT"
+[[ "$(git -C "$COMMON" rev-parse HEAD)" == "$SOURCE_COMMIT" ]] ||
+  die "source is not the pinned OnePlus 15 commit $SOURCE_COMMIT"
 
 mkdir -p "$ARTIFACTS" "$LOGS" "$OUT"
 rm -f "$ARTIFACTS/Image" "$ARTIFACTS/config" "$ARTIFACTS/System.map"
@@ -38,7 +38,7 @@ export LIBCLANG_PATH="$TOOLS/clang19/lib"
 export KBUILD_BUILD_USER=kleaf KBUILD_BUILD_HOST=build-host
 export KBUILD_BUILD_VERSION=1
 export KBUILD_BUILD_TIMESTAMP="Fri Dec  5 02:05:55 UTC 2025"
-# scripts/setlocalversion appends '+' to an untagged ACK checkout unless the
+# scripts/setlocalversion appends '+' to an untagged checkout unless the
 # make-time LOCALVERSION variable is explicitly present.  The stock suffix is
 # already supplied through CONFIG_LOCALVERSION below, so keep the make-time
 # value deliberately empty to reproduce the exact stock UTS release.

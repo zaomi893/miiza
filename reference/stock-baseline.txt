@@ -18,6 +18,10 @@ Kernel release:
 ACK source commit:
 b2a876903b495c444a94b16f50d1463ffe953957
 
+Pinned bootable OnePlus 15 source:
+cvhhji/android_kernel_common_oneplus_sm8850
+6313a006d228a27bc33175f571f0561d93c2deb2
+
 HMBIRD module:
 lib/modules/oplus_bsp_sched_ext.ko
 sha256 E0BE230D649012C22BF22C1951DED40380CF606256E2DD25BF5726F249692A3D
