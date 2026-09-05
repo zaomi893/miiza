@@ -42,7 +42,9 @@ if [[ -n "$OUT" ]]; then
     die "stock OPlus KMI exports are missing"
   }
 
-  llvm-readelf -S "$OUT/vmlinux" | grep -q '[.]BTF' || die "vmlinux has no BTF section"
+  llvm-readelf -S "$OUT/vmlinux" |
+    awk '/[.]BTF/ { found = 1 } END { exit !found }' ||
+    die "vmlinux has no BTF section"
 fi
 
 echo "PASS: stock release string: $EXPECTED"
