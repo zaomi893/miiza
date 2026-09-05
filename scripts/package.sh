@@ -15,14 +15,47 @@ git clone --quiet --no-checkout https://github.com/osm0sis/AnyKernel3.git "$WORK
 git -C "$WORK" checkout --quiet "$AK3_COMMIT"
 rm -rf "$WORK/.git"
 
-# Restrict the package to OnePlus 15 identifiers. The package replaces only
-# boot/Image; init_boot, vendor_boot and vendor_dlkm are never included.
-sed -i 's/^do.devicecheck=.*/do.devicecheck=1/' "$WORK/anykernel.sh"
-sed -i 's/^device.name1=.*/device.name1=infiniti/' "$WORK/anykernel.sh"
-sed -i 's/^device.name2=.*/device.name2=PLK110/' "$WORK/anykernel.sh"
-sed -i 's/^device.name3=.*/device.name3=CPH2745/' "$WORK/anykernel.sh"
-sed -i 's/^device.name4=.*/device.name4=CPH2747/' "$WORK/anykernel.sh"
-sed -i 's/^device.name5=.*/device.name5=CPH2749/' "$WORK/anykernel.sh"
+# Replace the upstream example installer completely.  Its sample OMAP block
+# path and Tuna ramdisk edits are not valid for a modern OnePlus A/B device.
+# This installer touches boot in the active slot only and leaves init_boot,
+# vendor_boot and vendor_dlkm (which contains HMBIRD) unchanged.
+cat > "$WORK/anykernel.sh" <<'EOF'
+### AnyKernel3 Ramdisk Mod Script
+## OnePlus 15 stock-HMBIRD GKI
+
+properties() { '
+kernel.string=OnePlus 15 stock-HMBIRD GKI by cvhhji
+do.devicecheck=1
+do.modules=0
+do.systemless=1
+do.cleanup=1
+do.cleanuponabort=0
+device.name1=infiniti
+device.name2=PLK110
+device.name3=CPH2745
+device.name4=CPH2747
+device.name5=CPH2749
+supported.versions=
+supported.patchlevels=
+supported.vendorpatchlevels=
+'; }
+
+BLOCK=boot;
+IS_SLOT_DEVICE=auto;
+RAMDISK_COMPRESSION=auto;
+PATCH_VBMETA_FLAG=auto;
+
+. tools/ak3-core.sh;
+
+ui_print "OnePlus 15 stock-HMBIRD GKI";
+split_boot;
+if [ -f split_img/ramdisk.cpio ]; then
+  unpack_ramdisk;
+  write_boot;
+else
+  flash_boot;
+fi;
+EOF
 cp "$IMAGE" "$WORK/Image"
 
 cat > "$WORK/hmbird-stock-baseline.txt" <<'EOF'
