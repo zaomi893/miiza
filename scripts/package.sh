@@ -4,14 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE="${1:-$ROOT/artifacts/Image}"
 OUTPUT="${2:-$ROOT/oneplus15-stock-hmbird-gki.zip}"
-AK3_COMMIT="${AK3_COMMIT:-f1008ba4ef4a6ff9c188a89f40a1d1cc977829f0}"
+AK3_COMMIT="${AK3_COMMIT:-020dfeccf9d7e962a48400fc94d3e451df92eead}"
 WORK="$ROOT/ak3_workspace"
 
 [[ -s "$IMAGE" ]] || { echo "error: missing Image: $IMAGE" >&2; exit 1; }
 bash "$ROOT/scripts/verify_image.sh" "$IMAGE"
 
 rm -rf "$WORK"
-git clone --quiet --no-checkout https://github.com/cvhhji/AnyKernel3.git "$WORK"
+git clone --quiet --no-checkout https://github.com/osm0sis/AnyKernel3.git "$WORK"
 git -C "$WORK" checkout --quiet "$AK3_COMMIT"
 rm -rf "$WORK/.git"
 
