@@ -94,6 +94,7 @@ scripts/config --file "$OUT/.config" --enable BPF_JIT
 scripts/config --file "$OUT/.config" --enable BPF_JIT_ALWAYS_ON
 scripts/config --file "$OUT/.config" --enable IKCONFIG
 scripts/config --file "$OUT/.config" --enable IKCONFIG_PROC
+scripts/config --file "$OUT/.config" --enable ANDROID_VENDOR_HOOKS
 scripts/config --file "$OUT/.config" --enable MODVERSIONS
 scripts/config --file "$OUT/.config" --enable DEBUG_INFO_BTF
 scripts/config --file "$OUT/.config" --enable DEBUG_INFO_BTF_MODULES
@@ -112,6 +113,7 @@ make O="$OUT" CC="$CC_CMD" olddefconfig
 for cfg in \
   CONFIG_SCHED_CLASS_EXT=y CONFIG_BPF=y CONFIG_BPF_SYSCALL=y \
   CONFIG_BPF_JIT=y CONFIG_BPF_JIT_ALWAYS_ON=y CONFIG_IKCONFIG=y \
+  CONFIG_ANDROID_VENDOR_HOOKS=y \
   CONFIG_MODVERSIONS=y CONFIG_TRIM_UNUSED_KSYMS=y \
   CONFIG_DEBUG_INFO_BTF=y CONFIG_DEBUG_INFO_BTF_MODULES=y \
   CONFIG_CFI_CLANG=y CONFIG_LTO_NONE=y; do
