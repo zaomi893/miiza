@@ -38,6 +38,11 @@ export LIBCLANG_PATH="$TOOLS/clang19/lib"
 export KBUILD_BUILD_USER=kleaf KBUILD_BUILD_HOST=build-host
 export KBUILD_BUILD_VERSION=1
 export KBUILD_BUILD_TIMESTAMP="Fri Dec  5 02:05:55 UTC 2025"
+# scripts/setlocalversion appends '+' to an untagged ACK checkout unless the
+# make-time LOCALVERSION variable is explicitly present.  The stock suffix is
+# already supplied through CONFIG_LOCALVERSION below, so keep the make-time
+# value deliberately empty to reproduce the exact stock UTS release.
+export LOCALVERSION=""
 
 if command -v ccache >/dev/null 2>&1; then
   export CCACHE_DIR="${CCACHE_DIR:-$ROOT/.ccache}"
