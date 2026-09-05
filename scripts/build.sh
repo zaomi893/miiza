@@ -83,7 +83,16 @@ awk '
 grep -qx '__tracepoint_android_vh_scx_restore_flags' "$KMI_LIST" ||
   die "stock HMBIRD KMI hook is absent from the pinned source"
 
-make O="$OUT" CC="$CC_CMD" gki_defconfig
+# Start from the complete configuration embedded in the supplied stock
+# boot.img.  Using generic gki_defconfig is not sufficient on this device: it
+# can change layout/CRC decisions that the prebuilt OPlus vendor modules rely
+# on, even when the exported symbol names look correct.
+STOCK_CONFIG_B64="$ROOT/reference/stock-config.gz.b64"
+require_file "$STOCK_CONFIG_B64"
+base64 --decode "$STOCK_CONFIG_B64" | gzip --decompress --stdout > "$OUT/.config"
+[[ "$(sha256sum "$OUT/.config" | awk '{print toupper($1)}')" == \
+   "E239B50CB4C660493EDFDC2AE4908B56CF5CAE1E826F71F637DA85E4AEA3ECD0" ]] ||
+  die "embedded stock config checksum mismatch"
 
 scripts/config --file "$OUT/.config" --set-str LOCALVERSION "$LOCAL_SUFFIX"
 scripts/config --file "$OUT/.config" --disable LOCALVERSION_AUTO
