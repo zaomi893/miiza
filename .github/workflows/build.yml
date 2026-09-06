@@ -942,44 +942,37 @@ jobs:
           llvm-objcopy --dump-section .BTF_ids=hmbird.gki.btf_ids "$HMBIRD_KO"
           test "$(stat -c%s hmbird.gki.btf)" -eq 26298
           test "$(stat -c%s hmbird.gki.btf_ids)" -eq 320
-          od -An -v -t x1 hmbird.gki.btf | \
-            sed -E 's/ ([0-9a-f]{2})/ 0x\1,/g' > \
-            common/kernel/module/oplus_hmbird_btf.inc
-          od -An -v -t x1 hmbird.gki.btf_ids | \
-            sed -E 's/ ([0-9a-f]{2})/ 0x\1,/g' > \
-            common/kernel/module/oplus_hmbird_btf_ids.inc
+          # The first-pass kernel contains two fixed-size, uniquely marked
+          # metadata slots. Replace them in the raw Image without relinking;
+          # this preserves every code address and the exact BTF ID space that
+          # the donor metadata was compiled against.
+          IMAGE=common/out/arch/arm64/boot/Image
+          IMAGE_SIZE_BEFORE=$(stat -c%s "$IMAGE")
+          python - "$IMAGE" hmbird.gki.btf hmbird.gki.btf_ids <<'PY'
+          from pathlib import Path
+          import sys
 
-          # Recompile only the compatibility object and relink Image with the
-          # same toolchain, flags and fake build timestamp as the first pass.
-          export PATH="$PWD/clang19/bin:$PWD/build-tools/bin:$PWD/rust/bin:/usr/lib/ccache:$PATH"
-          export LIBCLANG_PATH="$PWD/clang19/lib"
-          export REAL_CLANG_PATH="$PWD/clang19/bin/clang"
-          export RUSTC=rustc BINDGEN=bindgen HOSTCC=clang HOSTLD=ld.lld
-          export LLVM=1 LLVM_IAS=1 ARCH=arm64 SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          export AR=llvm-ar NM=llvm-nm AS=clang READELF=llvm-readelf
-          export OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump OBJSIZE=llvm-size STRIP=llvm-strip
-          export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
-          export CCACHE_LOGFILE="$PWD/ccache.log"
-          export CCACHE_COMPILERCHECK=none CCACHE_BASEDIR="$GITHUB_WORKSPACE"
-          export CCACHE_NOHASHDIR=true CCACHE_NOHARDLINK=true
-          export CCACHE_IS_KERNEL_COMPILING=true
-          cd common
-          COMMON_REAL_PATH=$(pwd -P)
-          ROOT_REAL_PATH=$(dirname "$COMMON_REAL_PATH")
-          export KCFLAGS=" -fdebug-prefix-map=$ROOT_REAL_PATH=. -fmacro-prefix-map=$ROOT_REAL_PATH=. -ffile-prefix-map=$ROOT_REAL_PATH=. -no-canonical-prefixes -O2 -pipe -Wno-error -fno-stack-protector -D__ANDROID_COMMON_KERNEL__"
-          export SO_DIR="$COMMON_REAL_PATH"
-          export PRELOAD_LIBS="$SO_DIR/libfakestat.so $SO_DIR/libfaketimeMT.so"
-          export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
-          export REAL_CLANG_PATH="$PWD/../clang19/bin/clang"
-          make -j$(nproc --all) LLVM=1 ARCH=arm64 \
-            CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" \
-            LD="$(pwd)/ld-wrapper" OBJCOPY=llvm-objcopy O=out Image
-          llvm-objcopy --dump-section .BTF=../vmlinux.btf.after out/vmlinux
-          cmp ../vmlinux.btf.before ../vmlinux.btf.after
-          grep -aFq 'using embedded matching GKI BTF metadata' \
-            out/arch/arm64/boot/Image
-          cd ..
+          image_path = Path(sys.argv[1])
+          image = bytearray(image_path.read_bytes())
+          slots = (
+              (b"HMBIRD_BTF_SLOT", Path(sys.argv[2]).read_bytes(), 26298),
+              (b"HMBIRD_IDS_SLOT", Path(sys.argv[3]).read_bytes(), 320),
+          )
+          for marker, payload, expected_size in slots:
+              if len(payload) != expected_size:
+                  raise SystemExit(f"bad payload size for {marker!r}: {len(payload)}")
+              offset = image.find(marker)
+              if offset < 0 or image.find(marker, offset + 1) >= 0:
+                  raise SystemExit(f"metadata slot marker is missing or ambiguous: {marker!r}")
+              slot = image[offset:offset + expected_size]
+              if slot[:len(marker)] != marker or any(slot[len(marker):]):
+                  raise SystemExit(f"metadata slot is not pristine: {marker!r}")
+              image[offset:offset + expected_size] = payload
+              print(f"patched {marker.decode()} at Image offset {offset:#x}")
+          image_path.write_bytes(image)
+          PY
+          test "$(stat -c%s "$IMAGE")" -eq "$IMAGE_SIZE_BEFORE"
+          grep -aFq 'using embedded matching GKI BTF metadata' "$IMAGE"
 
           mkdir -p hmbird_artifact
           cp "$HMBIRD_KO" hmbird_artifact/
