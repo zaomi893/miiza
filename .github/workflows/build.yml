@@ -900,11 +900,17 @@ jobs:
 
           export PATH="$PWD/clang19/bin:$PWD/build-tools/bin:$PATH"
           export LIBCLANG_PATH="$PWD/clang19/lib"
-          make -C common O=out M="$MODULE_DIR" \
-            LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
-            CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" \
-            KBUILD_EXTRA_SYMBOLS="$MODULE_DIR/stock_vendor_symbols.symvers" \
-            modules
+          if ! make -C common O=out M="$MODULE_DIR" V=1 \
+              LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+              CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" \
+              KBUILD_EXTRA_SYMBOLS="$MODULE_DIR/stock_vendor_symbols.symvers" \
+              modules; then
+            echo 'HMBIRD external-module intermediate files:'
+            find "$MODULE_DIR" -maxdepth 2 -type f \
+              \( -name '*.mod' -o -name '*.mod.c' -o -name '*.o' -o -name 'modules.order' -o -name 'Module.symvers' \) \
+              -print -exec sh -c 'echo "--- $1"; sed -n "1,80p" "$1"' sh {} \;
+            exit 1
+          fi
 
           HMBIRD_KO="$MODULE_DIR/oplus_bsp_sched_ext.ko"
           test -s "$HMBIRD_KO"
