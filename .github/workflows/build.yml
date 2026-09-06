@@ -892,6 +892,12 @@ jobs:
           cp "$GITHUB_WORKSPACE/hmbird_module/stock_vendor_symbols.symvers" \
             "$MODULE_DIR/stock_vendor_symbols.symvers"
 
+          # The Android GKI build names the vmlinux export table
+          # vmlinux.symvers, while external Kbuild expects Module.symvers.
+          if [ ! -s common/out/Module.symvers ]; then
+            cp common/out/vmlinux.symvers common/out/Module.symvers
+          fi
+
           export PATH="$PWD/clang19/bin:$PWD/build-tools/bin:$PATH"
           export LIBCLANG_PATH="$PWD/clang19/lib"
           make -C common O=out M="$MODULE_DIR" \
