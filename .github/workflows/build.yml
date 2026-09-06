@@ -884,13 +884,16 @@ jobs:
           find "$MODULE_DIR/sched_ext" -type f \( -name '*.c' -o -name '*.h' \) -print0 | \
             xargs -0 sed -i -E \
               -e 's#[<"]\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g' \
-              -e 's#[<"]\.\./\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g'
+              -e 's#[<"]\.\./\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g' \
+              -e 's#<linux/sa_common\.h>#<sa_common.h>#g'
 
           # Only use stock CRCs for symbols supplied by the unchanged vendor
           # dependency modules. vmlinux symbols continue to use this build's CRCs.
           cp "$GITHUB_WORKSPACE/hmbird_module/stock_vendor_symbols.symvers" \
             "$MODULE_DIR/stock_vendor_symbols.symvers"
 
+          export PATH="$PWD/clang19/bin:$PWD/build-tools/bin:$PATH"
+          export LIBCLANG_PATH="$PWD/clang19/lib"
           make -C common O=out M="$MODULE_DIR" \
             LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
             CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" \
