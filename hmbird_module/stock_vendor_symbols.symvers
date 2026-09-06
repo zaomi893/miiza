@@ -1,0 +1,5 @@
+0x4ff7ada7	set_ttwu_callback	stock_vendor	EXPORT_SYMBOL_GPL	
+0xf296206e	g_opt_enable	stock_vendor	EXPORT_SYMBOL_GPL	
+0xa259b9f2	locking_state_systrace_c	stock_vendor	EXPORT_SYMBOL_GPL	
+0x7ec472ba	global_sched_assist_enabled	stock_vendor	EXPORT_SYMBOL_GPL	
+0xdd21467e	msm_minidump_add_region	stock_vendor	EXPORT_SYMBOL_GPL	
