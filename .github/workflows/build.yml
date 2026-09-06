@@ -155,7 +155,7 @@ jobs:
           sudo apt purge man-db &&
           sudo rm -rf /var/lib/man-db/auto-update &&
           sudo apt-get -o Acquire::http::Timeout=30 -o Acquire::Retries=2 update &&
-          sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev libdw-dev ccache &
+          sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev libdw-dev dwarves kmod ccache &
           #旧版完整指令：（由于经过验证大部分指令已内置于GitHub Action环境中，故进行精简）
           #sudo apt-get install -y --no-install-recommends curl bison flex make binutils git perl gcc python3 python-is-python3 bc libssl-dev libelf-dev libdw-dev zip unzip ccache
 
@@ -865,6 +865,50 @@ jobs:
           grep -q '[[:space:]]init_sched_ext_class$' "$OUT/System.map"
           echo "PASS: bootable 6.12.23 chain retains all ${#HMBIRD_HOOKS[@]} stock HMBIRD sched_ext hooks"
 
+      - name: 针对本次 GKI 重编译风驰驱动
+        run: |
+          set -euxo pipefail
+          cd kernel_workspace
+
+          git clone --depth=1 --filter=blob:none --sparse \
+            --branch oneplus/sm8850_b_16.0.0_oneplus_15 \
+            https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850.git \
+            oplus_modules
+          git -C oplus_modules sparse-checkout set vendor/oplus/kernel/cpu
+
+          MODULE_DIR="$PWD/oplus_modules/vendor/oplus/kernel/cpu"
+          cp "$GITHUB_WORKSPACE/hmbird_module/Makefile" "$MODULE_DIR/Makefile"
+
+          # DDK rewrites these private scheduler includes into the kernel source
+          # include root. Do the same for a direct external-module build.
+          find "$MODULE_DIR/sched_ext" -type f \( -name '*.c' -o -name '*.h' \) -print0 | \
+            xargs -0 sed -i -E \
+              -e 's#[<"]\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g' \
+              -e 's#[<"]\.\./\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g'
+
+          # Only use stock CRCs for symbols supplied by the unchanged vendor
+          # dependency modules. vmlinux symbols continue to use this build's CRCs.
+          cp "$GITHUB_WORKSPACE/hmbird_module/stock_vendor_symbols.symvers" \
+            "$MODULE_DIR/stock_vendor_symbols.symvers"
+
+          make -C common O=out M="$MODULE_DIR" \
+            LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+            CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" \
+            KBUILD_EXTRA_SYMBOLS="$MODULE_DIR/stock_vendor_symbols.symvers" \
+            modules
+
+          HMBIRD_KO="$MODULE_DIR/oplus_bsp_sched_ext.ko"
+          test -s "$HMBIRD_KO"
+          readelf -S "$HMBIRD_KO" | grep -q '\.BTF'
+          modinfo -F vermagic "$HMBIRD_KO" | grep -Fq '6.12.23-android16-5-gb2a876903b49-ab14541642-4k'
+          modprobe --dump-modversions "$HMBIRD_KO" > hmbird-module.modversions
+          mkdir -p hmbird_artifact
+          cp "$HMBIRD_KO" hmbird_artifact/
+          cp hmbird-module.modversions hmbird_artifact/
+          cp common/out/Module.symvers hmbird_artifact/gki-Module.symvers
+          sha256sum hmbird_artifact/oplus_bsp_sched_ext.ko | tee hmbird_artifact/SHA256SUMS
+          echo "PASS: HMBIRD module was rebuilt with BTF from this exact custom GKI"
+
       - name: 保存新的 ccache 缓存
         if: always() && (inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true')
         uses: actions/cache/save@v5
@@ -978,6 +1022,12 @@ jobs:
         with:
           path: ${{ github.workspace }}/kernel_workspace/${{ steps.create_zip.outputs.ak3name }}
           archive: false
+
+      - name: 上传匹配 GKI 的风驰驱动测试工件
+        uses: actions/upload-artifact@v7
+        with:
+          name: oneplus15-hmbird-matching-module
+          path: ${{ github.workspace }}/kernel_workspace/hmbird_artifact/*
 
   release:
     needs: build

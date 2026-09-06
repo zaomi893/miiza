@@ -1,0 +1,22 @@
+obj-m += oplus_bsp_sched_ext.o
+
+oplus_bsp_sched_ext-y := \
+	sched_ext/main.o \
+	sched_ext/hmbird_common_sysctl.o \
+	sched_ext/hmbird_dfx.o \
+	sched_ext/hmbird_kfunc.o \
+	sched_ext/hmbird_minidump.o \
+	sched_ext/hmbird_II/hmbird_II.o \
+	sched_ext/hmbird_II/hmbird_II_critical_task_monitor.o \
+	sched_ext/hmbird_II/hmbird_II_freqgov.o \
+	sched_ext/hmbird_II/hmbird_II_shadow_tick.o \
+	sched_ext/hmbird_II/hmbird_II_sysctl.o \
+	sched_ext/hmbird_CameraScene/hmbird_CameraScene.o \
+	sched_ext/hmbird_CameraScene/hmbird_CameraScene_sysctl.o
+
+# Match the OnePlus Qualcomm DDK target. The sched_assist headers describe the
+# OEM task extension shared with the already-loaded stock dependency modules.
+ccflags-y += -DCONFIG_OPLUS_SYSTEM_KERNEL_QCOM
+ccflags-y += -I$(src)/sched_ext
+ccflags-y += -I$(src)/sched/sched_assist
+ccflags-y += -I$(srctree)
