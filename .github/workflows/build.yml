@@ -202,6 +202,13 @@ jobs:
             sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$f"
           done
 
+      - name: 添加原厂风驰模块 BTF 兼容层
+        run: |
+          set -euxo pipefail
+          patch -d kernel_workspace/common -p1 < other_patch/hmbird-stock-module-btf.patch
+          test -f kernel_workspace/common/kernel/module/oplus_hmbird_btf.inc
+          test -f kernel_workspace/common/kernel/module/oplus_hmbird_btf_ids.inc
+
       - name: 配置ccache目录
         run: |
           echo "CCACHE_DIR=$HOME/.ccache_${{ env.KERNEL_VERSION }}.${{ env.SUB_VERSION }}" >> $GITHUB_ENV
@@ -817,6 +824,11 @@ jobs:
           export CC="$(pwd)/cc-wrapper" && export LD="$(pwd)/ld-wrapper" &&
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="llvm-objcopy" O=out Image
 
+          # Keep the first-pass vmlinux BTF. The matching HMBIRD module is
+          # compiled against this exact ID space in the next step.
+          llvm-objcopy --dump-section .BTF=../vmlinux.btf.before out/vmlinux
+          test -s ../vmlinux.btf.before
+
           # 编译后时间劫持二次校验
           echo "--- 编译后环境时间: $(LD_PRELOAD=$PRELOAD_LIBS date) ---"
           echo "--- 编译后环境文件时间戳: ---"
@@ -865,7 +877,7 @@ jobs:
           grep -q '[[:space:]]init_sched_ext_class$' "$OUT/System.map"
           echo "PASS: bootable 6.12.23 chain retains all ${#HMBIRD_HOOKS[@]} stock HMBIRD sched_ext hooks"
 
-      - name: 针对本次 GKI 重编译风驰驱动
+      - name: 生成原厂风驰模块的匹配 BTF 并完成内核
         run: |
           set -euxo pipefail
           cd kernel_workspace
@@ -922,12 +934,62 @@ jobs:
           readelf -S "$HMBIRD_KO" | grep -q '\.BTF'
           modinfo -F vermagic "$HMBIRD_KO" | grep -Fq '6.12.23-android16-5-gb2a876903b49-ab14541642-4k'
           modprobe --dump-modversions "$HMBIRD_KO" > hmbird-module.modversions
+
+          # Extract only the donor metadata. The phone continues to load the
+          # stock executable module from vendor_dlkm; the kernel substitutes
+          # these two sections before BTF validation and module init.
+          llvm-objcopy --dump-section .BTF=hmbird.gki.btf "$HMBIRD_KO"
+          llvm-objcopy --dump-section .BTF_ids=hmbird.gki.btf_ids "$HMBIRD_KO"
+          test "$(stat -c%s hmbird.gki.btf)" -eq 26298
+          test "$(stat -c%s hmbird.gki.btf_ids)" -eq 320
+          od -An -v -t x1 hmbird.gki.btf | \
+            sed -E 's/ ([0-9a-f]{2})/ 0x\1,/g' > \
+            common/kernel/module/oplus_hmbird_btf.inc
+          od -An -v -t x1 hmbird.gki.btf_ids | \
+            sed -E 's/ ([0-9a-f]{2})/ 0x\1,/g' > \
+            common/kernel/module/oplus_hmbird_btf_ids.inc
+
+          # Recompile only the compatibility object and relink Image with the
+          # same toolchain, flags and fake build timestamp as the first pass.
+          export PATH="$PWD/clang19/bin:$PWD/build-tools/bin:$PWD/rust/bin:/usr/lib/ccache:$PATH"
+          export LIBCLANG_PATH="$PWD/clang19/lib"
+          export REAL_CLANG_PATH="$PWD/clang19/bin/clang"
+          export RUSTC=rustc BINDGEN=bindgen HOSTCC=clang HOSTLD=ld.lld
+          export LLVM=1 LLVM_IAS=1 ARCH=arm64 SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export AR=llvm-ar NM=llvm-nm AS=clang READELF=llvm-readelf
+          export OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump OBJSIZE=llvm-size STRIP=llvm-strip
+          export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
+          export CCACHE_LOGFILE="$PWD/ccache.log"
+          export CCACHE_COMPILERCHECK=none CCACHE_BASEDIR="$GITHUB_WORKSPACE"
+          export CCACHE_NOHASHDIR=true CCACHE_NOHARDLINK=true
+          export CCACHE_IS_KERNEL_COMPILING=true
+          cd common
+          COMMON_REAL_PATH=$(pwd -P)
+          ROOT_REAL_PATH=$(dirname "$COMMON_REAL_PATH")
+          export KCFLAGS=" -fdebug-prefix-map=$ROOT_REAL_PATH=. -fmacro-prefix-map=$ROOT_REAL_PATH=. -ffile-prefix-map=$ROOT_REAL_PATH=. -no-canonical-prefixes -O2 -pipe -Wno-error -fno-stack-protector -D__ANDROID_COMMON_KERNEL__"
+          export SO_DIR="$COMMON_REAL_PATH"
+          export PRELOAD_LIBS="$SO_DIR/libfakestat.so $SO_DIR/libfaketimeMT.so"
+          source ./_setup_env.sh 2>/dev/null || true
+          export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
+          export REAL_CLANG_PATH="$PWD/../clang19/bin/clang"
+          make -j$(nproc --all) LLVM=1 ARCH=arm64 \
+            CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" \
+            LD="$(pwd)/ld-wrapper" OBJCOPY=llvm-objcopy O=out Image
+          llvm-objcopy --dump-section .BTF=../vmlinux.btf.after out/vmlinux
+          cmp ../vmlinux.btf.before ../vmlinux.btf.after
+          grep -aFq 'using embedded matching GKI BTF metadata' \
+            out/arch/arm64/boot/Image
+          cd ..
+
           mkdir -p hmbird_artifact
           cp "$HMBIRD_KO" hmbird_artifact/
           cp hmbird-module.modversions hmbird_artifact/
           cp common/out/Module.symvers hmbird_artifact/gki-Module.symvers
           sha256sum hmbird_artifact/oplus_bsp_sched_ext.ko | tee hmbird_artifact/SHA256SUMS
-          echo "PASS: HMBIRD module was rebuilt with BTF from this exact custom GKI"
+          cp hmbird.gki.btf hmbird_artifact/
+          cp hmbird.gki.btf_ids hmbird_artifact/
+          echo "PASS: stock HMBIRD code will receive BTF metadata from this exact GKI"
 
       - name: 保存新的 ccache 缓存
         if: always() && (inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true')

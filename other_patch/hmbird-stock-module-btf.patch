@@ -1,0 +1,91 @@
+diff --git a/kernel/module/main.c b/kernel/module/main.c
+index 2f7f5634d2ca..4fb29235d18a 100644
+--- a/kernel/module/main.c
++++ b/kernel/module/main.c
+@@ -283,6 +283,58 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+ 	return (void *)info->sechdrs[sec].sh_addr;
+ }
+ 
++#ifdef CONFIG_DEBUG_INFO_BTF_MODULES
++/*
++ * The stock OnePlus HMBIRD module is a split-BTF module produced against the
++ * stock PLK110 vmlinux.  It does not carry .BTF.base, so an otherwise ABI-
++ * compatible custom GKI interprets its base type IDs against the wrong BTF.
++ *
++ * The build workflow replaces the zero-filled initializer below with .BTF
++ * and .BTF_ids generated from the same HMBIRD source against this exact GKI.
++ * Only metadata is substituted: executable code and all other sections still
++ * come from the signed stock module in vendor_dlkm.
++ */
++#define OPLUS_HMBIRD_STOCK_BTF_SIZE	26340U
++#define OPLUS_HMBIRD_GKI_BTF_SIZE	26298U
++#define OPLUS_HMBIRD_BTF_IDS_SIZE	320U
++#define OPLUS_HMBIRD_BTF_ID_COUNT	39U
++
++static const u8 oplus_hmbird_gki_btf[OPLUS_HMBIRD_GKI_BTF_SIZE] = {
++#include "oplus_hmbird_btf.inc"
++};
++
++static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_SIZE] = {
++#include "oplus_hmbird_btf_ids.inc"
++};
++
++static void oplus_hmbird_fix_stock_btf(struct module *mod,
++				       const struct load_info *info)
++{
++	unsigned int ids_size;
++	void *ids;
++
++	if (strcmp(mod->name, "oplus_bsp_sched_ext") || mod->btf_base_data)
++		return;
++	if (!mod->btf_data ||
++	    mod->btf_data_size != OPLUS_HMBIRD_STOCK_BTF_SIZE)
++		return;
++
++	ids = any_section_objs(info, ".BTF_ids", 1, &ids_size);
++	if (!ids || ids_size != OPLUS_HMBIRD_BTF_IDS_SIZE ||
++	    ((u32 *)ids)[0] != OPLUS_HMBIRD_BTF_ID_COUNT)
++		return;
++
++	mod->btf_data = (void *)oplus_hmbird_gki_btf;
++	mod->btf_data_size = sizeof(oplus_hmbird_gki_btf);
++	memcpy(ids, oplus_hmbird_gki_btf_ids,
++	       sizeof(oplus_hmbird_gki_btf_ids));
++	pr_info("%s: using embedded matching GKI BTF metadata\n", mod->name);
++}
++#else
++static inline void oplus_hmbird_fix_stock_btf(struct module *mod,
++					      const struct load_info *info) { }
++#endif
++
+ #ifndef CONFIG_MODVERSIONS
+ #define symversion(base, idx) NULL
+ #else
+@@ -3395,6 +3447,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+ 	err = apply_relocations(mod, info);
+ 	if (err < 0)
+ 		goto free_modinfo;
++
++	/*
++	 * .BTF_ids is SHF_ALLOC and writable until complete_formation() applies
++	 * the module's final RO/NX permissions, so replace the metadata here.
++	 */
++	oplus_hmbird_fix_stock_btf(mod, info);
++
+ 
+ 	err = post_relocation(mod, info);
+ 	if (err < 0)
+diff --git a/kernel/module/oplus_hmbird_btf.inc b/kernel/module/oplus_hmbird_btf.inc
+new file mode 100644
+index 000000000000..573541ac9702
+--- /dev/null
++++ b/kernel/module/oplus_hmbird_btf.inc
+@@ -0,0 +1 @@
++0
+diff --git a/kernel/module/oplus_hmbird_btf_ids.inc b/kernel/module/oplus_hmbird_btf_ids.inc
+new file mode 100644
+index 000000000000..573541ac9702
+--- /dev/null
++++ b/kernel/module/oplus_hmbird_btf_ids.inc
+@@ -0,0 +1 @@
++0
