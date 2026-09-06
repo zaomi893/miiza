@@ -970,7 +970,6 @@ jobs:
           export KCFLAGS=" -fdebug-prefix-map=$ROOT_REAL_PATH=. -fmacro-prefix-map=$ROOT_REAL_PATH=. -ffile-prefix-map=$ROOT_REAL_PATH=. -no-canonical-prefixes -O2 -pipe -Wno-error -fno-stack-protector -D__ANDROID_COMMON_KERNEL__"
           export SO_DIR="$COMMON_REAL_PATH"
           export PRELOAD_LIBS="$SO_DIR/libfakestat.so $SO_DIR/libfaketimeMT.so"
-          source ./_setup_env.sh 2>/dev/null || true
           export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
           export REAL_CLANG_PATH="$PWD/../clang19/bin/clang"
           make -j$(nproc --all) LLVM=1 ARCH=arm64 \
