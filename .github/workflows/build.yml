@@ -900,6 +900,11 @@ jobs:
 
           export PATH="$PWD/clang19/bin:$PWD/build-tools/bin:$PATH"
           export LIBCLANG_PATH="$PWD/clang19/lib"
+          make -C common O=out \
+            LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+            CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" \
+            modules_prepare
+          test -s common/out/scripts/module.lds
           if ! make -C common O=out M="$MODULE_DIR" V=1 \
               LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
               CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" \
