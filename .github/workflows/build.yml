@@ -38,10 +38,15 @@ on:
           - 'ksu'
           - 'none'
       susfs_enable:
-        description: '是否开启susfs(用于增强隐藏环境挂载功能; 可能轻微增加耗电，上游更新导致不稳定时或不需要可关闭)'
+        description: '是否开启SUSFS（与 NoMount 互斥，只能二选一）'
         required: true
         type: boolean
         default: 'true'
+      nomount_enable:
+        description: '是否集成 NoMount（与 SUSFS 互斥；启用前必须取消 SUSFS）'
+        required: true
+        type: boolean
+        default: 'false'
       kpm_enable:
         description: '是否开启kpm(使用KpatchNext独立实现kpm(支持任意KSU/面具环境); 不需要可保持默认关闭)'
         required: true
@@ -120,11 +125,6 @@ on:
         required: false
         type: string
         default: 'android16-5-gb2a876903b49-ab14541642-4k'
-      nomount_enable:
-        description: '是否集成NoMount(VFS层文件注入/路径重定向框架,官方6.12专用补丁;与SUSFS共存时自动处理补丁冲突)'
-        required: true
-        type: boolean
-        default: 'false'
       build_date:
         description: '自定义内核构建时间戳(uname -v 显示格式,如:Fri Dec 5 02:05:55 UTC 2025;留空则使用当前UTC时间)'
         required: false
@@ -148,6 +148,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: 验证 SUSFS / NoMount 互斥选项
+        run: |
+          if [[ "${{ inputs.susfs_enable }}" == "true" && "${{ inputs.nomount_enable }}" == "true" ]]; then
+            echo "::error::SUSFS 与 NoMount 不能同时开启；如需 NoMount，请取消勾选 SUSFS。"
+            exit 1
+          fi
 
       - name: 安装环境依赖+初始化源码仓库及llvm-clang19工具链
         run: |
@@ -1138,7 +1145,7 @@ jobs:
           set -euxo pipefail
           cd "$GITHUB_WORKSPACE/nomount/module"
           sha256sum -c nomount.sha256sums
-          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.5.0.zip" . \
+          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.5.1.zip" . \
             -x '*.git*'
 
       - name: 上传 Ccache 调试日志
@@ -1158,8 +1165,8 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/upload-artifact@v7
         with:
-          name: NoMount-Suite-v1.5.0
-          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.5.0.zip
+          name: NoMount-Suite-v1.5.1
+          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.5.1.zip
           archive: false
 
       - name: 上传匹配 GKI 的风驰驱动测试工件
@@ -1188,7 +1195,7 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/download-artifact@v8
         with:
-          name: NoMount-Suite-v1.5.0.zip
+          name: NoMount-Suite-v1.5.1.zip
           path: ./release_zips
           skip-decompress: true
 
@@ -1248,7 +1255,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
-          - NoMount Suite：v1.5.0（PathMask 应用名/包名 UI、Xposed 自动隐藏、Scene debugfs 自动识别、PathHide 闪退修复）
+          - NoMount Suite：v1.5.1（隐藏应用与路径遮罩分类、Xposed 自动识别、Scene debugfs 自动遮罩、PathHide 闪退修复）
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
           - 绑定设备序列号：`${{ inputs.device_serial }}`
           - 设备序列号锁：随机盐 SHA-256（启动后校验；不匹配或缺失时 180 秒后自动重启）
