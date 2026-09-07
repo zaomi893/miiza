@@ -14,6 +14,10 @@ env:
 on:
   workflow_dispatch:
     inputs:
+      device_serial:
+        description: '绑定设备序列号（写入内核，启动后校验）'
+        required: true
+        type: string
       self_config:
         description: '自用配置'
         required: true
@@ -208,6 +212,24 @@ jobs:
           patch -d kernel_workspace/common -p1 < other_patch/hmbird-stock-module-btf.patch
           test -f kernel_workspace/common/kernel/module/oplus_hmbird_btf.inc
           test -f kernel_workspace/common/kernel/module/oplus_hmbird_btf_ids.inc
+
+      - name: 写入设备序列号锁
+        env:
+          DEVICE_SERIAL: ${{ inputs.device_serial }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$DEVICE_SERIAL" =~ ^[A-Za-z0-9._:-]{6,64}$ ]]; then
+            echo "设备序列号格式无效：只允许 6-64 位字母、数字、点、下划线、冒号和连字符"
+            exit 1
+          fi
+          patch -d kernel_workspace/common -p1 < other_patch/device-serial-lock.patch
+          sed -i "s/__OPLUS_BOUND_SERIAL__/$DEVICE_SERIAL/g" \
+            kernel_workspace/common/init/main.c
+          if grep -q '__OPLUS_BOUND_SERIAL__' kernel_workspace/common/init/main.c; then
+            echo "设备序列号未成功写入内核源码"
+            exit 1
+          fi
+          echo "设备序列号锁已启用；不在构建日志中显示序列号"
 
       - name: 配置ccache目录
         run: |
@@ -1082,6 +1104,7 @@ jobs:
           echo "Build Date: ${{ env.KERNEL_BUILD_DATE }}" >> ./ak3.log
           echo "NoMount: ${{ github.event.inputs.nomount_enable }}" >> ./ak3.log
           echo "Blacklist Modules: ${{ github.event.inputs.blacklist_modules }}" >> ./ak3.log
+          echo "Device serial lock: enabled (runtime check, 180-second reboot on mismatch)" >> ./ak3.log
           zip -z ../$AK3_NAME < ./ak3.log
 
       - name: 上传 Ccache 调试日志
@@ -1176,6 +1199,7 @@ jobs:
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
+          - 设备序列号锁：已启用（启动后校验；不匹配或缺失时 180 秒后自动重启）
           - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
@@ -1183,7 +1207,7 @@ jobs:
 
           ### ⏫️ 更新内容：
           - 更新${{ env.KSU_TYPENAME }}至最新版本（${{ needs.build.outputs.ksuver }}）
-          - (预留)
+          - 保留原厂风驰 HMBIRD II，并加入构建时设备序列号绑定
 
           ### 📋 安装方法 | Installation Guide
           1. 若你的手机已经安装了第三方Recovery（如TWRP)，可下载对应机型的AnyKernel刷机包后进入Recovery模式，通过Recovery刷入刷机包后重启设备；

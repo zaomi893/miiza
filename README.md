@@ -1,43 +1,37 @@
-# OnePlus 15 stock-HMBIRD custom GKI
+# OnePlus 15 HMBIRD 自定义 GKI
 
-为一加 15（SM8850，`infiniti`）构建可保留 ColorOS 风驰调速器（HMBIRD II）的自定义 GKI。
+为一加 15（SM8850，`infiniti`）构建可保留 ColorOS 风驰调速器（HMBIRD II）的 6.12.23 自定义 GKI，默认集成 ReSukiSU。
 
-## 已确认的官方镜像结构
+## 已验证能力
 
-- `boot.img` 内核为 `6.12.23-android16-5-gb2a876903b49-ab14541642-4k`。
-- 对应公开 ACK 源码提交为 `b2a876903b495c444a94b16f50d1463ffe953957`。
-- 风驰本体是官方 `vendor_dlkm` 中的 `oplus_bsp_sched_ext.ko`，不是 boot 内置调度器。
-- 刷机包只替换 `boot` 中的 `Image`，不会写入 `init_boot`、`vendor_boot` 或 `vendor_dlkm`。
-
-因此，本项目固定使用 `cvhhji/android_kernel_common_oneplus_sm8850` 的一加 15 源码提交 `6313a006…`、从用户提供的官方 `boot.img` 提取并校验的完整内核配置、原厂版本字符串、OPlus KMI 符号表以及风驰所需的 sched_ext/BPF/BTF 配置。不能用通用 ACK common 或通用 `gki_defconfig` 代替；任一关键检查失败，构建会直接失败。
+- 使用能在一加 15 启动的 `6.12.23-android16-5-gb2a876903b49-ab14541642-4k` 构建链。
+- 继续加载原厂 `vendor_dlkm` 中的 `oplus_bsp_sched_ext.ko`。
+- 为原厂风驰模块替换与本次 GKI 精确匹配的 BTF 元数据，并隐藏其他不兼容的 vendor 模块 BTF。
+- 王者荣耀运行时已验证 HMBIRD II 成功加载和挂接，`sched_ext` 为 enabled，`nr_rejected=0`。
+- AnyKernel3 包只替换 `boot` 中的内核 Image，不修改 `init_boot`、`vendor_boot` 或 `vendor_dlkm`。
 
 ## 构建
 
-在 Actions 中运行 **Build OnePlus 15 stock-HMBIRD GKI**：
+在 GitHub Actions 中手动运行 `6.12.23 欧加真OKI内核快速构建`，必须填写 `device_serial`。
 
-- `resukisu`：默认，集成 ReSukiSU。
-- `none`：先构建无 root 的兼容性基线。
+序列号只允许 6–64 位字母、数字、点、下划线、冒号和连字符。工作流会把它直接写入内核 Image；构建日志和刷机包注释不会显示明文序列号。
 
-成功后下载 `oneplus15-stock-hmbird-*` artifact，其中包括：
+## 序列号锁行为
 
-- `oneplus15-stock-hmbird-*.zip`：AnyKernel3 可刷包，只更新 boot 内核。
-- `Image`：原始 GKI 镜像。
-- `config`、`System.map`、`compatibility.txt`：兼容性检查依据。
+- AnyKernel 刷入阶段不校验序列号，因此包可以正常刷入。
+- 内核启动时从 bootconfig 的 `androidboot.serialno` 读取设备序列号。
+- 匹配时正常启动和运行。
+- 不匹配或字段缺失时仍会进入系统，但内核在启动约 180 秒后执行紧急重启；之后会重复此行为。
+- 这是明文绑定，不是密码学授权：能取得内核镜像或源码的人可以找出或修改绑定值。
 
-## 刷入前提
-
-此构建只适用于与 `reference/stock-baseline.txt` 对应的官方固件。必须保留该固件原装的 `init_boot`、`vendor_boot` 和 `vendor_dlkm`。更新 ColorOS 后，应重新提取新版本官方 boot/vendor_dlkm 并更新源码提交与 KMI 基线，不能继续沿用旧包。
-
-建议先刷 `KSU_TYPE=none` 的基线版本验证风驰，再刷 ReSukiSU 版本。保留官方 `boot.img`，出现不开机或模块不兼容时可立即回刷。
+刷入前务必保留原厂 `boot.img`，并确保可进入 bootloader。若填错序列号导致循环重启，应在 bootloader/recovery 中回刷原厂 boot 或另一个正确绑定的内核。
 
 ## 开机后验证
 
 ```sh
-uname -r
+su -c 'dmesg | grep -E "device serial lock|hmbird|sched_ext|oplus_bsp_sched_ext"'
 cat /sys/kernel/sched_ext/state 2>/dev/null
 cat /sys/kernel/sched_ext/root/ops 2>/dev/null
-lsmod | grep -E 'oplus_bsp_sched_ext|sched'
-dmesg | grep -iE 'hmbird|sched_ext|oplus_bsp_sched_ext|unknown symbol|disagrees about version'
 ```
 
-正常情况下，`oplus_bsp_sched_ext` 已加载，日志中没有 `Unknown symbol`、版本 CRC 或 BTF 不兼容错误，ColorOS 风驰服务启动后 sched_ext 会显示启用的调度器。
+正确设备应出现 `device serial lock: verified`。打开支持风驰的游戏后，HMBIRD II 应成功挂接且日志中不应出现 `Unknown symbol`、CRC 或 BTF 不兼容错误。

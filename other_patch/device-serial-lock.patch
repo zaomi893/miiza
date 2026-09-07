@@ -1,0 +1,77 @@
+diff --git a/init/main.c b/init/main.c
+index 3738d72116c8..1f7333c779bf 100644
+--- a/init/main.c
++++ b/init/main.c
+@@ -18,5 +18,6 @@
+ #include <linux/binfmts.h>
+ #include <linux/kernel.h>
++#include <linux/reboot.h>
+ #include <linux/syscalls.h>
+ #include <linux/stackprotector.h>
+ #include <linux/string.h>
+@@ -112,6 +113,39 @@
+ 
+ static int kernel_init(void *);
+ 
++/* Replaced by the build workflow. The value is intentionally in vmlinux. */
++#define OPLUS_BOUND_DEVICE_SERIAL "__OPLUS_BOUND_SERIAL__"
++#define OPLUS_SERIAL_REBOOT_DELAY_SECONDS 180
++
++/* Fail closed if bootconfig is absent or cannot be parsed. */
++static bool oplus_serial_lock_mismatch = true;
++
++static int oplus_serial_lock_reboot_thread(void *unused)
++{
++	ssleep(OPLUS_SERIAL_REBOOT_DELAY_SECONDS);
++	pr_emerg("device serial lock: refusing to run on this device\n");
++	emergency_restart();
++	return 0;
++}
++
++static int __init oplus_serial_lock_start(void)
++{
++	struct task_struct *task;
++
++	if (!oplus_serial_lock_mismatch)
++		return 0;
++
++	pr_emerg("device serial lock: mismatch; emergency restart in %u seconds\n",
++		 OPLUS_SERIAL_REBOOT_DELAY_SECONDS);
++	task = kthread_run(oplus_serial_lock_reboot_thread, NULL,
++			   "serial_lock_reboot");
++	if (IS_ERR(task))
++		pr_emerg("device serial lock: failed to start restart thread: %ld\n",
++			 PTR_ERR(task));
++	return 0;
++}
++late_initcall(oplus_serial_lock_start);
++
+ /*
+  * Debug helper: via this flag we know that we are in 'early bootup code'
+  * where only the boot processor is running with IRQ disabled.  This means
+@@ -518,8 +552,10 @@ static void __init setup_boot_config(void)
+ {
+ 	static char tmp_cmdline[COMMAND_LINE_SIZE] __initdata;
+ 	const char *msg, *data;
++	const char *device_serial;
+ 	int pos, ret;
+ 	size_t size;
++	struct xbc_node *serial_node;
+ 	char *err;
+ 
+ 	/* Cut out the bootconfig data even if we have no bootconfig option */
+@@ -558,6 +594,14 @@ static void __init setup_boot_config(void)
+ 		extra_command_line = xbc_make_cmdline("kernel");
+ 		/* Also, "init." keys are init arguments */
+ 		extra_init_args = xbc_make_cmdline("init");
++
++		device_serial = xbc_find_value("androidboot.serialno", &serial_node);
++		oplus_serial_lock_mismatch = !device_serial ||
++			strcmp(device_serial, OPLUS_BOUND_DEVICE_SERIAL);
++		if (oplus_serial_lock_mismatch)
++			pr_emerg("device serial lock: boot serial is missing or mismatched\n");
++		else
++			pr_info("device serial lock: verified\n");
+ 	}
+ 	return;
+ }

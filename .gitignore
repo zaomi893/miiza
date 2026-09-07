@@ -9,5 +9,4 @@ kernel_workspace/
 .ccache/
 logs/
 *.zip
-!zram_patch/*.patch
 !other_patch/*.patch
