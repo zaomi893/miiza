@@ -695,21 +695,17 @@ jobs:
         if: inputs.nomount_enable
         run: |
           echo "正在集成 NoMount (hookless) 6.12 内核补丁..."
+          cp "$GITHUB_WORKSPACE/nomount/src/nomount.c" kernel_workspace/common/fs/nomount.c
+          cp "$GITHUB_WORKSPACE/nomount/src/nomount.h" kernel_workspace/common/fs/nomount.h
+          python3 "$GITHUB_WORKSPACE/nomount/apply.py" kernel_workspace/common
           cd kernel_workspace/common
-          cp "$GITHUB_WORKSPACE/nomount/patches/nomount_6.12_kernel_integration.patch" nomount_6.12.patch
-          cp "$GITHUB_WORKSPACE/nomount/src/nomount.c" fs/nomount.c
-          cp "$GITHUB_WORKSPACE/nomount/src/nomount.h" fs/nomount.h
-          if patch -p1 --forward --fuzz=1 < nomount_6.12.patch; then
-            grep -q 'config NOMOUNT' fs/Kconfig || { echo "错误: fs/Kconfig 缺少 config NOMOUNT"; exit 1; }
-            grep -qF 'obj-$(CONFIG_NOMOUNT) += nomount.o' fs/Makefile || { echo "错误: fs/Makefile 缺少 nomount.o"; exit 1; }
-            grep -q 'nomount_spoof_mmap_metadata' fs/proc/task_mmu.c || { echo "错误: task_mmu.c 缺少 mmap 欺骗 hook"; exit 1; }
-            sed -i '/^CONFIG_NOMOUNT=/d' arch/arm64/configs/gki_defconfig
-            echo "CONFIG_NOMOUNT=y" >> arch/arm64/configs/gki_defconfig
-            echo "NoMount (hookless) 集成完成!"
-          else
-            echo "错误: NoMount hookless 补丁应用失败"
-            exit 1
-          fi
+          grep -q 'config NOMOUNT' fs/Kconfig
+          grep -qF 'obj-$(CONFIG_NOMOUNT) += nomount.o' fs/Makefile
+          grep -q 'nomount_spoof_mmap_metadata' fs/proc/task_mmu.c
+          grep -q 'nomount_pathhide_hide_dirent' fs/readdir.c
+          sed -i '/^CONFIG_NOMOUNT=/d' arch/arm64/configs/gki_defconfig
+          echo "CONFIG_NOMOUNT=y" >> arch/arm64/configs/gki_defconfig
+          echo "NoMount (hookless) 集成完成!"
       - name: 添加制作名称
         run: |
           cd kernel_workspace
