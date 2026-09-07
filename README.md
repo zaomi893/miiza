@@ -58,15 +58,15 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 
 ## NoMount Suite 与 PathMask
 
-选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.5.0.zip`。模块源码、WebUI 和二进制均保存在本仓库的 `nomount/module`，不会在构建时从未知地址替换。
+选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.5.1.zip`。模块源码、WebUI 和二进制均保存在本仓库的 `nomount/module`，不会在构建时从未知地址替换。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
 - 同步 NoMount 上游截至 `2d3863b` 的目录遍历 UID 缓存思路，同时保留本仓库已经过设备验证的 v13 协议和防检测修复，不直接替换成不兼容的上游 v2 用户态协议。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。
 - 路径隐藏默认使用 `deny` 作用域：只有 WebUI“按 UID 隐藏”列表内的应用会得到 `ENOENT`/隐藏目录项。写操作保留文件系统原生行为，避免用统一错误码形成额外指纹。
 - 借鉴 LKM-PathMask `2.7.2` 的目标身份与 Scene 发现设计，内核直接覆盖 inode 权限、stat、getdents、proc maps/fd，不加载常驻 syscall kprobe。官方 Scene（`com.omarea.vtools`）存在时，模块最多观察十分钟，只接受 `/dev` 下、SELinux 标签为 `u:object_r:debugfs:s0` 的 debugfs 挂载；发现或超时后进程退出。
-- Xposed 扫描保存 APK 的真实绝对路径。HMA 黑名单是“需要隐藏环境的应用”，现在会进入 UID 作用域，不再被错误当成路径包名；这是旧 PathHide 可能让目标应用闪退的主要修复。
+- Xposed 扫描只保存 APK 的真实绝对路径；隐藏对象由 WebUI 中原有的“包名→UID 屏蔽”列表管理，不会把包名错当成路径子串，避免旧 PathHide 规则导致目标应用闪退。
 
-升级 v1.5.0 时，旧 `pathhide.conf` 中的包名/子字符串会被自动丢弃，重新扫描后写入真实 APK 路径。WebUI 的“PathMask 应用隐藏”会自动识别 Xposed 模块和 Scene debugfs，并通过“PathMask 目标应用”选择隐藏范围。
+升级 v1.5.1 时，旧 `pathhide.conf` 中的包名/子字符串会被自动丢弃，重新扫描后写入真实 APK 路径。WebUI 将两种职责分开：“路径遮罩”自动识别 Xposed 模块 APK 和 Scene debugfs；“隐藏目标应用”继续使用原有的包名解析 UID 逻辑选择生效范围。
 
 ## 刷入与恢复
 

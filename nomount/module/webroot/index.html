@@ -831,12 +831,12 @@
     <pre class="rules" id="incidentout">…</pre>
     <div class="btns"><button class="act danger" onclick="clearIncident(this)" data-i18n="btn_clear_incident">Clear incident</button></div>
   </div>
-  <div class="group-label" id="groupPathMask" data-i18n="gl_hiding">PathMask</div>
+  <div class="group-label" id="groupPathMask" data-i18n="gl_hiding">Hiding</div>
   <!-- PathMask is built into NoMount's VFS engine; no separate .ko is needed. -->
   <div class="card" id="cardCloak">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
-      <h2 data-i18n="h2_cloak">PathMask app hiding</h2><span class="chip" id="phchip">—</span><span class="chev">›</span>
+      <h2 data-i18n="h2_cloak">Path masking</h2><span class="chip" id="phchip">—</span><span class="chev">›</span>
     </div>
     <p class="note" data-i18n="note_cloak">PathMask is integrated into the NoMount kernel engine. Xposed modules and Scene debugfs are discovered automatically; choose target apps below.</p>
     <div class="val multiline" id="phSceneStatus" data-i18n="scene_checking">Scene: checking automatic debugfs detection…</div>
@@ -858,7 +858,7 @@
   <div class="card" id="cardPerUID">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-      <h2 data-i18n="h2_per_uid">PathMask target apps</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
+      <h2 data-i18n="h2_per_uid">Hidden target apps</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
     </div>
     <div class="uidbar">
       <div class="pkgwrap">
@@ -975,9 +975,9 @@
       chip_guard_tripped: "guard tripped",
       note_incident: 'Recorded when the bootloop guard self-disabled the Suite — including the newest native crash and its abort message, which usually names the offending path outright. This is a saved record, not live state — it survives reboots until a new trip overwrites it or you clear it. Whether the Suite is disabled <em>right now</em> is the guard chip on Status.',
       btn_clear_incident: "Clear incident",
-      gl_hiding: "PathMask",
-      h2_cloak: "PathMask app hiding",
-      note_cloak: 'PathMask 2.7.2 behavior is integrated into the NoMount VFS engine; no separate <code>pathmask.ko</code> is required. Xposed modules and Scene debugfs are discovered automatically. Choose the apps that should see them as absent under <b>PathMask target apps</b>.',
+      gl_hiding: "Hiding",
+      h2_cloak: "Path masking",
+      note_cloak: 'LKM-PathMask 2.7.2 path masking is integrated into the NoMount VFS engine; no separate <code>pathmask.ko</code> is required. Xposed module APK paths and Scene debugfs are discovered automatically.',
       scene_checking: "Scene: checking automatic debugfs detection…",
       btn_scan_xposed: "Rescan Xposed modules",
       btn_show_list: "Show list",
@@ -986,16 +986,16 @@
       btn_apply_save: "Apply & save",
       btn_turn_off_all: "Turn off all",
       ph_search: "search packages",
-      h2_per_uid: "PathMask target apps",
+      h2_per_uid: "Hidden target apps",
       ph_uid_picker: "Package name or UID — start typing to pick an app",
       btn_hide: "Hide",
       btn_unhide: "Unhide",
-      note_per_uid: 'Select the apps that PathMask should hide Xposed modules, Scene debugfs, injected files and su from. App name and package name are both shown; package names persist safely across reinstalls.',
+      note_per_uid: 'Choose which apps should be unable to see masked paths, injected files and su. This keeps NoMount\'s existing package-to-UID block/unblock logic; app name and package name are both shown.',
       foot_engine: "hookless engine via netlink",
       nav_status: "Status",
       nav_modules: "Modules",
       nav_rules: "Rules",
-      nav_tools: "PathMask"
+      nav_tools: "Hiding"
     },
     zh: {
       brand_title: "NoMount Suite",
@@ -1059,9 +1059,9 @@
       chip_guard_tripped: "保护已触发",
       note_incident: '记录启动循环保护自动禁用 Suite 时的信息——包括最新的原生崩溃及其中止信息，通常会直接指出问题路径。这是保存记录而非实时状态——重启后保留，直到新的触发覆盖或手动清除。Suite 当前是否禁用请查看状态页的保护标签。',
       btn_clear_incident: "清除事件记录",
-      gl_hiding: "PathMask 应用隐藏",
-      h2_cloak: "PathMask 应用隐藏",
-      note_cloak: '已将 PathMask 2.7.2 的行为集成进 NoMount VFS 内核引擎，不需要单独的 <code>pathmask.ko</code>。Xposed 模块与 Scene 随机 debugfs 会自动识别；请在下方<b>PathMask 目标应用</b>中选择需要隐藏的应用。',
+      gl_hiding: "隐藏",
+      h2_cloak: "路径遮罩",
+      note_cloak: '已将 LKM-PathMask 2.7.2 的路径遮罩集成进 NoMount VFS 内核引擎，不需要单独的 <code>pathmask.ko</code>。Xposed 模块 APK 路径与 Scene 随机 debugfs 会自动识别。',
       scene_checking: "Scene：正在检查 debugfs 自动识别状态…",
       btn_scan_xposed: "重新扫描 Xposed 模块",
       btn_show_list: "显示列表",
@@ -1070,16 +1070,16 @@
       btn_apply_save: "应用并保存",
       btn_turn_off_all: "一键关闭",
       ph_search: "搜索已添加包名",
-      h2_per_uid: "PathMask 目标应用",
+      h2_per_uid: "隐藏目标应用",
       ph_uid_picker: "包名或 UID — 输入以选择应用",
       btn_hide: "隐藏",
       btn_unhide: "取消隐藏",
-      note_per_uid: '选择需要由 PathMask 隐藏 Xposed 模块、Scene debugfs、注入文件和 su 的应用。列表同时显示应用名与包名，保存包名后重装应用也能正确重新解析 UID。',
+      note_per_uid: '选择哪些应用无法看到被遮罩路径、注入文件和 su。继续使用 NoMount 原有的“包名解析 UID 并屏蔽/解除屏蔽”逻辑，界面同时显示应用名和包名。',
       foot_engine: "基于 netlink 的无钩子引擎",
       nav_status: "状态",
       nav_modules: "模块",
       nav_rules: "规则",
-      nav_tools: "PathMask"
+      nav_tools: "隐藏"
     }
   };
 
@@ -2050,15 +2050,14 @@
     const r = await exec("cat " + PH_CONF + " 2>/dev/null");
     r.stdout.split("\n").map(function (l) { return l.replace(/\r/g, "").trim(); })
       .filter(function (l) { return l && l[0] !== "#"; })
-      .forEach(function (rule) { PH.set(rule, { hidden: true, xposed: false, hma: false, pkg: "", appLabel: "" }); });
+      .forEach(function (rule) { PH.set(rule, { hidden: true, xposed: false, pkg: "", appLabel: "" }); });
     const c = await exec("sh /data/adb/modules/meta-nomount/scan.sh --cached 2>/dev/null");
     let mode = null;
     c.stdout.split("\n").map(function (s) { return s.trim(); }).forEach(function (l) {
       if (l === "#XPOSED") { mode = "xposed"; return; }
-      if (l === "#HMA") { mode = "hma"; return; }
-      if (!l || mode === "hma") return;
+      if (!l || mode !== "xposed") return;
       const rec = phXposedRecord(l);
-      const e = PH.get(rec.path) || { hidden: false, xposed: false, hma: false };
+      const e = PH.get(rec.path) || { hidden: false, xposed: false };
       const meta = phAppMeta(rec.pkg);
       e.xposed = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel;
       PH.set(rec.path, e);
@@ -2072,7 +2071,7 @@
     const scene = await exec("cat /data/adb/nomount/scene_debugfs_paths 2>/dev/null");
     scene.stdout.split("\n").map(function (s) { return phClean(s); }).filter(function (s) { return s[0] === "/"; }).forEach(function (path) {
       const meta = phAppMeta("com.omarea.vtools");
-      PH.set(path, { hidden: true, xposed: false, hma: false, scene: true, pkg: meta.pkg, appLabel: meta.appLabel || "Scene" });
+      PH.set(path, { hidden: true, xposed: false, scene: true, pkg: meta.pkg, appLabel: meta.appLabel || "Scene" });
     });
     await refreshScenePathMaskStatus();
     renderCloak();
@@ -2095,13 +2094,12 @@
     let mode = null, added = 0;
     r.stdout.split("\n").map(function (s) { return s.trim(); }).forEach(function (l) {
       if (l === "#XPOSED") { mode = "xposed"; return; }
-      if (l === "#HMA") { mode = "hma"; return; }
-      if (!l || mode === "hma") return;
+      if (!l || mode !== "xposed") return;
       const rec = phXposedRecord(l);
       let e = PH.get(rec.path);
       if (!e) {
         const wasExcluded = EXCLUDE.has(rec.path);
-        e = { xposed: false, hma: false, hidden: !wasExcluded };
+        e = { xposed: false, hidden: !wasExcluded };
         if (!wasExcluded) added++;
       }
       const meta = phAppMeta(rec.pkg);
@@ -2136,7 +2134,7 @@
     }
     paths.forEach(function (p) {
       const meta = phAppMeta(v[0] === "/" ? "" : v);
-      const e = PH.get(p) || { xposed: false, hma: false };
+      const e = PH.get(p) || { xposed: false };
       e.hidden = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel; PH.set(p, e); EXCLUDE.delete(p);
     });
     saveExclude(); el.value = "";
