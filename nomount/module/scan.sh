@@ -10,7 +10,7 @@
 #   3. manifest xposedmodule/xposedminversion/xposeddescription
 #   4. manifest XposedProvider / libxposed    libxposed (new LSPosed) module
 # Output sections:
-#   #XPOSED  ... absolute APK paths of Xposed/LSPosed/libxposed modules
+#   #XPOSED  ... package<TAB>APK path pairs for Xposed/LSPosed modules
 #   #HMA     ... package names of the Hide My Applist blacklist (apps to cloak)
 CACHE=/data/adb/nomount/xposed_cache
 HMA_CACHE=/data/adb/nomount/hma_blacklist_cache
@@ -34,10 +34,11 @@ pm list packages -f 2>/dev/null | sed 's/^package://' | xargs -P "$J" -n1 sh -c 
     apk="${1%=*}"; pkg="${1##*=}"
     [ -f "$apk" ] || exit 0
     if timeout 4 unzip -l "$apk" 2>/dev/null | grep -qaE "assets/xposed_init|META-INF/xposed/"; then
-        echo "$apk"; exit 0
+        printf "%s\t%s\n" "$pkg" "$apk"; exit 0
     fi
     timeout 4 unzip -p "$apk" AndroidManifest.xml 2>/dev/null | tr -d "\000" | \
-        grep -qaE "xposedmodule|xposedminversion|xposeddescription|XposedProvider|libxposed" && echo "$apk"
+        grep -qaE "xposedmodule|xposedminversion|xposeddescription|XposedProvider|libxposed" && \
+        printf "%s\t%s\n" "$pkg" "$apk"
 ' _ | sort -u > "$CACHE"
 
 # 2) Hide My Applist blacklist: for every template entry with isWhitelist:false,

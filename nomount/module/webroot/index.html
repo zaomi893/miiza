@@ -280,6 +280,8 @@
   }
   .pkgdd .opt:first-child { border-top: none; }
   .pkgdd .opt.sel, .pkgdd .opt:hover { background: rgba(255,255,255,0.07); }
+  .pkgdd .appicon { width: 29px; height: 29px; border-radius: 7px; flex: 0 0 29px; }
+  .pkgdd .apptext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .pkgdd .opt .pn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pkgdd .opt .pu { flex: 0 0 auto; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
   .pkgdd .none { padding: 11px 13px; font-size: 12.5px; color: var(--dim); }
@@ -406,6 +408,10 @@
   .wrap { padding-bottom: 108px; }
   .tab { display: none; }
   .tab.on { display: block; animation: tabin .18s ease both; }
+  #tab-tools.on { display: flex; flex-direction: column; }
+  #groupPathMask { order: -12; }
+  #cardCloak { order: -11; }
+  #cardPerUID { order: -10; }
   @keyframes tabin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .navwrap {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
@@ -615,14 +621,14 @@
     </div>
     <div class="hbtns">
       <span class="ver" id="ver">v…</span>
-      <button class="iconbtn" id="langBtn" onclick="toggleLang()" title="切换语言 / Switch language" aria-label="Toggle language">
+      <button class="iconbtn" id="langBtn" onclick="toggleLang()" data-i18n-title="title_language" data-i18n-aria="title_language" title="Switch language" aria-label="Switch language">
         <span data-i18n="lang_btn">中</span>
       </button>
-      <button class="iconbtn" id="themeBtn" onclick="toggleTheme()" title="Light / dark theme" aria-label="Toggle theme">
+      <button class="iconbtn" id="themeBtn" onclick="toggleTheme()" data-i18n-title="title_theme" data-i18n-aria="title_theme" title="Light / dark theme" aria-label="Light / dark theme">
         <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.4M12 19.2v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.4 12h2.4M19.2 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
         <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4a8.4 8.4 0 1 0 10.5 10.5z"/></svg>
       </button>
-      <button class="iconbtn" id="refreshBtn" onclick="refreshAll(this)" title="Refresh">
+      <button class="iconbtn" id="refreshBtn" onclick="refreshAll(this)" data-i18n-title="title_refresh" data-i18n-aria="title_refresh" title="Refresh" aria-label="Refresh">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
       </button>
     </div>
@@ -825,21 +831,22 @@
     <pre class="rules" id="incidentout">…</pre>
     <div class="btns"><button class="act danger" onclick="clearIncident(this)" data-i18n="btn_clear_incident">Clear incident</button></div>
   </div>
-  <div class="group-label" data-i18n="gl_hiding">Hiding</div>
-  <!-- CLOAK (pathhide maps/fd) -->
-  <div class="card collapsed" id="cardCloak">
+  <div class="group-label" id="groupPathMask" data-i18n="gl_hiding">PathMask</div>
+  <!-- PathMask is built into NoMount's VFS engine; no separate .ko is needed. -->
+  <div class="card" id="cardCloak">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
-      <h2 data-i18n="h2_cloak">Cloak (maps / fd)</h2><span class="chip" id="phchip">—</span><span class="chev">›</span>
+      <h2 data-i18n="h2_cloak">PathMask app hiding</h2><span class="chip" id="phchip">—</span><span class="chev">›</span>
     </div>
-    <p class="note" data-i18n="note_cloak">Hide selected paths only from apps in the per-UID hide list. Xposed APKs and Scene debugfs are detected automatically; rules are applied live and restored on boot.</p>
+    <p class="note" data-i18n="note_cloak">PathMask is integrated into the NoMount kernel engine. Xposed modules and Scene debugfs are discovered automatically; choose target apps below.</p>
+    <div class="val multiline" id="phSceneStatus" data-i18n="scene_checking">Scene: checking automatic debugfs detection…</div>
     <div class="btns">
-      <button class="act" id="phScan" onclick="scanCloak(this)" data-i18n="btn_scan_xposed">Scan Xposed modules</button>
+      <button class="act" id="phScan" onclick="scanCloak(this)" data-i18n="btn_scan_xposed">Rescan Xposed modules</button>
       <button class="act" id="phShow" onclick="phShowList(this)" data-i18n="btn_show_list">Show list</button>
       <button class="act danger" id="phOff" onclick="cloakAllOff(this)" data-i18n="btn_turn_off_all">Turn off all</button>
     </div>
     <div style="display:flex;gap:8px;margin:8px 0 2px">
-      <input class="txin" id="phManual" data-i18n-placeholder="ph_add_package" placeholder="add package / absolute path" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
+      <input class="txin" id="phManual" data-i18n-placeholder="ph_add_package" placeholder="add an installed package" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
       <button class="act" style="flex:none;min-width:0;padding:7px 13px" onclick="addCloak()" data-i18n="btn_add">Add</button>
     </div>
         <div style="margin:8px 0 2px">
@@ -848,10 +855,10 @@
     <div class="list" id="phList" style="display:none"></div>
     <div class="btns"><button class="act primary" id="phApply" onclick="applyCloak(this)" data-i18n="btn_apply_save">Apply & save</button></div>
   </div>
-  <div class="card collapsed" id="cardPerUID">
+  <div class="card" id="cardPerUID">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-      <h2 data-i18n="h2_per_uid">Per-UID hiding</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
+      <h2 data-i18n="h2_per_uid">PathMask target apps</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
     </div>
     <div class="uidbar">
       <div class="pkgwrap">
@@ -910,6 +917,9 @@
       brand_title: "NoMount Suite",
       brand_sub: "hookless VFS · RRO overlays · sucompat root",
       lang_btn: "中",
+      title_language: "Switch language",
+      title_theme: "Light / dark theme",
+      title_refresh: "Refresh",
       banner_tip: "Open this page from the KernelSU / APatch manager's WebUI to control the module.",
       state_checking: "Checking…",
       metric_rules: "Injection rules",
@@ -965,31 +975,35 @@
       chip_guard_tripped: "guard tripped",
       note_incident: 'Recorded when the bootloop guard self-disabled the Suite — including the newest native crash and its abort message, which usually names the offending path outright. This is a saved record, not live state — it survives reboots until a new trip overwrites it or you clear it. Whether the Suite is disabled <em>right now</em> is the guard chip on Status.',
       btn_clear_incident: "Clear incident",
-      gl_hiding: "Hiding",
-      h2_cloak: "Cloak (maps / fd)",
-      note_cloak: 'Hide selected paths only from apps in the <b>per-UID hide list</b>. Xposed APKs and Scene debugfs are detected automatically. Exact path/inode matching avoids unrelated-app crashes.',
-      btn_scan_xposed: "Scan Xposed modules",
+      gl_hiding: "PathMask",
+      h2_cloak: "PathMask app hiding",
+      note_cloak: 'PathMask 2.7.2 behavior is integrated into the NoMount VFS engine; no separate <code>pathmask.ko</code> is required. Xposed modules and Scene debugfs are discovered automatically. Choose the apps that should see them as absent under <b>PathMask target apps</b>.',
+      scene_checking: "Scene: checking automatic debugfs detection…",
+      btn_scan_xposed: "Rescan Xposed modules",
       btn_show_list: "Show list",
-      ph_add_package: "add package / absolute path",
+      ph_add_package: "add an installed package",
       btn_add: "Add",
       btn_apply_save: "Apply & save",
       btn_turn_off_all: "Turn off all",
       ph_search: "search packages",
-      h2_per_uid: "Per-UID hiding",
+      h2_per_uid: "PathMask target apps",
       ph_uid_picker: "Package name or UID — start typing to pick an app",
       btn_hide: "Hide",
       btn_unhide: "Unhide",
-      note_per_uid: 'Hides injected files and su from <b>one</b> app only. Use a <b>package name</b> to persist across reboots (raw UIDs reset on reinstall). Doesn\'t cover SELinux-policy detection or isolated-process probes.',
+      note_per_uid: 'Select the apps that PathMask should hide Xposed modules, Scene debugfs, injected files and su from. App name and package name are both shown; package names persist safely across reinstalls.',
       foot_engine: "hookless engine via netlink",
       nav_status: "Status",
       nav_modules: "Modules",
       nav_rules: "Rules",
-      nav_tools: "Tools"
+      nav_tools: "PathMask"
     },
     zh: {
       brand_title: "NoMount Suite",
       brand_sub: "无钩子 VFS · RRO 覆盖层 · sucompat 根权限",
       lang_btn: "EN",
+      title_language: "切换语言",
+      title_theme: "切换浅色 / 深色主题",
+      title_refresh: "刷新",
       banner_tip: "请从 KernelSU / APatch 管理器的 WebUI 中打开此页面以控制模块。",
       state_checking: "检查中…",
       metric_rules: "注入规则",
@@ -1045,26 +1059,27 @@
       chip_guard_tripped: "保护已触发",
       note_incident: '记录启动循环保护自动禁用 Suite 时的信息——包括最新的原生崩溃及其中止信息，通常会直接指出问题路径。这是保存记录而非实时状态——重启后保留，直到新的触发覆盖或手动清除。Suite 当前是否禁用请查看状态页的保护标签。',
       btn_clear_incident: "清除事件记录",
-      gl_hiding: "隐藏功能",
-      h2_cloak: "隐藏（maps / fd）",
-      note_cloak: '仅对加入<b>按 UID 隐藏</b>列表的应用隐藏路径。自动识别 Xposed 模块 APK 与 Scene 随机 debugfs 路径；精确路径/inode 匹配可避免误伤其他应用。',
-      btn_scan_xposed: "扫描 Xposed 模块",
+      gl_hiding: "PathMask 应用隐藏",
+      h2_cloak: "PathMask 应用隐藏",
+      note_cloak: '已将 PathMask 2.7.2 的行为集成进 NoMount VFS 内核引擎，不需要单独的 <code>pathmask.ko</code>。Xposed 模块与 Scene 随机 debugfs 会自动识别；请在下方<b>PathMask 目标应用</b>中选择需要隐藏的应用。',
+      scene_checking: "Scene：正在检查 debugfs 自动识别状态…",
+      btn_scan_xposed: "重新扫描 Xposed 模块",
       btn_show_list: "显示列表",
-      ph_add_package: "添加包名 / 绝对路径",
+      ph_add_package: "添加已安装应用包名",
       btn_add: "添加",
       btn_apply_save: "应用并保存",
       btn_turn_off_all: "一键关闭",
       ph_search: "搜索已添加包名",
-      h2_per_uid: "按 UID 隐藏",
+      h2_per_uid: "PathMask 目标应用",
       ph_uid_picker: "包名或 UID — 输入以选择应用",
       btn_hide: "隐藏",
       btn_unhide: "取消隐藏",
-      note_per_uid: '仅对<b>单个</b>应用隐藏注入文件和 su。使用<b>包名</b>可跨重启持久化（原始 UID 会在重装时重置）。不涵盖 SELinux 策略检测或隔离进程探测。',
+      note_per_uid: '选择需要由 PathMask 隐藏 Xposed 模块、Scene debugfs、注入文件和 su 的应用。列表同时显示应用名与包名，保存包名后重装应用也能正确重新解析 UID。',
       foot_engine: "基于 netlink 的无钩子引擎",
       nav_status: "状态",
       nav_modules: "模块",
       nav_rules: "规则",
-      nav_tools: "工具"
+      nav_tools: "PathMask"
     }
   };
 
@@ -1086,12 +1101,33 @@
       const key = el.getAttribute("data-i18n-placeholder");
       if (dict[key] !== undefined) el.placeholder = dict[key];
     });
+    document.querySelectorAll("[data-i18n-title]").forEach(el => {
+      const key = el.getAttribute("data-i18n-title");
+      if (dict[key] !== undefined) el.title = dict[key];
+    });
+    document.querySelectorAll("[data-i18n-aria]").forEach(el => {
+      const key = el.getAttribute("data-i18n-aria");
+      if (dict[key] !== undefined) el.setAttribute("aria-label", dict[key]);
+    });
 
     // 更新页面标题
     document.title = "NoMount Suite";
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
 
     try { localStorage.setItem("nm_lang", lang); } catch (e) {}
+    // Dynamic status rows and generated lists are not data-i18n nodes. Rebuild
+    // them after a language switch so no stale Chinese/English fragments remain.
+    window.setTimeout(function () {
+      try { if (typeof renderCloak === "function") renderCloak(); } catch (e) {}
+      try {
+        const b = document.getElementById("phShow");
+        if (b) b.textContent = phShown ? (currentLang === "zh" ? "隐藏列表" : "Hide list") : (currentLang === "zh" ? "显示列表" : "Show list");
+      } catch (e) {}
+      try { if (typeof refreshScenePathMaskStatus === "function") refreshScenePathMaskStatus(); } catch (e) {}
+      try { if (typeof refreshBlocked === "function") refreshBlocked(); } catch (e) {}
+      try { if (typeof refreshStatus === "function") refreshStatus(); } catch (e) {}
+      try { if (typeof refreshStealth === "function") refreshStealth(); } catch (e) {}
+    }, 0);
   }
 
   function toggleLang() {
@@ -1112,6 +1148,15 @@
   const KSU = window.ksu;
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  function ksuPackageInfo(type) {
+    if (!KSU || typeof KSU.listPackages !== "function" || typeof KSU.getPackagesInfo !== "function") return [];
+    try {
+      const names = JSON.parse(KSU.listPackages(type || "user") || "[]");
+      if (!Array.isArray(names) || !names.length) return [];
+      const info = JSON.parse(KSU.getPackagesInfo(JSON.stringify(names)) || "[]");
+      return Array.isArray(info) ? info : [];
+    } catch (e) { return []; }
+  }
   document.getElementById("banner").style.display = (KSU && KSU.exec) ? "none" : "block";
   function exec(cmd, opts = {}) {
     return new Promise((resolve) => {
@@ -1710,6 +1755,7 @@
   }
   // ---- blocked apps ----
   async function refreshBlocked() {
+    await loadPkgList();
     const box = $("blocked");
     const r = await nm("uid list");
     const lines = (r.stdout || "").split("\n").map(s => s.trim()).filter(Boolean);
@@ -1734,12 +1780,14 @@
       const uidM = s.match(/uid (\d+)/);
       const target = /^uid \d+$/.test(name) ? (uidM ? uidM[1] : name) : name;
       const t = target.replace(/'/g, "");
-      const displayS = stateMap[s] || s;
+      const app = _pkgByName.get(name);
+      const appLabel = app ? (app.label || name) : name;
+      const displayS = (app && appLabel !== name ? name + " · " : "") + (stateMap[s] || s);
       const save = cls === "drift"
         ? `<button class="bx save" title="` + (currentLang === "zh" ? "保存以跨重启生效" : "Save so it survives reboot") + `" onclick="saveOne('${t}',this)">💾</button>` : "";
       return `<div class="blk ${cls}">
         <span class="dot"></span>
-        <span class="bn">${name}</span>
+        <span class="bn">${esc(appLabel)}</span>
         <span class="bs">${displayS}</span>
         ${save}
         <button class="bx" title="` + (currentLang === "zh" ? "取消隐藏" : "Unhide") + `" onclick="unblockOne('${t}',this)">✕</button>
@@ -1749,14 +1797,23 @@
     box.innerHTML = `<div class="blk-head">` + (currentLang === "zh" ? `已隐藏应用 · ${n}` : `Hidden apps · ${n}`) + `</div>` + rows;
   }
   // ---- package list ----
-  var _pkgsLoaded = false, _pkgs = [], _pkgSel = -1;
+  var _pkgsLoaded = false, _pkgs = [], _pkgSel = -1, _pkgByName = new Map();
   async function loadPkgList() {
     if (_pkgsLoaded) return;
-    const r = await exec("pm list packages -3 -U 2>/dev/null | sort");
-    _pkgs = (r.stdout || "").split("\n").map(function (l) {
-      const m = l.match(/^package:(\S+)\s+uid:(\d+)/);
-      return m ? { name: m[1], uid: m[2] } : null;
-    }).filter(Boolean);
+    const rich = ksuPackageInfo("user");
+    if (rich.length) {
+      _pkgs = rich.map(function (p) {
+        return { name: p.packageName, label: p.appLabel || p.packageName, uid: String(p.uid == null ? "" : p.uid) };
+      }).filter(function (p) { return p.name; });
+    } else {
+      const r = await exec("pm list packages -3 -U 2>/dev/null | sort");
+      _pkgs = (r.stdout || "").split("\n").map(function (l) {
+        const m = l.match(/^package:(\S+)\s+uid:(\d+)/);
+        return m ? { name: m[1], label: m[1], uid: m[2] } : null;
+      }).filter(Boolean);
+    }
+    _pkgs.sort(function (a, b) { return (a.label || a.name).localeCompare(b.label || b.name); });
+    _pkgByName = new Map(_pkgs.map(function (p) { return [p.name, p]; }));
     if (_pkgs.length) _pkgsLoaded = true;
   }
   function pkgHide() { const d = $("pkgdd"); d.classList.remove("show"); d.innerHTML = ""; _pkgSel = -1; }
@@ -1766,14 +1823,15 @@
     const d = $("pkgdd"); _pkgSel = -1;
     if (!_pkgs.length) { pkgHide(); return; }
     const matches = q
-      ? _pkgs.filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1 || p.uid.indexOf(q) !== -1; })
+      ? _pkgs.filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1 || (p.label || "").toLowerCase().indexOf(q) !== -1 || p.uid.indexOf(q) !== -1; })
       : _pkgs;
     if (!matches.length) { d.innerHTML = '<div class="none">' + (currentLang === "zh" ? "无匹配的已安装应用" : "No matching installed app") + '</div>'; d.classList.add("show"); return; }
     const head = '<div class="pkghead">' + matches.length + (currentLang === "zh" ? ' 个应用' : ' app' + (matches.length > 1 ? 's' : '')) + (q ? (currentLang === "zh" ? ' 匹配' : ' match') : '') + ' · ' + (currentLang === "zh" ? '输入筛选' : 'type to filter') + '</div>';
     d.innerHTML = head + matches.map(function (p) {
       const nm = p.name.replace(/'/g, "");
       return '<div class="opt" data-nm="' + nm + '" onmousedown="pkgPick(this)">' +
-             '<span class="pn">' + p.name + '</span><span class="pu">uid ' + p.uid + '</span></div>';
+             '<img class="appicon" src="ksu://icon/' + encodeURIComponent(p.name) + '" alt="">' +
+             '<span class="apptext"><span class="pn">' + esc(p.label || p.name) + '</span><span class="pu">' + esc(p.name) + ' · uid ' + esc(p.uid) + '</span></span></div>';
     }).join("");
     d.classList.add("show");
   }
@@ -1926,17 +1984,19 @@
     refreshSpoof();
   }
   // ---- Tools accordion ----
+  const CARD_STATE_PREFIX = "nmcol:v15:";
   function toggleCard(h) {
     const card = h.closest(".card");
     const on = card.classList.toggle("collapsed");
     h.classList.toggle("open", !on);
-    if (card.id) { try { localStorage.setItem("nmcol:" + card.id, on ? "1" : "0"); } catch (e) {} }
+    if (card.id) { try { localStorage.setItem(CARD_STATE_PREFIX + card.id, on ? "1" : "0"); } catch (e) {} }
   }
   function applyCardState() {
     document.querySelectorAll("#tab-tools .card[id]").forEach(card => {
       let v = null;
-      try { v = localStorage.getItem("nmcol:" + card.id); } catch (e) {}
-      const collapsed = v !== "0";
+      try { v = localStorage.getItem(CARD_STATE_PREFIX + card.id); } catch (e) {}
+      const defaultOpen = card.id === "cardCloak" || card.id === "cardPerUID";
+      const collapsed = v == null ? !defaultOpen : v !== "0";
       card.classList.toggle("collapsed", collapsed);
       const h = card.querySelector(".card-h");
       if (h) h.classList.toggle("open", !collapsed);
@@ -1945,9 +2005,11 @@
   async function refreshAll(btn) {
     const ic = btn && btn.querySelector("svg");
     if (ic) ic.classList.add("spin");
-    const v = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "");
-    $("ver").textContent = v || "v?";
-    $("footver").textContent = v ? ("Suite " + v) : "";
+    const engineVersion = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "");
+    const suiteVersion = (await exec("sed -n 's/^version=//p' /data/adb/modules/meta-nomount/module.prop 2>/dev/null | head -n1")).stdout.trim();
+    $("ver").textContent = suiteVersion || engineVersion || "v?";
+    $("footver").textContent = (suiteVersion ? ("Suite " + suiteVersion) : "") +
+      (engineVersion ? ((suiteVersion ? " · " : "") + (currentLang === "zh" ? "引擎 " : "engine ") + engineVersion) : "");
     await Promise.all([
       refreshStatus(), refreshDevice(), refreshStealth(), refreshGuard(),
       refreshModules(), refreshOverlays(), refreshVfs(), refreshRuleSummary(),
@@ -1962,6 +2024,15 @@
   const PH_EXCLUDE = "/data/adb/nomount/.cloak_exclude";
   let PH = new Map(); let phShown = false; let EXCLUDE = new Set();
   function phClean(s) { return (s || "").replace(/[^A-Za-z0-9._:/\-]/g, "").trim(); }
+  function phXposedRecord(line) {
+    const parts = String(line || "").split("\t");
+    if (parts.length >= 2 && parts[0] && parts[1][0] === "/") return { pkg: parts[0], path: parts.slice(1).join("\t") };
+    return { pkg: "", path: line };
+  }
+  function phAppMeta(pkg) {
+    const p = _pkgByName.get(pkg);
+    return { pkg: pkg || "", appLabel: p ? (p.label || pkg) : (pkg || "") };
+  }
   function saveExclude() {
     if (!EXCLUDE.size) { exec(": > " + PH_EXCLUDE); return; }
     let cmd = "{ ";
@@ -1970,6 +2041,8 @@
     exec(cmd);
   }
   async function loadCloak() {
+    await loadPkgList();
+    PH.clear(); EXCLUDE.clear();
     const ok = (await exec("[ -e /proc/pathhide ] && echo y")).stdout.indexOf("y") >= 0;
     document.getElementById("phApply").disabled = !ok;
     document.getElementById("phScan").disabled = !ok;
@@ -1977,17 +2050,18 @@
     const r = await exec("cat " + PH_CONF + " 2>/dev/null");
     r.stdout.split("\n").map(function (l) { return l.replace(/\r/g, "").trim(); })
       .filter(function (l) { return l && l[0] !== "#"; })
-      .forEach(function (rule) { PH.set(rule, { hidden: true, xposed: false, hma: false, label: rule }); });
+      .forEach(function (rule) { PH.set(rule, { hidden: true, xposed: false, hma: false, pkg: "", appLabel: "" }); });
     const c = await exec("sh /data/adb/modules/meta-nomount/scan.sh --cached 2>/dev/null");
     let mode = null;
     c.stdout.split("\n").map(function (s) { return s.trim(); }).forEach(function (l) {
       if (l === "#XPOSED") { mode = "xposed"; return; }
       if (l === "#HMA") { mode = "hma"; return; }
       if (!l || mode === "hma") return;
-      const e = PH.get(l) || { hidden: false, label: l };
-      if (mode === "xposed") e.xposed = true;
-      if (mode === "hma") e.hma = true;
-      e.label = l; PH.set(l, e);
+      const rec = phXposedRecord(l);
+      const e = PH.get(rec.path) || { hidden: false, xposed: false, hma: false };
+      const meta = phAppMeta(rec.pkg);
+      e.xposed = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel;
+      PH.set(rec.path, e);
     });
     const ex = await exec("cat " + PH_EXCLUDE + " 2>/dev/null");
     ex.stdout.split("\n").map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (p) {
@@ -1995,7 +2069,24 @@
       const e = PH.get(p);
       if (e) { e.hidden = false; PH.set(p, e); }
     });
+    const scene = await exec("cat /data/adb/nomount/scene_debugfs_paths 2>/dev/null");
+    scene.stdout.split("\n").map(function (s) { return phClean(s); }).filter(function (s) { return s[0] === "/"; }).forEach(function (path) {
+      const meta = phAppMeta("com.omarea.vtools");
+      PH.set(path, { hidden: true, xposed: false, hma: false, scene: true, pkg: meta.pkg, appLabel: meta.appLabel || "Scene" });
+    });
+    await refreshScenePathMaskStatus();
     renderCloak();
+  }
+  async function refreshScenePathMaskStatus() {
+    const r = await exec("cat /data/adb/nomount/scene_debugfs_state 2>/dev/null; printf '\\npaths='; grep -c . /data/adb/nomount/scene_debugfs_paths 2>/dev/null || echo 0");
+    const raw = r.stdout || "";
+    const status = ((raw.match(/^status=(.+)$/m) || [])[1] || "unknown").trim();
+    const count = ((raw.match(/^paths=(\d+)$/m) || [])[1] || "0");
+    const el = document.getElementById("phSceneStatus");
+    const map = currentLang === "zh"
+      ? { applied: "已识别并应用", found: "已识别", "no-package": "未安装 Scene", "not-found": "尚未发现随机挂载", "apply-failed": "已识别但应用失败", unknown: "等待首次检测" }
+      : { applied: "detected and applied", found: "detected", "no-package": "Scene is not installed", "not-found": "random mount not found yet", "apply-failed": "detected but apply failed", unknown: "waiting for first detection" };
+    el.textContent = (currentLang === "zh" ? "Scene 自动隐藏：" : "Scene auto-hide: ") + (map[status] || status) + (Number(count) ? (currentLang === "zh" ? ` · ${count} 个目标` : ` · ${count} target(s)`) : "");
   }
   async function scanCloak(btn) {
     const o = btn.textContent; btn.disabled = true; btn.textContent = currentLang === "zh" ? "扫描中…" : "Scanning…";
@@ -2006,16 +2097,16 @@
       if (l === "#XPOSED") { mode = "xposed"; return; }
       if (l === "#HMA") { mode = "hma"; return; }
       if (!l || mode === "hma") return;
-      let e = PH.get(l);
+      const rec = phXposedRecord(l);
+      let e = PH.get(rec.path);
       if (!e) {
-        const wasExcluded = EXCLUDE.has(l);
-        e = { label: l, xposed: false, hma: false, hidden: !wasExcluded };
+        const wasExcluded = EXCLUDE.has(rec.path);
+        e = { xposed: false, hma: false, hidden: !wasExcluded };
         if (!wasExcluded) added++;
       }
-      if (mode === "xposed") e.xposed = true;
-      if (mode === "hma") e.hma = true;
-      e.label = l;
-      PH.set(l, e);
+      const meta = phAppMeta(rec.pkg);
+      e.xposed = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel;
+      PH.set(rec.path, e);
     });
     btn.disabled = false; btn.textContent = o;
     if (!phShown) phShowList(document.getElementById("phShow"));
@@ -2044,8 +2135,9 @@
       if (!paths.length) { toast(currentLang === "zh" ? "包名不存在或无法解析 APK 路径" : "Package not found", "bad"); return; }
     }
     paths.forEach(function (p) {
-      const e = PH.get(p) || { xposed: false, hma: false, label: p };
-      e.hidden = true; PH.set(p, e); EXCLUDE.delete(p);
+      const meta = phAppMeta(v[0] === "/" ? "" : v);
+      const e = PH.get(p) || { xposed: false, hma: false };
+      e.hidden = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel; PH.set(p, e); EXCLUDE.delete(p);
     });
     saveExclude(); el.value = "";
     if (!phShown) phShowList(document.getElementById("phShow"));
@@ -2057,7 +2149,7 @@
     let items = [...PH.entries()].sort(function (a, b) {
       return (b[1].xposed ? 1 : 0) - (a[1].xposed ? 1 : 0) || a[0].localeCompare(b[0]);
     });
-    if (ql) items = items.filter(function (x) { return x[0].toLowerCase().indexOf(ql) !== -1; });
+    if (ql) items = items.filter(function (x) { const e = x[1]; return (e.pkg || "").toLowerCase().indexOf(ql) !== -1 || (e.appLabel || "").toLowerCase().indexOf(ql) !== -1; });
     const hid = items.filter(function (x) { return x[1].hidden; }).length;
     const chip = document.getElementById("phchip");
     if (chip.textContent !== (currentLang === "zh" ? "无内核" : "no kernel"))
@@ -2069,11 +2161,13 @@
     }
     list.innerHTML = items.map(function (it) {
       const rule = it[0], e = it[1];
-      return '<div class="swrow"><div class="swi"><div class="lbl">' + e.label + '</div><div class="val">' +
-        (e.xposed ? (currentLang === "zh" ? 'xposed · ' : 'xposed · ') : '') +
-        (e.hma ? (currentLang === "zh" ? '黑名单 · ' : 'blacklist · ') : '') + rule + '</div></div>' +
+      const title = e.appLabel || e.pkg || (currentLang === "zh" ? "自定义路径规则" : "Custom path rule");
+      const detail = (e.pkg ? esc(e.pkg) : (currentLang === "zh" ? "手动规则" : "manual rule")) +
+        (e.xposed ? ' · Xposed' : '') + (e.scene ? ' · Scene debugfs' : '') +
+        (e.hma ? (currentLang === "zh" ? ' · 黑名单' : ' · blacklist') : '');
+      return '<div class="swrow"><div class="swi"><div class="lbl">' + esc(title) + '</div><div class="val">' + detail + '</div></div>' +
         '<label class="switch"><input type="checkbox" data-r="' + encodeURIComponent(rule) + '" ' +
-        (e.hidden ? 'checked' : '') + ' onchange="phToggle(this)"><span class="sl"></span></label></div>';
+        (e.hidden ? 'checked' : '') + (e.scene ? ' disabled' : '') + ' onchange="phToggle(this)"><span class="sl"></span></label></div>';
     }).join("");
   }
   function phToggle(cb) {
@@ -2085,7 +2179,7 @@
     } renderCloak();
   }
   async function doApplyCloak() {
-    const rules = [...PH.entries()].filter(function (x) { return x[1].hidden; })
+    const rules = [...PH.entries()].filter(function (x) { return x[1].hidden && !x[1].scene; })
       .map(function (x) { return phClean(x[0]); }).filter(function (x) { return x[0] === "/"; });
     let cmd = "mkdir -p /data/adb/nomount; { echo '# NoMount Cloak — pathhide rule list (managed by WebUI)'; ";
     rules.forEach(function (r) { cmd += "echo '" + r + "'; "; });
