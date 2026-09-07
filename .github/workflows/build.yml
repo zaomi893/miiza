@@ -1187,7 +1187,7 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/download-artifact@v8
         with:
-          name: NoMount-Suite-v1.4.0
+          name: NoMount-Suite-v1.4.0.zip
           path: ./release_zips
           skip-decompress: true
 
