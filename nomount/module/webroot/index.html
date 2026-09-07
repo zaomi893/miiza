@@ -1,0 +1,2133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>NoMount Suite</title>
+<!-- WebUI shortcut icon is driven by webroot/config.json + icon.png (KernelSU/MMRL WebUI) -->
+<link rel="icon" type="image/png" href="icon.png" />
+<style>
+  :root {
+    --bg:      #080a11;
+    --bg2:     #0e1220;
+    --card:    rgba(255,255,255,0.045);
+    --card2:   rgba(255,255,255,0.028);
+    --brd:     rgba(255,255,255,0.085);
+    --brd2:    rgba(255,255,255,0.055);
+    --txt:     #eaeef7;
+    --muted:   #8a93a9;
+    --faint:   #616a80;
+    --acc:     #7c9cff;
+    --acc2:    #57e6c3;
+    --ok:      #35d29a;
+    --warn:    #fbbf24;
+    --bad:     #f8717a;
+    --mono:    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --radius:  20px;
+    --shadow:  0 12px 34px rgba(0,0,0,0.42);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--txt);
+    background:
+      radial-gradient(1100px 640px at 12% -12%, rgba(124,156,255,0.16), transparent 58%),
+      radial-gradient(940px 560px at 112% 6%, rgba(87,230,195,0.11), transparent 54%),
+      linear-gradient(180deg, var(--bg2), var(--bg) 60%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding: 0 15px calc(46px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 660px; margin: 0 auto; }
+  /* ---------- header ---------- */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 13px;
+    padding: max(16px, env(safe-area-inset-top)) 4px 14px;
+    background: linear-gradient(180deg, var(--bg2) 55%, rgba(14,18,32,0));
+    margin: 0 -15px 6px; padding-left: 19px; padding-right: 19px;
+  }
+  .logo {
+    width: 44px; height: 44px; border-radius: 13px; flex: none; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--acc), var(--acc2));
+    box-shadow: 0 8px 22px rgba(124,156,255,0.34);
+  }
+  .logo svg { width: 25px; height: 25px; }
+  .brand h1 {
+    margin: 0; font-size: 22px; font-weight: 760; letter-spacing: -0.4px; line-height: 1.1;
+    background: linear-gradient(90deg, #fff, #bcc8ff);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .brand p { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); letter-spacing: 0.2px; }
+  .hbtns { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .ver {
+    font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--brd);
+    padding: 6px 11px; border-radius: 999px; font-variant-numeric: tabular-nums;
+  }
+  .iconbtn {
+    width: 38px; height: 38px; border-radius: 12px; flex: none; display: grid; place-items: center;
+    background: var(--card); border: 1px solid var(--brd); color: var(--txt); cursor: pointer;
+    transition: transform .1s, background .2s;
+    font-size: 13px; font-weight: 650;
+  }
+  .iconbtn:active { transform: scale(0.92); }
+  .iconbtn svg { width: 19px; height: 19px; }
+  /* ---------- cards ---------- */
+  .card {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.012) 42%, rgba(0,0,0,.05)),
+      var(--card);
+    border: 1px solid var(--brd); border-radius: var(--radius);
+    /* layered: ambient drop, contact shadow, lit top bevel, dark bottom bevel */
+    box-shadow:
+      var(--shadow),
+      0 2px 6px rgba(0,0,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.11),
+      inset 0 -1px 0 rgba(0,0,0,.30);
+    padding: 17px 17px 18px; margin-bottom: 13px; backdrop-filter: blur(10px);
+  }
+  /* catch-light along the top edge — the cue that sells a raised surface */
+  .card::before {
+    content: ""; position: absolute; left: 12%; right: 12%; top: 0; height: 1px;
+    pointer-events: none; border-radius: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.26), transparent);
+  }
+  html[data-theme="light"] .card {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.35) 45%, rgba(16,26,48,.02)),
+      var(--card);
+    box-shadow:
+      var(--shadow),
+      0 2px 6px rgba(20,32,64,.10),
+      inset 0 1px 0 rgba(255,255,255,.95),
+      inset 0 -1px 0 rgba(16,26,48,.07);
+  }
+  html[data-theme="light"] .card::before {
+    background: linear-gradient(90deg, transparent, rgba(16,26,48,.10), transparent);
+  }
+  .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+  .card-h h2 { margin: 0; font-size: 14px; font-weight: 680; letter-spacing: 0.2px; }
+  .card-h .ic { width: 17px; height: 17px; color: var(--acc); flex: none; }
+  .card-h .chip.ok   { background-color: rgba(53,210,154,0.15);  color: var(--ok); }
+  .card-h .chip.warn { background-color: rgba(251,191,36,0.15);  color: var(--warn); }
+  .card-h .chip.bad  { background-color: rgba(248,113,122,0.15); color: var(--bad); }
+  /* domed 3D — same treatment as .tag pills, so chips and pills read alike */
+  .card-h .chip {
+    margin-left: auto; font-size: 11px; font-weight: 680; letter-spacing: 0.2px; white-space: nowrap;
+    color: var(--muted); background-color: var(--card2); border: 1px solid rgba(255,255,255,.10);
+    padding: 4px 10px; border-radius: 999px; font-variant-numeric: tabular-nums;
+    background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 62%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.26),
+      inset 0 -1px 2px rgba(0,0,0,.22),
+      0 1px 2px rgba(0,0,0,.30);
+    text-shadow: 0 1px 0 rgba(0,0,0,.28);
+  }
+  html[data-theme="light"] .card-h .chip {
+    border-color: rgba(16,26,48,.10);
+    background-image: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,0) 65%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.90),
+      inset 0 -1px 2px rgba(16,26,48,.10),
+      0 1px 2px rgba(20,32,64,.12);
+    text-shadow: none;
+  }
+  /* collapsible cards (Tools accordion) */
+  .card-h.clp { cursor: pointer; user-select: none; transition: transform .1s ease; }
+  .card-h.clp:active { transform: scale(0.985); }
+  .card-h .chev { margin-left: auto; flex: none; color: var(--muted); font-size: 17px; line-height: 1; transition: transform .2s; }
+  .card-h .chip + .chev { margin-left: 8px; }
+  .card-h.open .chev { transform: rotate(90deg); }
+  .card.collapsed > .card-h { margin-bottom: 0; }
+  .card.collapsed > :not(.card-h) { display: none !important; }
+  .group-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase;
+    color: var(--faint); margin: 20px 6px 9px;
+  }
+  .group-label:first-of-type { margin-top: 2px; }
+  /* hero */
+  .hero { padding: 20px 18px; position: relative; overflow: hidden; }
+  .hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(420px 180px at 88% -30%, rgba(124,156,255,0.18), transparent 70%);
+  }
+  .statusline { display: flex; align-items: center; gap: 12px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--muted); transition: .3s; }
+  .dot.ok   { background: var(--ok);   box-shadow: 0 0 13px var(--ok),   0 0 0 5px rgba(53,210,154,0.14); }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 13px var(--warn), 0 0 0 5px rgba(251,191,36,0.14); }
+  .dot.bad  { background: var(--bad);  box-shadow: 0 0 13px var(--bad),  0 0 0 5px rgba(248,113,122,0.14); }
+  .dot.off  { background: var(--muted); }
+  .statusline .st { font-size: 19px; font-weight: 720; letter-spacing: -0.2px; }
+  .statusline .sub { margin-left: auto; font-size: 12px; color: var(--muted); text-align: right; }
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 17px; }
+  .metric { background: var(--card2); border: 1px solid var(--brd2); border-radius: 13px; padding: 12px 13px; }
+  .metric .k { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; }
+  .metric .v { font-size: 21px; font-weight: 750; margin-top: 4px; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
+  .metric .v small { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+  /* actions */
+  .btns { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 16px; }
+  button.act {
+    appearance: none; border: 1px solid var(--brd); cursor: pointer; color: var(--txt);
+    background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: 13px;
+    font-size: 13.5px; font-weight: 640; transition: transform .08s, background .2s, border-color .2s;
+    flex: 1; min-width: 120px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  button.act svg { width: 16px; height: 16px; }
+  button.act:active { transform: scale(0.97); }
+  button.act.primary { background: linear-gradient(135deg, var(--acc), var(--acc2)); border-color: transparent; color: #08101c; }
+  button.act.danger { border-color: rgba(248,113,122,0.34); color: #ffd7d9; background: rgba(248,113,122,0.10); }
+  button.act:disabled { opacity: 0.45; cursor: default; }
+  /* rows / lists */
+  .list { margin-top: 2px; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 11px 2px; border-top: 1px solid rgba(255,255,255,0.055); font-size: 13.5px; }
+  .row:first-child { border-top: none; }
+  .row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .name.mono { font-family: var(--mono); font-size: 12.5px; }
+  .tag {
+    font-size: 10.5px; padding: 4px 10px; border-radius: 999px; font-weight: 680;
+    letter-spacing: 0.2px; white-space: nowrap;
+    border: 1px solid rgba(255,255,255,.10);
+    /* domed: light from above, seated by a soft contact shadow */
+    background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 62%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.26),
+      inset 0 -1px 2px rgba(0,0,0,.22),
+      0 1px 2px rgba(0,0,0,.30);
+    text-shadow: 0 1px 0 rgba(0,0,0,.28);
+  }
+  html[data-theme="light"] .tag {
+    border-color: rgba(16,26,48,.10);
+    background-image: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,0) 65%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.90),
+      inset 0 -1px 2px rgba(16,26,48,.10),
+      0 1px 2px rgba(20,32,64,.12);
+    text-shadow: none;
+  }
+  .tag.vfs   { background: rgba(53,210,154,0.14);  color: var(--ok); }
+  .tag.ov    { background: rgba(124,156,255,0.16); color: var(--acc); }
+  .tag.su    { background: rgba(87,230,195,0.15);  color: var(--acc2); }
+  .tag.suite { background: rgba(255,255,255,0.08); color: var(--txt); }
+  .tag.off   { background: rgba(139,147,167,0.15); color: var(--muted); }
+  .tag.warn  { background: rgba(251,191,36,0.15);  color: var(--warn); }
+  .tag.ok    { background: rgba(53,210,154,0.15);  color: var(--ok); }
+  .empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
+  /* module list: name on its own line so it is never truncated */
+  .mrow {
+    display: block; padding: 11px 12px; margin: 8px 0; border-radius: 14px;
+    border: 1px solid var(--brd2);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.008)),
+      var(--card2);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 1px 3px rgba(0,0,0,.22);
+  }
+  .mrow:first-child { margin-top: 2px; }
+  .mname {
+    font-size: 13.5px; font-weight: 620; color: var(--txt); line-height: 1.35;
+    overflow-wrap: anywhere; word-break: break-word;
+  }
+  .mmeta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .mmeta .files {
+    font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-right: auto;
+  }
+  html[data-theme="light"] .mrow {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.80), rgba(255,255,255,.30)),
+      var(--card2);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.90), 0 1px 3px rgba(20,32,64,.08);
+  }
+  .note { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 12px 0 0; }
+  code { font-family: var(--mono); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+  pre.rules {
+    margin: 4px 0 0; max-height: 260px; overflow: auto; font-size: 11.5px; line-height: 1.65;
+    font-family: var(--mono); color: #c8d2ea; background: rgba(0,0,0,0.28);
+    border: 1px solid var(--brd2); border-radius: 13px; padding: 13px; white-space: pre; word-break: break-all;
+  }
+  /* stealth readout */
+  .stealth-head { display: flex; align-items: center; gap: 11px; }
+  .shield { width: 40px; height: 40px; border-radius: 12px; flex: none; display: grid; place-items: center; border: 1px solid var(--brd2); }
+  .shield.clean { background: rgba(53,210,154,0.12); color: var(--ok); }
+  .shield.warn  { background: rgba(251,191,36,0.12); color: var(--warn); }
+  .shield svg { width: 21px; height: 21px; }
+  .stealth-head .t { font-size: 15px; font-weight: 700; }
+  .stealth-head .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  /* uid */
+  .uidbar { display: flex; flex-wrap: wrap; gap: 9px; }
+  .uidbar input {
+    flex: 1 1 100%; min-width: 0; background: rgba(0,0,0,0.26); border: 1px solid var(--brd2);
+    color: var(--txt); border-radius: 13px; padding: 12px 14px; font-size: 14px; outline: none;
+  }
+  .uidbar input:focus { border-color: var(--acc); }
+  .uidbar .act { flex: 1 1 0; }
+  /* custom app-picker dropdown — replaces the native <datalist> (which the WebView
+     renders as a mispositioned overlay that bleeds over the page). Solid bg, capped
+     height, absolutely positioned inside its own relative wrapper so it can't leak. */
+  .pkgwrap { position: relative; flex: 1 1 100%; min-width: 0; }
+  .pkgwrap input { width: 100%; }
+  .pkgdd {
+    position: absolute; left: 0; right: 0; top: calc(100% + 5px); z-index: 70;
+    max-height: 264px; overflow-y: auto; display: none;
+    background: var(--bg2); border: 1px solid var(--brd2); border-radius: 13px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  }
+  .pkgdd.show { display: block; }
+  .pkgdd .opt {
+    padding: 11px 13px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .pkgdd .opt:first-child { border-top: none; }
+  .pkgdd .opt.sel, .pkgdd .opt:hover { background: rgba(255,255,255,0.07); }
+  .pkgdd .opt .pn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pkgdd .opt .pu { flex: 0 0 auto; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .pkgdd .none { padding: 11px 13px; font-size: 12.5px; color: var(--dim); }
+  .pkgdd .pkghead {
+    position: sticky; top: 0; z-index: 1; padding: 8px 13px; font-size: 10.5px; font-weight: 640;
+    letter-spacing: .04em; text-transform: uppercase; color: var(--dim);
+    background: var(--bg2); border-bottom: 1px solid var(--brd2);
+  }
+  .blocklist { display: flex; flex-direction: column; gap: 6px; margin-top: 11px; }
+  .blocklist:empty { display: none; }
+  .blk-none { font-size: 12.5px; color: var(--dim); padding: 9px 11px; border: 1px dashed var(--brd2);
+              border-radius: 11px; text-align: center; }
+  .blk-head { font-size: 11px; font-weight: 640; letter-spacing: .04em; text-transform: uppercase;
+              color: var(--dim); margin: 2px 2px 1px; }
+  .blk {
+    display: flex; align-items: center; gap: 9px;
+    background: rgba(0,0,0,0.22); border: 1px solid var(--brd2);
+    border-radius: 11px; padding: 8px 10px 8px 12px;
+  }
+  .blk .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
+  .blk .bn { flex: 1 1 auto; min-width: 0; font-size: 13px; word-break: break-all; }
+  .blk .bs { flex: 0 0 auto; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .blk.live    .dot { background: var(--acc2, #57e6c3); }
+  .blk.live    .bs  { color: var(--acc2, #57e6c3); }
+  .blk.pending .dot, .blk.drift .dot { background: var(--warn, #d9a441); }
+  .blk.pending .bs,  .blk.drift .bs  { color: var(--warn, #d9a441); }
+  .blk .bx {
+    flex: 0 0 auto; width: 24px; height: 24px; line-height: 22px; text-align: center;
+    border: none; border-radius: 8px; cursor: pointer; font-size: 13px;
+    background: rgba(255,255,255,0.06); color: var(--dim);
+  }
+  .blk .bx:hover { background: rgba(255,90,90,0.16); color: #ff6b6b; }
+  .blk .bx.save:hover { background: rgba(90,220,150,0.16); color: #57e6c3; }
+  .blk .bx:disabled { opacity: 0.4; }
+  /* toggle switch (spoofing controls) */
+  .swrow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-top: 1px solid rgba(255,255,255,0.055); }
+  .swrow:first-child { border-top: none; }
+  .swrow .swi { flex: 1; min-width: 0; }
+  .swrow .swi .lbl { font-size: 13.5px; font-weight: 640; }
+  .swrow .swi .val { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* The verify status is a full sentence, not a hash — let it wrap in full.
+     NB: do NOT call this modifier `.wrap` — that is the page wrapper, which
+     carries `padding-bottom: 108px` to clear the floating nav; reusing the name
+     injected 108px of dead space into the card (the old `overflow:hidden` had
+     been hiding it). */
+  .swrow .swi .val.multiline { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.45; }
+  .switch { position: relative; width: 46px; height: 27px; flex: none; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .sl { position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,0.14); border: 1px solid var(--brd2); transition: .22s; pointer-events: none; }
+  .switch .sl::before { content: ""; position: absolute; width: 21px; height: 21px; left: 2px; top: 2px; border-radius: 50%; background: #fff; transition: .22s; box-shadow: 0 2px 5px rgba(0,0,0,.35); }
+  .switch input:checked + .sl { background: linear-gradient(135deg, var(--acc), var(--acc2)); border-color: transparent; }
+  .switch input:checked + .sl::before { transform: translateX(19px); }
+  html[data-theme="light"] .switch .sl { background: rgba(16,26,48,0.14); }
+  .txin { display: block; width: 100%; background: rgba(0,0,0,0.26); border: 1px solid var(--brd2); color: var(--txt); border-radius: 13px; padding: 12px 14px; font-size: 12.5px; outline: none; margin-top: 9px; font-family: var(--mono); }
+  .txin:focus { border-color: var(--acc); }
+  .txin::placeholder { color: var(--faint); }
+  html[data-theme="light"] .txin { background: rgba(16,26,48,0.05); }
+  .banner { background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.3); color: #ffe6a8; padding: 12px 14px; border-radius: 13px; font-size: 12.5px; margin-bottom: 13px; display: none; line-height: 1.5; }
+  .foot { text-align: center; color: var(--faint); font-size: 11px; margin-top: 16px; line-height: 1.7; }
+  /* ---- rules-by-module breakdown bar (Rules tab) ------------------------- */
+  .rmbar {
+    position: relative;
+    display: flex; height: 13px; border-radius: 7px; overflow: hidden;
+    margin: 12px 0 10px; background: var(--card2); border: 1px solid var(--brd2);
+    box-shadow: 0 1px 2px rgba(0,0,0,.30);
+  }
+  .rmbar span { display: block; height: 100%; }
+  /* Domed 3D, the same treatment as the .chip capsules so the bar reads as the
+     same material. It has to be an OVERLAY: the segments are children that fill
+     the bar, so an inset shadow on .rmbar itself would be painted underneath
+     them and never show. One gloss across the whole bar, not per segment, so it
+     domes as a single capsule rather than looking like separate beads. */
+  .rmbar::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    border-radius: inherit;
+    background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 62%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.26),
+      inset 0 -1px 2px rgba(0,0,0,.22);
+  }
+  html[data-theme="light"] .rmbar { box-shadow: 0 1px 2px rgba(20,32,64,.12); }
+  /* Lighter gloss than the capsule's .75: that value is tuned for a near-white
+     chip, and over saturated segment colours it goes chalky and eats the hue. */
+  html[data-theme="light"] .rmbar::after {
+    background-image: linear-gradient(180deg, rgba(255,255,255,.50), rgba(255,255,255,0) 65%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.85),
+      inset 0 -1px 2px rgba(16,26,48,.10);
+  }
+  .rmlegend { display: flex; flex-wrap: wrap; gap: 7px 14px; margin-bottom: 2px; }
+  .rmleg { font-size: 11.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+  .rmleg .rmname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
+  .rmleg b { color: var(--txt); font-weight: 680; font-variant-numeric: tabular-nums; }
+  .rmsw { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  /* The surface is themed, not hardcoded: it used to be a fixed dark #141926 with
+     color:var(--txt), so in light mode it became near-black text on a near-black
+     box — an unreadable black rectangle. It also has to clear the floating nav
+     capsule (same z-index, bottom:24px) instead of landing on top of it. */
+  #toast {
+    position: fixed; left: 50%;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 22px); opacity: 0; pointer-events: none;
+    background: #141926; border: 1px solid var(--brd); color: #eaeef7; padding: 12px 18px;
+    border-radius: 13px; font-size: 13px; font-weight: 640; box-shadow: var(--shadow);
+    transition: .28s cubic-bezier(.2,.8,.2,1); max-width: 90vw; z-index: 80; text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #toast.ok  { border-color: rgba(53,210,154,0.42); }
+  #toast.bad { border-color: rgba(248,113,122,0.42); }
+  html[data-theme="light"] #toast {
+    background: #ffffff; color: #101725;
+    border-color: rgba(16,26,48,.12);
+    box-shadow: 0 12px 30px rgba(20,32,64,.20), 0 2px 6px rgba(20,32,64,.10);
+  }
+  html[data-theme="light"] #toast.ok  { border-color: rgba(14,154,108,.45); }
+  html[data-theme="light"] #toast.bad { border-color: rgba(210,58,68,.45); }
+  .spin { animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  /* ---- tabbed panes + floating capsule bar ------------------------------
+     Visual language mirrors the ReSukiSU manager's liquid-glass capsule:
+     24px radius, hairline white gradient border, soft elevation, and a
+     backdrop blur where the WebView supports it. */
+  .wrap { padding-bottom: 108px; }
+  .tab { display: none; }
+  .tab.on { display: block; animation: tabin .18s ease both; }
+  @keyframes tabin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .navwrap {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    display: flex; justify-content: center;
+    padding: 0 16px calc(14px + env(safe-area-inset-bottom)) 16px;
+    pointer-events: none;
+  }
+  @media (min-width: 400px) { .navwrap { padding-left: 24px; padding-right: 24px; } }
+  @media (min-width: 600px) { .navwrap { padding-left: 32px; padding-right: 32px; } }
+  .nav {
+    pointer-events: auto;
+    position: relative;
+    display: flex; gap: 4px; padding: 7px;
+    border-radius: 26px;
+    border: 1px solid var(--brd);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
+      linear-gradient(180deg, rgba(14,18,32,.92), rgba(8,10,17,.96));
+    box-shadow:
+      0 14px 38px rgba(0,0,0,.55),
+      0 2px 10px rgba(0,0,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.10),
+      inset 0 -1px 0 rgba(0,0,0,.35);
+    max-width: 100%;
+  }
+  @supports (backdrop-filter: blur(20px)) {
+    .nav {
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
+        linear-gradient(180deg, rgba(14,18,32,.62), rgba(8,10,17,.72));
+    }
+  }
+  /* top edge catch-light — sells the glass as a raised surface */
+  .nav::before {
+    content: ""; position: absolute; inset: 0 14% auto 14%; height: 1px;
+    border-radius: 1px; pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.34), transparent);
+  }
+  .navb {
+    -webkit-tap-highlight-color: transparent;
+    appearance: none; border: 1px solid transparent; cursor: pointer;
+    position: relative; isolation: isolate;
+    background: transparent; color: var(--muted);
+    position: relative; z-index: 1;
+    min-width: 60px; height: 58px; padding: 0 12px;
+    border-radius: 19px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    font: 600 11px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: .01em;
+    transition: color .2s ease, transform .2s cubic-bezier(.2,.7,.3,1),
+                border-color .2s ease, box-shadow .2s ease;
+  }
+  .navb svg {
+    width: 21px; height: 21px;
+    stroke: currentColor;
+    /* engraved look when idle: a dark bottom edge under the stroke */
+    filter: drop-shadow(0 1.5px 0 rgba(0,0,0,.55));
+    transition: transform .2s cubic-bezier(.2,.7,.3,1), filter .2s ease;
+  }
+  .navb:active { transform: scale(.93); }
+  .navb:not(.on):hover { color: #b7c0d4; }
+  /* ACTIVE: the bounding capsule is a separate element that SLIDES between tabs.
+     Keeping it out of the button lets one pill animate across, instead of the
+     highlight blinking off one button and on to the next. */
+  .navpill {
+    position: absolute; left: 0; top: 7px; z-index: 0;
+    width: 0; height: 58px; border-radius: 19px;
+    opacity: 0; pointer-events: none;
+    border: 1px solid rgba(124,156,255,.55);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.02)),
+      linear-gradient(135deg, rgba(124,156,255,.42), rgba(87,230,195,.28));
+    box-shadow:
+      0 8px 20px rgba(124,156,255,.38),
+      0 2px 6px rgba(0,0,0,.42),
+      inset 0 1px 0 rgba(255,255,255,.38),
+      inset 0 -2px 7px rgba(0,0,0,.30);
+    /* Springy overshoot: the y1 term is what makes it rebound past the target
+       and settle back. 1.55 lands between a flat slide (1.0) and the bouncy
+       1.9 — enough to feel elastic without drawing attention to itself.
+       Transform leads, width trails slightly, so the pill stretches into the
+       move rather than both properties animating in lockstep. */
+    transition:
+      transform .42s cubic-bezier(.22,1.55,.36,1),
+      width .46s cubic-bezier(.22,1.62,.38,1),
+      opacity .2s ease;
+  }
+  .navpill.noanim { transition: none; }
+  .navb.on { color: var(--txt); }
+  .navb.on svg {
+    stroke: url(#navGrad);
+    transform: translateY(-.5px) scale(1.06);
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,.5)) drop-shadow(0 0 7px rgba(124,156,255,.55));
+  }
+  .navb.on span:not(.nbdot) {
+    background: linear-gradient(135deg, #ffffff, #cfe0ff 60%, #9df0dc);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .navb, .navb svg { transition: none; }
+    .navb.on { transform: none; }
+    /* the overshoot is the point of the pill, so drop it entirely here */
+    .navpill { transition: opacity .2s ease; }
+  }
+  .navb .nbdot { display: none; }
+  .navb.alert .nbdot {
+    display: block; position: absolute; top: 9px; right: 12px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--bad);
+    box-shadow: 0 0 0 2px rgba(8,10,17,.9), 0 0 8px rgba(248,113,122,.8);
+  }
+  /* ---- light theme -------------------------------------------------------
+     Same hues, re-weighted for a light ground: the accents are darkened so they
+     still pass as readable text/!icon colour on white, which the dark-theme
+     values (#7c9cff / #57e6c3) do not. */
+  html[data-theme="light"] {
+    --bg:      #eef1f8;
+    --bg2:     #ffffff;
+    --card:    rgba(16,26,48,0.040);
+    --card2:   rgba(16,26,48,0.022);
+    --brd:     rgba(16,26,48,0.105);
+    --brd2:    rgba(16,26,48,0.070);
+    --txt:     #101725;
+    --muted:   #576179;
+    --faint:   #7a8497;
+    --acc:     #3f63e0;
+    --acc2:    #0f9e84;
+    --ok:      #0e9a6c;
+    --warn:    #a46a00;
+    --bad:     #d23a44;
+    --shadow:  0 12px 30px rgba(20,32,64,0.13);
+  }
+  html[data-theme="light"] body { color: var(--txt); }
+  html[data-theme="light"] h1 {
+    background-image: linear-gradient(90deg, #0d1220, #33499f);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  html[data-theme="light"] .metric { background: rgba(16,26,48,0.045); }
+  html[data-theme="light"] .row { border-top-color: rgba(16,26,48,0.075); }
+  html[data-theme="light"] .tag.suite { background: rgba(16,26,48,0.075); }
+  html[data-theme="light"] code { background: rgba(16,26,48,0.06); }
+  html[data-theme="light"] .nav {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.90), rgba(255,255,255,.72)),
+      linear-gradient(180deg, rgba(236,240,250,.95), rgba(226,232,245,.98));
+    box-shadow:
+      0 14px 34px rgba(20,32,64,.18),
+      0 2px 8px rgba(20,32,64,.10),
+      inset 0 1px 0 rgba(255,255,255,.85),
+      inset 0 -1px 0 rgba(16,26,48,.10);
+  }
+  @supports (backdrop-filter: blur(20px)) {
+    html[data-theme="light"] .nav {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.52)),
+        linear-gradient(180deg, rgba(236,240,250,.60), rgba(226,232,245,.70));
+    }
+  }
+  html[data-theme="light"] .nav::before {
+    background: linear-gradient(90deg, transparent, rgba(16,26,48,.16), transparent);
+  }
+  html[data-theme="light"] .navb svg { filter: drop-shadow(0 1px 0 rgba(255,255,255,.9)); }
+  html[data-theme="light"] .navpill {
+    border-color: rgba(63,99,224,.55);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.55)),
+      linear-gradient(135deg, rgba(63,99,224,.30), rgba(15,158,132,.24));
+    box-shadow:
+      0 8px 18px rgba(63,99,224,.28),
+      0 2px 6px rgba(20,32,64,.16),
+      inset 0 1px 0 rgba(255,255,255,.95),
+      inset 0 -2px 6px rgba(16,26,48,.10);
+  }
+  html[data-theme="light"] .navb.on svg {
+    filter: drop-shadow(0 1px 0 rgba(255,255,255,.9)) drop-shadow(0 0 6px rgba(63,99,224,.45));
+  }
+  html[data-theme="light"] .navb.on span:not(.nbdot) {
+    background-image: linear-gradient(135deg, #0d1220, #2b3f96 60%, #0c7f6b);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  html[data-theme="light"] .navb.alert .nbdot { box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(210,58,68,.7); }
+  html[data-theme="light"] .banner { color: #6b4d00; }
+  html[data-theme="light"] button.act.danger {
+    color: #a3252e; border-color: rgba(210,58,68,0.40); background: rgba(210,58,68,0.08);
+  }
+  html[data-theme="light"] button.act.primary { color: #ffffff; }
+  html[data-theme="light"] .logo svg { stroke: #ffffff; }
+  /* theme toggle icon swap */
+  .iconbtn .ico-moon { display: none; }
+  html[data-theme="light"] .iconbtn .ico-moon { display: block; }
+  html[data-theme="light"] .iconbtn .ico-sun  { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#08101c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 7l8-4 8 4v6c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/>
+      </svg>
+    </div>
+    <div class="brand">
+      <h1 data-i18n="brand_title">NoMount Suite</h1>
+      <p data-i18n="brand_sub">hookless VFS · RRO overlays · sucompat root</p>
+    </div>
+    <div class="hbtns">
+      <span class="ver" id="ver">v…</span>
+      <button class="iconbtn" id="langBtn" onclick="toggleLang()" title="切换语言 / Switch language" aria-label="Toggle language">
+        <span data-i18n="lang_btn">中</span>
+      </button>
+      <button class="iconbtn" id="themeBtn" onclick="toggleTheme()" title="Light / dark theme" aria-label="Toggle theme">
+        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.4M12 19.2v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.4 12h2.4M19.2 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
+        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4a8.4 8.4 0 1 0 10.5 10.5z"/></svg>
+      </button>
+      <button class="iconbtn" id="refreshBtn" onclick="refreshAll(this)" title="Refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+      </button>
+    </div>
+  </header>
+  <section class="tab on" id="tab-status">
+  <div class="banner" id="banner" data-i18n="banner_tip">Open this page from the KernelSU / APatch manager's WebUI to control the module.</div>
+  <!-- HERO: engine status -->
+  <div class="card hero">
+    <div class="statusline">
+      <span class="dot off" id="dot"></span>
+      <span class="st" id="state" data-i18n="state_checking">Checking…</span>
+      <span class="sub" id="substate"></span>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="k" data-i18n="metric_rules">Injection rules</div><div class="v" id="mRules">—</div></div>
+      <div class="metric"><div class="k" data-i18n="metric_ov">RRO overlays</div><div class="v" id="mOv">—</div></div>
+      <div class="metric"><div class="k" data-i18n="metric_su">Root · su</div><div class="v" id="mSu">—</div></div>
+      <div class="metric"><div class="k" data-i18n="metric_mod">Modules served</div><div class="v" id="mMod">—</div></div>
+    </div>
+    <div class="btns">
+      <button class="act primary" onclick="reloadRules(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+        <span data-i18n="btn_reload">Reload</span>
+      </button>
+      <button class="act danger" onclick="clearRules(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+        <span data-i18n="btn_clear_rules">Clear rules</span>
+      </button>
+    </div>
+  </div>
+  <!-- DEVICE -->
+  <div class="card">
+    <div class="card-h">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+      <h2 data-i18n="h2_device">Device</h2>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="k" data-i18n="k_model">Model</div><div class="v" id="dModel" style="font-size:15px">—</div></div>
+      <div class="metric"><div class="k" data-i18n="k_android">Android</div><div class="v" id="dAndroid" style="font-size:15px">—</div></div>
+      <div class="metric"><div class="k" data-i18n="k_api">API level</div><div class="v" id="dApi" style="font-size:15px">—</div></div>
+      <div class="metric"><div class="k" data-i18n="k_kernel">Kernel</div><div class="v" id="dKernel" style="font-size:11px;word-break:break-all;line-height:1.35">—</div></div>
+    </div>
+  </div>
+  <!-- BOOTGUARD -->
+  <div class="card">
+    <div class="card-h">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/></svg>
+      <h2 data-i18n="h2_bootguard">Bootloop guard</h2><span class="chip" id="gchip">—</span>
+    </div>
+    <div class="statusline">
+      <span class="dot ok" id="gdot"></span><span class="st" id="gstate" style="font-size:16px" data-i18n="guard_armed">Armed</span>
+      <span class="sub" data-i18n="guard_trips">trips at boot #3</span>
+    </div>
+    <div class="btns"><button class="act danger" id="rearm" onclick="rearm(this)" style="display:none" data-i18n="btn_rearm">Re-arm & enable</button></div>
+  </div>
+  </section>
+  <section class="tab" id="tab-modules">
+  <!-- DETECTION POSTURE (moved from Status) -->
+  <div class="card">
+    <div class="stealth-head">
+      <div class="shield clean" id="shield">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div>
+        <div class="t" id="stealthT" data-i18n="stealth_title">Detection posture</div>
+        <div class="d" id="stealthD" data-i18n="stealth_checking">Checking what apps can see…</div>
+      </div>
+    </div>
+    <div class="list" id="posture"></div>
+    <p class="note" id="stealthNote"></p>
+  </div>
+  <div class="card">
+    <div class="card-h clp" onclick="toggleModules(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <h2 data-i18n="h2_modules">Modules</h2><span class="chip" id="modcount">0</span><span class="chev">›</span>
+    </div>
+    <div class="list" id="modules" style="display:none"></div>
+  </div>
+  </section>
+  <section class="tab" id="tab-rules">
+  <div class="card">
+    <div class="card-h clp" onclick="toggleRules(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <h2 data-i18n="h2_active_rules">Active rules</h2><span class="chip" id="rulechip">—</span><span class="chev">›</span>
+    </div>
+    <p class="note" id="rulebreak" style="margin-top:0">—</p>
+    <div id="ruleModuleBar" style="display:none"></div>
+    <div class="uidbar" id="rulefilterbar" style="display:none">
+      <input id="rulefilter" type="text" data-i18n-placeholder="ph_filter_rule" placeholder="Filter by path or module…" oninput="filterRules()" />
+      <button class="act" id="rulegroupBtn" style="flex:1 1 0" onclick="toggleRuleGroup(this)" data-i18n="btn_group_mod">Group by module</button>
+      <button class="act" style="flex:1 1 0" onclick="document.getElementById('rulefilter').value='';filterRules()" data-i18n="btn_clear">Clear</button>
+    </div>
+    <pre class="rules" id="ruleslist" style="display:none">…</pre>
+    <p class="note" id="rulecount" style="display:none"></p>
+  </div>
+  <!-- OVERLAYS -->
+  <div class="card">
+    <div class="card-h clp" onclick="toggleVfsFull(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+      <h2 data-i18n="h2_file_redirects">File redirects</h2><span class="chip" id="vfscount">0</span><span class="chev">›</span>
+    </div>
+    <div class="uidbar" id="vfsfilterbar" style="display:none;margin-bottom:11px">
+      <input id="vfsfilter" type="text" data-i18n-placeholder="ph_filter_files" placeholder="Filter files…" oninput="renderVfsFull()" />
+    </div>
+    <div class="list" id="vfsdirs" style="display:none"></div>
+    <div class="list" id="vfsfull" style="display:none"></div>
+  </div>
+  <div class="card">
+    <div class="card-h clp" onclick="toggleOvFull(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+      <h2 data-i18n="h2_rro_overlays">RRO overlays</h2><span class="chip" id="ovcount">0</span><span class="chev">›</span>
+    </div>
+    <div class="uidbar" id="ovfilterbar" style="display:none;margin-bottom:11px">
+      <input id="ovfilter" type="text" data-i18n-placeholder="ph_filter_overlays" placeholder="Filter overlays…" oninput="renderOvFull()" />
+    </div>
+    <div class="list" id="overlays" style="display:none"></div>
+    <div class="list" id="overlaysfull" style="display:none"></div>
+  </div>
+  </section>
+  <section class="tab" id="tab-tools">
+  <div class="group-label" data-i18n="gl_spoofing">Spoofing</div>
+  <!-- SPOOFING -->
+  <div class="card collapsed" id="cardSpoof">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg>
+      <h2 data-i18n="h2_spoofing">Spoofing</h2><span class="chip" id="spchip">—</span><span class="chev">›</span>
+    </div>
+    <div class="list">
+      <div class="swrow">
+        <div class="swi">
+          <div class="lbl" data-i18n="lbl_vbmeta">Verified boot (hash + size)</div>
+          <div class="val" id="spVbVal">…</div>
+          <div class="val multiline" id="spVbCheck" style="margin-top:2px"></div>
+        </div>
+        <label class="switch"><input type="checkbox" id="spVb" onchange="toggleSpoof('vbmeta_digest',this)"><span class="sl"></span></label>
+      </div>
+      <div class="swrow">
+        <div class="swi">
+          <div class="lbl" data-i18n="lbl_bootstate">Boot-state (props + procfs)</div>
+          <div class="val multiline" id="spPropsVal">…</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="spProps" onchange="toggleSpoofBool('spoof_props',this)"><span class="sl"></span></label>
+      </div>
+      <div class="swrow">
+        <div class="swi">
+          <div class="lbl" data-i18n="lbl_uname">Kernel uname</div>
+          <div class="val" id="spUnameVal">…</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="spUname" onchange="toggleSpoofBool('spoof_uname',this)"><span class="sl"></span></label>
+      </div>
+      <button class="act" id="spUnameEditBtn" style="margin-top:10px" onclick="toggleUnameAdv(this)" data-i18n="btn_edit_strings">Edit strings</button>
+      <div id="spUnameAdv" style="display:none">
+        <div class="val" id="spUnameCur" style="margin-bottom:9px">current uname: …</div>
+        <input class="txin" id="spUnameTail" data-i18n-placeholder="ph_uname_tail" placeholder="uname  —  blank = keep · paste stock uname -r to override">
+        <div class="val" id="spDateCur" style="margin-top:9px">current date: …</div>
+        <input class="txin" id="spUnameDate" data-i18n-placeholder="ph_uname_date" placeholder="date  —  blank = keep · paste stock uname -v (or a date)">
+        <div class="btns" style="flex-wrap:wrap;margin-top:9px">
+          <button class="act" onclick="fillUnameRomDate()" data-i18n="btn_use_rom_date">Use ROM date</button>
+          <button class="act" onclick="resetUname(this)" data-i18n="btn_reset_kernel">Reset to kernel default</button>
+          <button class="act primary" onclick="saveUname(this)" data-i18n="btn_save">Save</button>
+        </div>
+      </div>
+    </div>
+    <div class="btns"><button class="act primary" onclick="applySpoof(this)" data-i18n="btn_apply_now">Apply now</button></div>
+    <p class="note" id="spNote" data-i18n="note_spoof">Verified boot recomputes <code>ro.boot.vbmeta.digest</code> and <code>.size</code> from the real AVB chain on-device. Boot-state normalizes the lock-state/warranty/debuggable props and, where the kernel exposes it, the raw <code>/proc/cmdline</code> + <code>/proc/bootconfig</code> boot-state to match — only ever changing a prop that already exists, and skipping procfs if the kernel has no nomount knobs. Kernel uname keeps the running kernel's base and swaps the tail + build date so <code>uname</code> matches the ROM; blank keeps the current values, or paste them from a stock device. <b>Apply now</b> runs it immediately.</p>
+  </div>
+  <div class="group-label" data-i18n="gl_diagnostics">Diagnostics</div>
+  <!-- HEALTH CHECK -->
+  <div class="card collapsed" id="cardHealth">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+      <h2 data-i18n="h2_health_check">Health check</h2><span class="chip" id="dchip">—</span><span class="chev">›</span>
+    </div>
+    <p class="note" data-i18n="note_health">Lints the mount plan the way it will actually be applied, plus the live rules — partition-root redirects, overlay APKs on partitions zygote will not accept, missing backings, and targets two modules both claim. Run it before rebooting after a module change.</p>
+    <div class="btns"><button class="act primary" onclick="runDoctor(this)" data-i18n="btn_run_health">Run health check</button></div>
+    <pre class="rules" id="doctorout" style="display:none">…</pre>
+  </div>
+  <!-- RUNTIME HEALTH -->
+  <div class="card collapsed" id="cardRuntime">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>
+      <h2 data-i18n="h2_runtime_health">Runtime health</h2><span class="chip" id="hchip">—</span><span class="chev">›</span>
+    </div>
+    <p class="note" data-i18n="note_runtime">The live counterpart to the plan-time check above. <b>Self-check</b> runs the per-UID consistency canary — does a normal app see the same injected files as root? — and reports engine, mounts and guard. <b>Snapshot</b> freezes today's healthy state; <b>Verify</b> diffs the live system against it and names any drift. <b>Export</b> dumps diagnostics to <code>/sdcard/Download</code>.</p>
+    <div class="btns" style="flex-wrap:wrap">
+      <button class="act primary" onclick="runSelfcheck(this)" data-i18n="btn_selfcheck">Self-check</button>
+      <button class="act" onclick="runSnapshot(this)" data-i18n="btn_snapshot">Snapshot</button>
+      <button class="act" onclick="runVerify(this)" data-i18n="btn_verify">Verify</button>
+      <button class="act" onclick="runExport(this)" data-i18n="btn_export">Export</button>
+    </div>
+    <pre class="rules" id="healthout" style="display:none">…</pre>
+  </div>
+  <!-- LAST INCIDENT -->
+  <div class="card collapsed" id="incidentcard" style="display:none">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v5"/><path d="M12 17.5v.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      <h2 data-i18n="h2_last_incident">Last incident</h2><span class="chip bad" data-i18n="chip_guard_tripped">guard tripped</span><span class="chev">›</span>
+    </div>
+    <p class="note" data-i18n="note_incident">Recorded when the bootloop guard self-disabled the Suite — including the newest native crash and its abort message, which usually names the offending path outright. This is a saved record, not live state — it survives reboots until a new trip overwrites it or you clear it. Whether the Suite is disabled <em>right now</em> is the guard chip on Status.</p>
+    <pre class="rules" id="incidentout">…</pre>
+    <div class="btns"><button class="act danger" onclick="clearIncident(this)" data-i18n="btn_clear_incident">Clear incident</button></div>
+  </div>
+  <div class="group-label" data-i18n="gl_hiding">Hiding</div>
+  <!-- CLOAK (pathhide maps/fd) -->
+  <div class="card collapsed" id="cardCloak">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+      <h2 data-i18n="h2_cloak">Cloak (maps / fd)</h2><span class="chip" id="phchip">—</span><span class="chev">›</span>
+    </div>
+    <p class="note" data-i18n="note_cloak">Hide selected paths only from apps in the per-UID hide list. Xposed APKs and Scene debugfs are detected automatically; rules are applied live and restored on boot.</p>
+    <div class="btns">
+      <button class="act" id="phScan" onclick="scanCloak(this)" data-i18n="btn_scan_xposed">Scan Xposed modules</button>
+      <button class="act" id="phShow" onclick="phShowList(this)" data-i18n="btn_show_list">Show list</button>
+      <button class="act danger" id="phOff" onclick="cloakAllOff(this)" data-i18n="btn_turn_off_all">Turn off all</button>
+    </div>
+    <div style="display:flex;gap:8px;margin:8px 0 2px">
+      <input class="txin" id="phManual" data-i18n-placeholder="ph_add_package" placeholder="add package / absolute path" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
+      <button class="act" style="flex:none;min-width:0;padding:7px 13px" onclick="addCloak()" data-i18n="btn_add">Add</button>
+    </div>
+        <div style="margin:8px 0 2px">
+      <input class="txin" id="phSearch" data-i18n-placeholder="ph_search" placeholder="search packages" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderCloak()">
+    </div>
+    <div class="list" id="phList" style="display:none"></div>
+    <div class="btns"><button class="act primary" id="phApply" onclick="applyCloak(this)" data-i18n="btn_apply_save">Apply & save</button></div>
+  </div>
+  <div class="card collapsed" id="cardPerUID">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <h2 data-i18n="h2_per_uid">Per-UID hiding</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
+    </div>
+    <div class="uidbar">
+      <div class="pkgwrap">
+        <input id="uid" type="text" autocapitalize="off" autocomplete="off" spellcheck="false"
+               data-i18n-placeholder="ph_uid_picker"
+               placeholder="Package name or UID — start typing to pick an app"
+               oninput="pkgFilter()" onfocus="pkgFilter()" onblur="pkgBlur()" onkeydown="pkgKey(event)" />
+        <div id="pkgdd" class="pkgdd"></div>
+      </div>
+      <button class="act" onclick="uidOp('block',this)" data-i18n="btn_hide">Hide</button>
+      <button class="act" onclick="uidOp('unblock',this)" data-i18n="btn_unhide">Unhide</button>
+    </div>
+    <div id="blocked" class="blocklist"></div>
+    <p class="note" data-i18n="note_per_uid">Hides injected files and su from <b>one</b> app only. Use a <b>package name</b> to persist across reboots (raw UIDs reset on reinstall). Doesn't cover SELinux-policy detection or isolated-process probes.</p>
+  </div>
+  </section>
+  <div class="foot">NoMount Suite · <span data-i18n="foot_engine">hookless engine via netlink</span> <code>nm</code><br/><span id="footver"></span></div>
+</div>
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <defs>
+    <linearGradient id="navGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#a9c0ff"/>
+      <stop offset="55%"  stop-color="#7c9cff"/>
+      <stop offset="100%" stop-color="#57e6c3"/>
+    </linearGradient>
+  </defs>
+</svg>
+<nav class="navwrap" role="tablist" aria-label="Sections">
+  <div class="nav">
+    <span class="navpill noanim" id="navpill"></span>
+    <button class="navb on" id="nb-status" role="tab" aria-selected="true" onclick="showTab('status',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/></svg>
+      <span data-i18n="nav_status">Status</span><span class="nbdot"></span>
+    </button>
+    <button class="navb" id="nb-modules" role="tab" aria-selected="false" onclick="showTab('modules',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span data-i18n="nav_modules">Modules</span><span class="nbdot"></span>
+    </button>
+    <button class="navb" id="nb-rules" role="tab" aria-selected="false" onclick="showTab('rules',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span data-i18n="nav_rules">Rules</span><span class="nbdot"></span>
+    </button>
+    <button class="navb" id="nb-tools" role="tab" aria-selected="false" onclick="showTab('tools',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4l-2.5 2.5-1.4-1.4 2.5-2.5z"/></svg>
+      <span data-i18n="nav_tools">Tools</span><span class="nbdot"></span>
+    </button>
+  </div>
+</nav>
+<div id="toast"></div>
+<script>
+  "use strict";
+
+  // ========== 国际化语言字典 ==========
+  const i18n = {
+    en: {
+      brand_title: "NoMount Suite",
+      brand_sub: "hookless VFS · RRO overlays · sucompat root",
+      lang_btn: "中",
+      banner_tip: "Open this page from the KernelSU / APatch manager's WebUI to control the module.",
+      state_checking: "Checking…",
+      metric_rules: "Injection rules",
+      metric_ov: "RRO overlays",
+      metric_su: "Root · su",
+      metric_mod: "Modules served",
+      btn_reload: "Reload",
+      btn_clear_rules: "Clear rules",
+      h2_device: "Device",
+      k_model: "Model",
+      k_android: "Android",
+      k_api: "API level",
+      k_kernel: "Kernel",
+      h2_bootguard: "Bootloop guard",
+      guard_armed: "Armed",
+      guard_trips: "trips at boot #3",
+      btn_rearm: "Re-arm & enable",
+      stealth_title: "Detection posture",
+      stealth_checking: "Checking what apps can see…",
+      h2_modules: "Modules",
+      h2_active_rules: "Active rules",
+      ph_filter_rule: "Filter by path or module…",
+      btn_group_mod: "Group by module",
+      btn_clear: "Clear",
+      h2_file_redirects: "File redirects",
+      ph_filter_files: "Filter files…",
+      h2_rro_overlays: "RRO overlays",
+      ph_filter_overlays: "Filter overlays…",
+      gl_spoofing: "Spoofing",
+      h2_spoofing: "Spoofing",
+      lbl_vbmeta: "Verified boot (hash + size)",
+      lbl_bootstate: "Boot-state (props + procfs)",
+      lbl_uname: "Kernel uname",
+      btn_edit_strings: "Edit strings",
+      ph_uname_tail: "uname  —  blank = keep · paste stock uname -r to override",
+      ph_uname_date: "date  —  blank = keep · paste stock uname -v (or a date)",
+      btn_use_rom_date: "Use ROM date",
+      btn_reset_kernel: "Reset to kernel default",
+      btn_save: "Save",
+      btn_apply_now: "Apply now",
+      note_spoof: 'Verified boot recomputes <code>ro.boot.vbmeta.digest</code> and <code>.size</code> from the real AVB chain on-device. Boot-state normalizes the lock-state/warranty/debuggable props and, where the kernel exposes it, the raw <code>/proc/cmdline</code> + <code>/proc/bootconfig</code> boot-state to match — only ever changing a prop that already exists, and skipping procfs if the kernel has no nomount knobs. Kernel uname keeps the running kernel\'s base and swaps the tail + build date so <code>uname</code> matches the ROM; blank keeps the current values, or paste them from a stock device. <b>Apply now</b> runs it immediately.',
+      gl_diagnostics: "Diagnostics",
+      h2_health_check: "Health check",
+      note_health: "Lints the mount plan the way it will actually be applied, plus the live rules — partition-root redirects, overlay APKs on partitions zygote will not accept, missing backings, and targets two modules both claim. Run it before rebooting after a module change.",
+      btn_run_health: "Run health check",
+      h2_runtime_health: "Runtime health",
+      note_runtime: 'The live counterpart to the plan-time check above. <b>Self-check</b> runs the per-UID consistency canary — does a normal app see the same injected files as root? — and reports engine, mounts and guard. <b>Snapshot</b> freezes today\'s healthy state; <b>Verify</b> diffs the live system against it and names any drift. <b>Export</b> dumps diagnostics to <code>/sdcard/Download</code>.',
+      btn_selfcheck: "Self-check",
+      btn_snapshot: "Snapshot",
+      btn_verify: "Verify",
+      btn_export: "Export",
+      h2_last_incident: "Last incident",
+      chip_guard_tripped: "guard tripped",
+      note_incident: 'Recorded when the bootloop guard self-disabled the Suite — including the newest native crash and its abort message, which usually names the offending path outright. This is a saved record, not live state — it survives reboots until a new trip overwrites it or you clear it. Whether the Suite is disabled <em>right now</em> is the guard chip on Status.',
+      btn_clear_incident: "Clear incident",
+      gl_hiding: "Hiding",
+      h2_cloak: "Cloak (maps / fd)",
+      note_cloak: 'Hide selected paths only from apps in the <b>per-UID hide list</b>. Xposed APKs and Scene debugfs are detected automatically. Exact path/inode matching avoids unrelated-app crashes.',
+      btn_scan_xposed: "Scan Xposed modules",
+      btn_show_list: "Show list",
+      ph_add_package: "add package / absolute path",
+      btn_add: "Add",
+      btn_apply_save: "Apply & save",
+      btn_turn_off_all: "Turn off all",
+      ph_search: "search packages",
+      h2_per_uid: "Per-UID hiding",
+      ph_uid_picker: "Package name or UID — start typing to pick an app",
+      btn_hide: "Hide",
+      btn_unhide: "Unhide",
+      note_per_uid: 'Hides injected files and su from <b>one</b> app only. Use a <b>package name</b> to persist across reboots (raw UIDs reset on reinstall). Doesn\'t cover SELinux-policy detection or isolated-process probes.',
+      foot_engine: "hookless engine via netlink",
+      nav_status: "Status",
+      nav_modules: "Modules",
+      nav_rules: "Rules",
+      nav_tools: "Tools"
+    },
+    zh: {
+      brand_title: "NoMount Suite",
+      brand_sub: "无钩子 VFS · RRO 覆盖层 · sucompat 根权限",
+      lang_btn: "EN",
+      banner_tip: "请从 KernelSU / APatch 管理器的 WebUI 中打开此页面以控制模块。",
+      state_checking: "检查中…",
+      metric_rules: "注入规则",
+      metric_ov: "RRO 覆盖层",
+      metric_su: "Root · su",
+      metric_mod: "已服务模块",
+      btn_reload: "重新加载",
+      btn_clear_rules: "清空规则",
+      h2_device: "设备信息",
+      k_model: "机型",
+      k_android: "安卓版本",
+      k_api: "API 等级",
+      k_kernel: "内核版本",
+      h2_bootguard: "启动循环保护",
+      guard_armed: "已就绪",
+      guard_trips: "第 3 次启动时触发",
+      btn_rearm: "重新启用",
+      stealth_title: "检测态势",
+      stealth_checking: "正在检查应用可见性…",
+      h2_modules: "模块列表",
+      h2_active_rules: "活跃规则",
+      ph_filter_rule: "按路径或模块筛选…",
+      btn_group_mod: "按模块分组",
+      btn_clear: "清空",
+      h2_file_redirects: "文件重定向",
+      ph_filter_files: "筛选文件…",
+      h2_rro_overlays: "RRO 覆盖层",
+      ph_filter_overlays: "筛选覆盖层…",
+      gl_spoofing: "伪装功能",
+      h2_spoofing: "参数伪装",
+      lbl_vbmeta: "验证启动（哈希 + 大小）",
+      lbl_bootstate: "启动状态（属性 + procfs）",
+      lbl_uname: "内核 uname",
+      btn_edit_strings: "编辑字符串",
+      ph_uname_tail: "uname — 留空保持不变 · 粘贴原厂 uname -r 覆盖",
+      ph_uname_date: "日期 — 留空保持不变 · 粘贴原厂 uname -v 或日期",
+      btn_use_rom_date: "使用 ROM 日期",
+      btn_reset_kernel: "恢复内核默认值",
+      btn_save: "保存",
+      btn_apply_now: "立即应用",
+      note_spoof: '验证启动功能会根据设备真实 AVB 链重新计算 <code>ro.boot.vbmeta.digest</code> 和 <code>.size</code>。启动状态功能会标准化锁状态/保修/可调试属性，并在内核支持的情况下同步 <code>/proc/cmdline</code> + <code>/proc/bootconfig</code> 中的启动状态——仅修改已存在的属性，若内核无 nomount 接口则跳过 procfs。内核 uname 保留运行内核基础版本，替换尾部和编译日期使 <code>uname</code> 与 ROM 匹配；留空则保持当前值，也可粘贴原厂设备的值。点击<b>立即应用</b>即刻生效。',
+      gl_diagnostics: "诊断工具",
+      h2_health_check: "健康检查",
+      note_health: "按实际应用方式检查挂载计划及活跃规则——包括分区根重定向、zygote 不接受的分区上的覆盖 APK、缺失的后备文件、两个模块同时声明的目标。更换模块后重启前建议运行。",
+      btn_run_health: "运行健康检查",
+      h2_runtime_health: "运行时健康度",
+      note_runtime: '上述计划检查的实时对应版本。<b>自检</b>运行按 UID 一致性检测——普通应用与 root 看到的注入文件是否一致？——并报告引擎、挂载和保护状态。<b>快照</b>冻结当前健康状态；<b>校验</b>对比实时系统与快照并列出偏差。<b>导出</b>将诊断信息转储到 <code>/sdcard/Download</code>。',
+      btn_selfcheck: "自检",
+      btn_snapshot: "快照",
+      btn_verify: "校验",
+      btn_export: "导出",
+      h2_last_incident: "上次异常事件",
+      chip_guard_tripped: "保护已触发",
+      note_incident: '记录启动循环保护自动禁用 Suite 时的信息——包括最新的原生崩溃及其中止信息，通常会直接指出问题路径。这是保存记录而非实时状态——重启后保留，直到新的触发覆盖或手动清除。Suite 当前是否禁用请查看状态页的保护标签。',
+      btn_clear_incident: "清除事件记录",
+      gl_hiding: "隐藏功能",
+      h2_cloak: "隐藏（maps / fd）",
+      note_cloak: '仅对加入<b>按 UID 隐藏</b>列表的应用隐藏路径。自动识别 Xposed 模块 APK 与 Scene 随机 debugfs 路径；精确路径/inode 匹配可避免误伤其他应用。',
+      btn_scan_xposed: "扫描 Xposed 模块",
+      btn_show_list: "显示列表",
+      ph_add_package: "添加包名 / 绝对路径",
+      btn_add: "添加",
+      btn_apply_save: "应用并保存",
+      btn_turn_off_all: "一键关闭",
+      ph_search: "搜索已添加包名",
+      h2_per_uid: "按 UID 隐藏",
+      ph_uid_picker: "包名或 UID — 输入以选择应用",
+      btn_hide: "隐藏",
+      btn_unhide: "取消隐藏",
+      note_per_uid: '仅对<b>单个</b>应用隐藏注入文件和 su。使用<b>包名</b>可跨重启持久化（原始 UID 会在重装时重置）。不涵盖 SELinux 策略检测或隔离进程探测。',
+      foot_engine: "基于 netlink 的无钩子引擎",
+      nav_status: "状态",
+      nav_modules: "模块",
+      nav_rules: "规则",
+      nav_tools: "工具"
+    }
+  };
+
+  let currentLang = "en";
+
+  function applyLang(lang) {
+    currentLang = lang;
+    const dict = i18n[lang];
+    if (!dict) return;
+
+    // 文本内容
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      if (dict[key] !== undefined) el.innerHTML = dict[key];
+    });
+
+    // placeholder
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+      const key = el.getAttribute("data-i18n-placeholder");
+      if (dict[key] !== undefined) el.placeholder = dict[key];
+    });
+
+    // 更新页面标题
+    document.title = "NoMount Suite";
+    document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+
+    try { localStorage.setItem("nm_lang", lang); } catch (e) {}
+  }
+
+  function toggleLang() {
+    applyLang(currentLang === "en" ? "zh" : "en");
+  }
+
+  (function initLang() {
+    let t = null;
+    try { t = localStorage.getItem("nm_lang"); } catch (e) {}
+    if (t !== "en" && t !== "zh") {
+      t = (navigator.language && navigator.language.toLowerCase().startsWith("zh")) ? "zh" : "en";
+    }
+    applyLang(t);
+  })();
+
+  // ========== 原有逻辑 ==========
+  let execId = 0;
+  const KSU = window.ksu;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  document.getElementById("banner").style.display = (KSU && KSU.exec) ? "none" : "block";
+  function exec(cmd, opts = {}) {
+    return new Promise((resolve) => {
+      if (!KSU || !KSU.exec) { resolve({ errno: -1, stdout: "", stderr: "no webui env" }); return; }
+      const name = "__nmcb" + (execId++);
+      window[name] = (errno, stdout, stderr) => {
+        delete window[name];
+        resolve({ errno: Number(errno), stdout: stdout || "", stderr: stderr || "" });
+      };
+      try { KSU.exec(cmd, JSON.stringify(opts), name); }
+      catch (e) { delete window[name]; resolve({ errno: -1, stdout: "", stderr: String(e) }); }
+    });
+  }
+  let NMBIN = null;
+  async function bin() {
+    if (NMBIN) return NMBIN;
+    const abi = (await exec("getprop ro.product.cpu.abi")).stdout.trim() || "arm64-v8a";
+    NMBIN = `/data/adb/modules/meta-nomount/bin/${abi}/nomount`;
+    return NMBIN;
+  }
+  // The Suite binary shells to the `nm` netlink client beside it.
+  async function nm(args) {
+    const b = await bin();
+    const nmClient = b.replace(/nomount$/, "nm");
+    return exec(`NM_BIN='${nmClient}' ${b} ${args}`);
+  }
+  function toast(msg, kind = "") {
+    const t = $("toast");
+    t.textContent = msg; t.className = "show " + kind;
+    clearTimeout(t._t); t._t = setTimeout(() => { t.className = ""; }, 2400);
+  }
+  // ---- status ----
+  async function refreshStatus() {
+    const list = await nm("vfs list");
+    const dot = $("dot");
+    if (list.errno !== 0) {
+      $("state").textContent = currentLang === "zh" ? "引擎离线" : "Engine offline";
+      $("substate").textContent = currentLang === "zh" ? "内核驱动无响应" : "kernel driver not responding";
+      dot.className = "dot bad";
+      $("mRules").textContent = "—";
+      return 0;
+    }
+    const ruleLines = list.stdout.split("\n").map(s => s.trim()).filter(Boolean);
+    const rules = ruleLines.length;
+    $("mRules").textContent = rules;
+    // RRO overlays are now hookless rules (virtual path under */overlay/ ending .apk),
+    // not overlayfs mounts — count them from the rule list.
+    const rro = ruleLines.filter(l => /\/overlay\/[^\s]*\.apk$/.test((l.split(" ->")[0] || "").trim())).length;
+    $("mOv").textContent = rro;
+    $("state").textContent = rules > 0
+      ? (currentLang === "zh" ? "运行中" : "Active")
+      : (currentLang === "zh" ? "空闲" : "Idle");
+    $("substate").textContent = rules > 0
+      ? (currentLang === "zh" ? "模块已注入" : "modules injected")
+      : (currentLang === "zh" ? "无规则 — 重新应用" : "no rules — re-apply");
+    dot.className = "dot " + (rules > 0 ? "ok" : "warn");
+    return rules;
+  }
+  // ---- detection posture (live root-view vs non-root app-view) ----
+  async function refreshDevice() {
+    const r = await exec('echo "$(getprop ro.product.marketname)|$(getprop ro.product.manufacturer)|$(getprop ro.product.model)|$(getprop ro.build.version.release)|$(getprop ro.build.version.sdk)|$(uname -r)"');
+    const p = (r.stdout || "").trim().split("|");
+    const name = (p[0] && p[0].trim()) ? p[0] : (((p[1] ? p[1] + " " : "")) + (p[2] || "—"));
+    $("dModel").textContent = name || "—";
+    $("dAndroid").textContent = p[3] || "—";
+    $("dApi").textContent = p[4] || "—";
+    $("dKernel").textContent = p[5] || "—";
+  }
+  async function refreshStealth() {
+    // root view (ksu.exec runs as root -> sees every mount)
+    const r = await exec(
+      'echo "sucompat=$(/data/adb/ksud feature list 2>/dev/null | grep su_compat | grep -q ENABLED && echo 1 || echo 0)"; ' +
+      'echo "root_ov=$(grep -c \'^nomount_ov \' /proc/self/mounts 2>/dev/null)"; ' +
+      'echo "root_nm=$(grep -c \'^nomount_\' /proc/self/mounts 2>/dev/null)"; ' +
+      'vb=$(grep -hoE \'verifiedbootstate[ ="]*(green|orange|yellow|red)\' /proc/cmdline /proc/bootconfig 2>/dev/null | grep -oE \'green|orange|yellow|red\'); ' +
+      'vbad=$(printf \'%s\\n\' "$vb" | grep -E \'orange|yellow|red\' | head -1); ' +
+      'echo "vbs=${vbad:-$(printf \'%s\\n\' "$vb" | grep green | head -1)}"; ' +
+      'echo "fp=$(getprop ro.build.fingerprint 2>/dev/null)"; ' +
+      'echo "se=$(getenforce 2>/dev/null)";'
+    );
+    const kv = {};
+    r.stdout.split("\n").forEach((l) => { const i = l.indexOf("="); if (i > 0) kv[l.slice(0, i)] = l.slice(i + 1).trim(); });
+    const sucompat = kv.sucompat === "1";
+    const rootOv = parseInt(kv.root_ov || "0", 10);
+    const rootNm = parseInt(kv.root_nm || "0", 10);
+    // app view: drop to a non-root uid and count nomount_* mounts. If the kernel
+    // mount-hide hook is active, non-root readers get them filtered out (-> 0).
+    // NB: grep -c exits 1 when the count is 0 (the hidden case!), so don't gate on
+    // errno — parse stdout as a number instead.
+    const appR = await exec('su 2000 -c "grep -c \'^nomount_\' /proc/self/mounts"');
+    const appOut = (appR.stdout || "").trim();
+    const appNm = /^\d+$/.test(appOut) ? parseInt(appOut, 10) : -1;
+    // Residual tells a scanner can still read even when the mount surface is clean.
+    const vbs = (kv.vbs || "").toLowerCase();
+    const fp = kv.fp || "";
+    const se = (kv.se || "").trim();
+    const vbTell = vbs !== "" && vbs !== "green";
+    const keyTell = /test-keys|userdebug|:eng\//.test(fp);
+    const seTell = se !== "" && se !== "Enforcing";
+    $("mSu").innerHTML = sucompat
+      ? (currentLang === "zh" ? 'sucompat <small>内核 · 无挂载</small>' : 'sucompat <small>kernel · mountless</small>')
+      : (currentLang === "zh" ? '外部 <small>不受管理</small>' : 'external <small>unmanaged</small>');
+    // posture rows (label | value | tag)
+    const rows = [
+      { k: currentLang === "zh" ? "文件注入" : "File injections", v: currentLang === "zh" ? "无挂载" : "mountless", t: "vfs" },
+      { k: currentLang === "zh" ? "Root · su" : "Root · su", v: sucompat ? (currentLang === "zh" ? "sucompat · 无挂载" : "sucompat · mountless") : (currentLang === "zh" ? "外部" : "external"), t: sucompat ? "vfs" : "off" },
+    ];
+    if (rootNm > 0) {
+      if (appNm === 0) rows.push({ k: currentLang === "zh" ? "实际挂载" : "Real mounts", v: currentLang === "zh" ? `root ${rootNm} · 应用 0 — 已隐藏` : `root ${rootNm} · apps 0 — hidden`, t: "vfs" });
+      else if (appNm > 0) rows.push({ k: currentLang === "zh" ? "实际挂载" : "Real mounts", v: currentLang === "zh" ? `应用可见 ${appNm} 项 — 暴露中` : `apps see ${appNm} — VISIBLE`, t: "warn" });
+      else rows.push({ k: currentLang === "zh" ? "实际挂载" : "Real mounts", v: currentLang === "zh" ? `root ${rootNm} · 应用视角不可用` : `root ${rootNm} · app-view n/a`, t: "off" });
+    } else {
+      rows.push({ k: currentLang === "zh" ? "实际挂载" : "Real mounts", v: currentLang === "zh" ? "无 — 纯无钩子" : "none — pure hookless", t: "vfs" });
+    }
+    rows.push({ k: currentLang === "zh" ? "验证启动" : "Verified boot", v: vbs ? (vbTell ? vbs + " · " + (currentLang === "zh" ? "特征" : "tell") : vbs) : "n/a", t: vbTell ? "warn" : (vbs ? "vfs" : "off") });
+    rows.push({ k: currentLang === "zh" ? "编译密钥" : "Build keys", v: keyTell ? (currentLang === "zh" ? "test-keys · 特征" : "test-keys · tell") : "release-keys", t: keyTell ? "warn" : "vfs" });
+    rows.push({ k: "SELinux", v: se || "n/a", t: seTell ? "warn" : (se ? "vfs" : "off") });
+    $("posture").innerHTML = rows.map((x) =>
+      `<div class="row"><span class="name">${x.k}</span><span class="tag ${x.t}">${esc(x.v)}</span></div>`
+    ).join("");
+    const shield = $("shield");
+    if (appNm > 0) {
+      shield.className = "shield warn";
+      $("stealthT").textContent = currentLang === "zh" ? "挂载对应用可见" : "Mount visible to apps";
+      $("stealthD").textContent = (currentLang === "zh" ? `uid 2000 可见 ${appNm} 个 nomount_* 挂载` : `uid 2000 sees ${appNm} nomount_* mount${appNm > 1 ? "s" : ""}`);
+    } else if (appNm === 0) {
+      shield.className = "shield clean";
+      if (rootNm === 0) {
+        $("stealthT").textContent = currentLang === "zh" ? "完全无挂载" : "Fully mountless";
+        $("stealthD").textContent = currentLang === "zh" ? "零挂载 — 无可隐藏" : "zero mounts — nothing to hide";
+      } else {
+        $("stealthT").textContent = currentLang === "zh" ? "干净 — 应用不可见" : "Clean — nothing visible to apps";
+        $("stealthD").textContent = (currentLang === "zh" ? `${rootNm} 个挂载对非 root 隐藏` : `${rootNm} mount${rootNm > 1 ? "s" : ""} hidden from non-root`);
+      }
+    } else {
+      shield.className = "shield clean";
+      $("stealthT").textContent = currentLang === "zh" ? "检测态势" : "Detection posture";
+      $("stealthD").textContent = currentLang === "zh" ? "应用视角检查不可用" : "app-view check unavailable";
+    }
+    // Residual tells override
+    const extraTells = [];
+    if (vbTell) extraTells.push("verified-boot=" + vbs);
+    if (keyTell) extraTells.push(currentLang === "zh" ? "编译密钥" : "build keys");
+    if (seTell) extraTells.push("SELinux " + se);
+    if (extraTells.length) {
+      shield.className = "shield warn";
+      if (appNm > 0) {
+        $("stealthNote").innerHTML += (currentLang === "zh" ? " 扫描器还可读取：" : " Also readable by a scanner: ") + extraTells.map(esc).join(", ") + ".";
+      } else {
+        $("stealthT").textContent = currentLang === "zh" ? "存在残留特征" : "Residual tells present";
+        $("stealthD").textContent = extraTells.join(" · ");
+      }
+    }
+  }
+  // ---- guard ----
+  async function refreshGuard() {
+    const c = (await exec("cat /data/adb/nomount/bootcount 2>/dev/null")).stdout.trim();
+    const disabled = (await exec("[ -f /data/adb/nomount/disabled ] && echo 1 || echo 0")).stdout.trim() === "1";
+    $("gchip").textContent = (currentLang === "zh" ? "启动 " : "boot ") + (c === "" ? "0" : c) + "/3";
+    if (disabled) {
+      $("gstate").textContent = currentLang === "zh" ? "已触发 — 已禁用" : "Tripped — disabled";
+      $("gdot").className = "dot bad"; $("rearm").style.display = "";
+    } else {
+      $("gstate").textContent = currentLang === "zh" ? "已就绪" : "Armed";
+      $("gdot").className = "dot ok"; $("rearm").style.display = "none";
+    }
+  }
+  // ---- theme ----
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem("nm_theme", t); } catch (e) {}
+  }
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+    applyTheme(cur === "light" ? "dark" : "light");
+  }
+  (function initTheme() {
+    let t = null;
+    try { t = localStorage.getItem("nm_theme"); } catch (e) {}
+    if (t !== "light" && t !== "dark") {
+      t = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+  })();
+  // Slide the capsule to whichever tab is active.
+  function movePill(animate) {
+    const pill = document.getElementById("navpill");
+    const btn = document.querySelector(".navb.on");
+    if (!pill || !btn) return;
+    if (animate === false) pill.classList.add("noanim");
+    pill.style.width = btn.offsetWidth + "px";
+    pill.style.height = btn.offsetHeight + "px";
+    pill.style.transform = "translateX(" + btn.offsetLeft + "px)";
+    pill.style.opacity = "1";
+    if (animate === false) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { pill.classList.remove("noanim"); });
+      });
+    }
+  }
+  window.addEventListener("resize", function () { movePill(false); });
+  // ---- tabs ----
+  function showTab(name, btn) {
+    document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("on"); });
+    var pane = document.getElementById("tab-" + name);
+    if (pane) pane.classList.add("on");
+    document.querySelectorAll(".navb").forEach(function (b) {
+      b.classList.remove("on"); b.setAttribute("aria-selected", "false");
+    });
+    if (btn) { btn.classList.add("on"); btn.setAttribute("aria-selected", "true"); }
+    movePill(true);
+    try { sessionStorage.setItem("nm_tab", name); } catch (e) {}
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  // ---- rules filter ----
+  let _rulesRaw = "";
+  var _ruleGroup = false;
+  function _ruleModule(line) {
+    const m = line.match(/\/data\/adb\/modules(?:_update)?\/([^/ ]+)/);
+    return m ? m[1] : "(other)";
+  }
+  function toggleRuleGroup(btn) {
+    _ruleGroup = !_ruleGroup;
+    btn.textContent = _ruleGroup
+      ? (currentLang === "zh" ? "扁平列表" : "Flat list")
+      : (currentLang === "zh" ? "按模块分组" : "Group by module");
+    btn.classList.toggle("primary", _ruleGroup);
+    filterRules();
+  }
+  function filterRules() {
+    const q = ($("rulefilter").value || "").trim().toLowerCase();
+    const lines = _rulesRaw.split("\n").filter(Boolean);
+    const keep = q ? lines.filter(function (l) { return l.toLowerCase().indexOf(q) !== -1; }) : lines;
+    if (!keep.length) {
+      $("ruleslist").textContent = currentLang === "zh" ? "(无匹配)" : "(no match)";
+    } else if (_ruleGroup) {
+      const groups = {};
+      keep.forEach(function (l) { (groups[_ruleModule(l)] = groups[_ruleModule(l)] || []).push(l); });
+      const names = Object.keys(groups).sort();
+      $("ruleslist").textContent = names.map(function (n) {
+        return "── " + n + " (" + groups[n].length + ") ──\n" + groups[n].join("\n");
+      }).join("\n\n");
+    } else {
+      $("ruleslist").textContent = keep.join("\n");
+    }
+    $("rulecount").style.display = "";
+    $("rulecount").textContent = q
+      ? keep.length + " / " + lines.length + (currentLang === "zh" ? " 条匹配" : " rules match")
+      : lines.length + (currentLang === "zh" ? " 条规则" : " rules");
+  }
+  // ---- health check ----
+  async function runDoctor(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = currentLang === "zh" ? "检查中…" : "Checking…"; }
+    const out = $("doctorout");
+    out.style.display = "";
+    out.textContent = currentLang === "zh" ? "运行中…" : "Running…";
+    const r = await nm("doctor");
+    const txt = ((r.stdout || "") + (r.stderr || "")).trim() || "(no output)";
+    out.textContent = txt;
+    const m = txt.match(/summary:\s*(\d+)\s*errors?,\s*(\d+)\s*warnings?/i);
+    const chip = $("dchip");
+    const nb = $("nb-tools");
+    if (m) {
+      const errs = parseInt(m[1], 10), warns = parseInt(m[2], 10);
+      chip.textContent = errs
+        ? errs + (currentLang === "zh" ? " 个错误" : " error" + (errs > 1 ? "s" : ""))
+        : warns
+        ? warns + (currentLang === "zh" ? " 个警告" : " warning" + (warns > 1 ? "s" : ""))
+        : (currentLang === "zh" ? "健康" : "healthy");
+      chip.className = "chip " + (errs ? "bad" : warns ? "warn" : "ok");
+      if (nb) nb.classList.toggle("alert", errs > 0);
+    } else {
+      chip.textContent = "—"; chip.className = "chip";
+    }
+    if (btn) { btn.disabled = false; btn.textContent = currentLang === "zh" ? "运行健康检查" : "Run health check"; }
+  }
+  // ---- runtime health ----
+  function _healthShow(txt) { const o = $("healthout"); o.style.display = ""; o.textContent = txt.trim() || "(no output)"; }
+  async function runSelfcheck(btn) {
+    const t = btn.textContent; btn.disabled = true; btn.textContent = "…";
+    const r = await nm("selfcheck");
+    const txt = ((r.stdout || "") + (r.stderr || ""));
+    _healthShow(txt);
+    const v = (txt.match(/verdict=(.+)/) || [])[1] || "";
+    const chip = $("hchip");
+    const bad = /INCONSISTENCY|DOWN|TRIPPED/.test(v);
+    chip.textContent = bad ? (currentLang === "zh" ? "需注意" : "attention") : (currentLang === "zh" ? "健康" : "healthy");
+    chip.className = "chip " + (bad ? "bad" : "ok");
+    btn.disabled = false; btn.textContent = t;
+  }
+  async function runSnapshot(btn) {
+    const t = btn.textContent; btn.disabled = true; btn.textContent = "…";
+    const r = await nm("snapshot");
+    _healthShow((r.stdout || "") + (r.stderr || ""));
+    toast(r.errno === 0
+      ? (currentLang === "zh" ? "快照已保存为基准" : "Snapshot saved as baseline")
+      : (currentLang === "zh" ? "快照失败" : "Snapshot failed"),
+      r.errno === 0 ? "ok" : "bad");
+    btn.disabled = false; btn.textContent = t;
+  }
+  async function runVerify(btn) {
+    const t = btn.textContent; btn.disabled = true; btn.textContent = "…";
+    const r = await nm("verify");
+    const txt = (r.stdout || "") + (r.stderr || "");
+    _healthShow(txt);
+    const drift = /DRIFT/.test(txt);
+    toast(drift
+      ? (currentLang === "zh" ? "与快照有偏差 — 详见输出" : "Drift from snapshot — see output")
+      : (currentLang === "zh" ? "与快照一致" : "Matches snapshot"),
+      drift ? "bad" : "ok");
+    btn.disabled = false; btn.textContent = t;
+  }
+  async function runExport(btn) {
+    const t = btn.textContent; btn.disabled = true; btn.textContent = "…";
+    const r = await nm("export");
+    const txt = (r.stdout || "") + (r.stderr || "");
+    _healthShow(txt);
+    const path = (txt.match(/exported to (\S+)/) || [])[1];
+    toast(path
+      ? (currentLang === "zh" ? "已导出到 " : "Exported to ") + path
+      : (currentLang === "zh" ? "导出失败" : "Export failed"),
+      path ? "ok" : "bad");
+    btn.disabled = false; btn.textContent = t;
+  }
+  // ---- last incident ----
+  async function refreshIncident() {
+    const r = await exec("cat /data/adb/nomount/incident.log 2>/dev/null");
+    const txt = (r.stdout || "").trim();
+    const card = $("incidentcard");
+    const nb = $("nb-tools");
+    if (!txt) { card.style.display = "none"; if (nb) nb.classList.remove("alert"); return; }
+    card.style.display = "";
+    $("incidentout").textContent = txt;
+    if (nb) nb.classList.add("alert");
+  }
+  async function clearIncident(btn) {
+    btn.disabled = true;
+    await exec("rm -f /data/adb/nomount/incident.log");
+    toast(currentLang === "zh" ? "事件记录已清除" : "Incident record cleared", "ok");
+    btn.disabled = false; refreshIncident();
+  }
+  // ---- modules ----
+  async function refreshModules() {
+    const box = $("modules");
+    const out = (await exec(
+      'for d in /data/adb/modules/*/; do [ -d "$d" ] || continue; ' +
+      'id=$(basename "$d"); ' +
+      '[ "$id" = meta-nomount ] && { echo "$id|suite"; continue; }; ' +
+      '[ "$id" = kernelnosu ] && { echo "$id|su"; continue; }; ' +
+      'st=on; { [ -f "$d/disable" ] || [ -f "$d/remove" ] || [ -f "$d/skip_mount" ]; } && st=off; ' +
+      'roots=""; for pd in "$d"*/; do [ -d "$pd" ] || continue; [ -L "${pd%/}" ] && continue; n=$(basename "$pd"); ' +
+      'case "$n" in data|mnt|dev|proc|sys|cache|metadata|config|storage|sdcard|apex|tmp' +
+      '|debug_ramdisk|linkerconfig|postinstall|second_stage_resources|bin|sbin) continue;; ' +
+      'my_*) continue;; esac; [ -d "/$n" ] || continue; roots="$roots $pd"; done; ' +
+      '[ -z "$roots" ] && [ "$st" = on ] && st=nopart; ' +
+      'mech=""; cnt=0; ' +
+      'if [ "$st" = on ]; then ov=0; vf=0; ' +
+      'cnt=$(find $roots -type f 2>/dev/null | wc -l); ' +
+      '[ -n "$(find $roots -path "*/overlay/*.apk" -print -quit 2>/dev/null)" ] && ov=1; ' +
+      '[ -n "$(find $roots -type f ! -path "*/overlay/*" -print -quit 2>/dev/null)" ] && vf=1; ' +
+      'if [ "$ov" = 1 ] && [ "$vf" = 1 ]; then mech="vfs+overlay"; ' +
+      'elif [ "$ov" = 1 ]; then mech="overlay"; elif [ "$vf" = 1 ]; then mech="vfs"; fi; fi; ' +
+      'mnt=$(grep -cE "/data/adb/modules/$id(/|$)" /proc/self/mountinfo 2>/dev/null); ' +
+      'echo "$id|$st|$mech|$cnt|$mnt"; done'
+    )).stdout.trim();
+    if (!out) {
+      box.innerHTML = '<div class="empty">' + (currentLang === "zh" ? "未安装模块。" : "No modules installed.") + '</div>';
+      $("modcount").textContent = "0"; $("mMod").textContent = "0"; return;
+    }
+    const rows = out.split("\n").filter(Boolean);
+    $("modcount").textContent = rows.length;
+    let served = 0;
+    const labelMap = {
+      suite: currentLang === "zh" ? "套件本体" : "suite",
+      su: currentLang === "zh" ? "su 后端" : "su backend",
+      "script only": currentLang === "zh" ? "仅脚本" : "script only",
+      skipped: currentLang === "zh" ? "已跳过" : "skipped",
+      overlay: currentLang === "zh" ? "覆盖层" : "overlay",
+      "vfs+overlay": currentLang === "zh" ? "vfs + 覆盖层" : "vfs + overlay",
+      vfs: "vfs",
+      "0 files": currentLang === "zh" ? "0 个文件" : "0 files"
+    };
+    box.innerHTML = rows.map((l) => {
+      const p = l.split("|");
+      const id = p[0];
+      const cnt = parseInt(p[3] || "0", 10);
+      const mnt = parseInt(p[4] || "0", 10);
+      let label, cls, showCnt = false, tip = "";
+      if (p[1] === "suite") { label = labelMap.suite; cls = "suite"; tip = currentLang === "zh" ? "NoMount Suite 本体模块。" : "The NoMount Suite metamodule itself."; }
+      else if (p[1] === "su") { label = labelMap.su; cls = "su"; served++; tip = currentLang === "zh" ? "提供 su；不由 Suite 注入。" : "Provides su; not injected by the Suite."; }
+      else {
+        const st = p[1], mech = p[2];
+        if (st === "nopart") { label = labelMap["script only"]; cls = "off"; tip = currentLang === "zh" ? "不含分区目录（脚本、zygisk、二进制等）—— Suite 无需注入。" : "Ships no partition directory at all (scripts, zygisk, binaries) — nothing for the Suite to inject."; }
+        else if (st === "off") { label = labelMap.skipped; cls = "off"; tip = currentLang === "zh" ? "存在 disable/remove/skip_mount 标记，Suite 将跳过。" : "Has a disable / remove / skip_mount marker, so the Suite leaves it alone."; }
+        else if (mech === "overlay") { label = labelMap.overlay; cls = "ov"; served++; showCnt = true; }
+        else if (mech === "vfs+overlay") { label = labelMap["vfs+overlay"]; cls = "ov"; served++; showCnt = true; }
+        else if (mech === "vfs") { label = labelMap.vfs; cls = "vfs"; served++; showCnt = true; }
+        else { label = labelMap["0 files"]; cls = "off"; tip = currentLang === "zh" ? "有分区目录但内部无文件，不产生任何注入。" : "Has a partition directory but no files inside it, so it contributes nothing."; }
+      }
+      const files = (showCnt && cnt > 0)
+        ? `<span class="files">${cnt} ` + (currentLang === "zh" ? "个文件" : "file" + (cnt > 1 ? "s" : "")) + `</span>`
+        : `<span class="files"></span>`;
+      const vis = mnt > 0
+        ? `<span class="tag warn" title="` + (currentLang === "zh" ? `此模块有 ${mnt} 个自有挂载，扫描器可见` : `This module has ${mnt} mount(s) of its own — visible to a scanner`) + `">${mnt} ` + (currentLang === "zh" ? "个挂载" : "mount" + (mnt > 1 ? "s" : "")) + `</span>`
+        : `<span class="tag ok" title="` + (currentLang === "zh" ? "挂载表中无此模块的任何挂载" : "Nothing this module owns appears in the mount table") + `">` + (currentLang === "zh" ? "无挂载" : "mountless") + `</span>`;
+      return `<div class="mrow"><div class="mname">${esc(id)}</div>` +
+             `<div class="mmeta">${files}${vis}<span class="tag ${cls}"${tip ? ` title="${esc(tip)}"` : ""}>${label}</span></div></div>`;
+    }).join("");
+    $("mMod").textContent = served;
+  }
+  // ---- rule summary ----
+  async function refreshRuleSummary() {
+    const r = await nm("vfs list");
+    const lines = (r.errno === 0 ? r.stdout : "").split("\n").map(x => x.trim()).filter(Boolean);
+    const rro = lines.filter(l => /\/overlay\/[^\s]*\.apk/.test(l)).length;
+    const vfs = lines.length - rro;
+    $("rulechip").textContent = lines.length;
+    $("rulebreak").textContent = lines.length
+      ? `${vfs} ` + (currentLang === "zh" ? `条文件重定向 · ${rro} 个 RRO 覆盖 APK — 全部无钩子、无挂载` : `file redirect${vfs === 1 ? "" : "s"} · ${rro} RRO overlay APK${rro === 1 ? "" : "s"} — all hookless, no mounts`)
+      : (currentLang === "zh" ? "无活跃规则。" : "No rules active.");
+    _paintRuleModuleBar(lines);
+  }
+  // ---- rules-by-module bar ----
+  const _RM_PALETTE = ["#57e6c3", "#7c9cff", "#c792ea", "#fbbf24", "#f8717a", "#4fd1e0", "#9ccc65"];
+  function _paintRuleModuleBar(lines) {
+    const box = $("ruleModuleBar"); if (!box) return;
+    if (!lines.length) { box.style.display = "none"; box.innerHTML = ""; return; }
+    const counts = {};
+    lines.forEach((l) => { const m = _ruleModule(l); counts[m] = (counts[m] || 0) + 1; });
+    const entries = Object.keys(counts).map(k => [k, counts[k]]).sort((a, b) => b[1] - a[1]);
+    const total = lines.length;
+    const MAX = 5;
+    const shown = entries.slice(0, MAX);
+    const rest = entries.slice(MAX);
+    if (rest.length) shown.push(["other", rest.reduce((a, e) => a + e[1], 0), true]);
+    const col = (e, i) => e[2] ? "var(--faint)" : _RM_PALETTE[i % _RM_PALETTE.length];
+    const seg = shown.map((e, i) =>
+      `<span style="width:${(e[1] / total * 100).toFixed(2)}%;background:${col(e, i)}" title="${esc(e[0])}: ${e[1]}"></span>`
+    ).join("");
+    const otherLabel = currentLang === "zh" ? `其他（${rest.length} 个模块）` : `other (${rest.length} module${rest.length > 1 ? "s" : ""})`;
+    const legend = shown.map((e, i) => {
+      const nm = e[2] ? otherLabel : e[0];
+      return `<span class="rmleg"><span class="rmsw" style="background:${col(e, i)}"></span>` +
+             `<span class="rmname" title="${esc(nm)}">${esc(nm)}</span> <b>${e[1]}</b></span>`;
+    }).join("");
+    box.style.display = "";
+    box.innerHTML = `<div class="rmbar">${seg}</div><div class="rmlegend">${legend}</div>`;
+  }
+  // ---- VFS ----
+  var _vfsFiles = [], _ovFiles = [];
+  async function refreshVfs() {
+    const box = $("vfsdirs");
+    const list = await nm("vfs list");
+    const lines = (list.errno === 0 ? list.stdout : "").split("\n").map(x => x.trim()).filter(Boolean);
+    const dirs = {};
+    _vfsFiles = [];
+    for (const l of lines) {
+      const raw = (l.split(" ->")[0] || "").trim();
+      if (!raw || /\/overlay\/[^\s]*\.apk$/.test(raw)) continue;
+      const vp = raw.replace(/\s*\(virtual dir\)$/, "");
+      _vfsFiles.push(vp);
+      const dir = vp.replace(/\/[^/]*$/, "") || "/";
+      dirs[dir] = (dirs[dir] || 0) + 1;
+    }
+    _vfsFiles.sort();
+    const keys = Object.keys(dirs).sort((a, b) => dirs[b] - dirs[a] || a.localeCompare(b));
+    const total = keys.reduce((a, k) => a + dirs[k], 0);
+    $("vfscount").textContent = total;
+    if (!keys.length) { box.innerHTML = '<div class="empty">' + (currentLang === "zh" ? "无文件重定向。" : "No file redirects.") + '</div>'; }
+    else box.innerHTML = keys.map((d) =>
+      `<div class="row"><span class="name mono">${esc(d)}</span>` +
+      `<span class="sub" style="font-size:11px;color:var(--muted);margin-right:8px">${dirs[d]} ` + (currentLang === "zh" ? "个文件" : "file" + (dirs[d] > 1 ? "s" : "")) + `</span>` +
+      `<span class="tag vfs">` + (currentLang === "zh" ? "无钩子" : "hookless") + `</span></div>`
+    ).join("");
+    if ($("vfsfull").style.display !== "none") renderVfsFull();
+  }
+  function _fileRows(paths, q) {
+    const f = q ? paths.filter(p => p.toLowerCase().indexOf(q) !== -1) : paths;
+    if (!f.length) return '<div class="empty">' + (currentLang === "zh" ? "(无匹配)" : "(no match)") + '</div>';
+    return f.map(p => {
+      const base = p.replace(/^.*\//, "");
+      return `<div class="row"><span class="name mono" title="${esc(p)}">${esc(base)}</span>` +
+             `<span class="tag vfs">` + (currentLang === "zh" ? "无钩子" : "hookless") + `</span></div>`;
+    }).join("");
+  }
+  function renderVfsFull() {
+    $("vfsfull").innerHTML = _fileRows(_vfsFiles, ($("vfsfilter").value || "").trim().toLowerCase());
+  }
+  function toggleModules(h) {
+    const on = h.classList.toggle("open");
+    $("modules").style.display = on ? "" : "none";
+  }
+  function toggleVfsFull(h) {
+    const on = h.classList.toggle("open");
+    $("vfsdirs").style.display = on ? "" : "none";
+    $("vfsfull").style.display = on ? "" : "none";
+    $("vfsfilterbar").style.display = on ? "" : "none";
+    if (on) renderVfsFull();
+  }
+  // ---- overlays ----
+  async function refreshOverlays() {
+    const box = $("overlays");
+    const list = await nm("vfs list");
+    const lines = (list.errno === 0 ? list.stdout : "").split("\n").map(s => s.trim()).filter(Boolean);
+    const dirs = {};
+    _ovFiles = [];
+    for (const l of lines) {
+      const vp = (l.split(" ->")[0] || "").trim();
+      if (/\/overlay\/[^\s]*\.apk$/.test(vp)) {
+        _ovFiles.push(vp);
+        const dir = vp.replace(/\/[^/]*$/, "");
+        dirs[dir] = (dirs[dir] || 0) + 1;
+      }
+    }
+    _ovFiles.sort();
+    const keys = Object.keys(dirs).sort();
+    const total = keys.reduce((a, k) => a + dirs[k], 0);
+    $("ovcount").textContent = total;
+    if (!keys.length) { box.innerHTML = '<div class="empty">' + (currentLang === "zh" ? "无 RRO 覆盖层。" : "No RRO overlays.") + '</div>'; }
+    else box.innerHTML = keys.map((d) =>
+      `<div class="row"><span class="name mono">${esc(d)}</span>` +
+      `<span class="sub" style="font-size:11px;color:var(--muted);margin-right:8px">${dirs[d]} apk${dirs[d] > 1 ? "s" : ""}</span>` +
+      `<span class="tag ov">` + (currentLang === "zh" ? "无钩子" : "hookless") + `</span></div>`
+    ).join("");
+    if ($("overlaysfull").style.display !== "none") renderOvFull();
+  }
+  function renderOvFull() {
+    $("overlaysfull").innerHTML = _fileRows(_ovFiles, ($("ovfilter").value || "").trim().toLowerCase());
+  }
+  function toggleOvFull(h) {
+    const on = h.classList.toggle("open");
+    $("overlays").style.display = on ? "" : "none";
+    $("overlaysfull").style.display = on ? "" : "none";
+    $("ovfilterbar").style.display = on ? "" : "none";
+    if (on) renderOvFull();
+  }
+  // ---- rules ----
+  let rulesShown = false;
+  async function loadRules() {
+    const r = await nm("vfs list");
+    _rulesRaw = (r.errno === 0 && r.stdout.trim()) ? r.stdout.trim() : "";
+    if (!_rulesRaw) {
+      $("ruleslist").textContent = currentLang === "zh" ? "无规则" : "no rules";
+      $("rulecount").style.display = "none";
+      return;
+    }
+    filterRules();
+  }
+  async function toggleRules(h) {
+    rulesShown = h.classList.toggle("open");
+    $("ruleslist").style.display = rulesShown ? "" : "none";
+    $("rulefilterbar").style.display = rulesShown ? "" : "none";
+    $("rulecount").style.display = rulesShown ? "" : "none";
+    if (rulesShown) {
+      $("ruleslist").textContent = currentLang === "zh" ? "加载中…" : "Loading…";
+      loadRules();
+    }
+  }
+  // ---- actions ----
+  async function reloadRules(btn) {
+    const svg = btn.querySelector("svg");
+    btn.disabled = true; if (svg) svg.classList.add("spin");
+    const r = await nm("reload");
+    if (r.errno === 0) toast(r.stdout.replace(/^nomount reload:\s*/, "").trim() || (currentLang === "zh" ? "已重新加载" : "Reloaded"), "ok");
+    else toast((currentLang === "zh" ? "失败：" : "Failed: ") + (r.stderr || "error"), "bad");
+    if (svg) svg.classList.remove("spin"); btn.disabled = false;
+    refreshAll();
+  }
+  async function clearRules(btn) {
+    btn.disabled = true;
+    const r = await nm("vfs clear");
+    if (r.errno === 0) toast(currentLang === "zh" ? "规则已清空" : "Rules cleared", "ok");
+    else toast((currentLang === "zh" ? "失败：" : "Failed: ") + (r.stderr || "error"), "bad");
+    btn.disabled = false; refreshStatus(); if (rulesShown) loadRules();
+  }
+  async function rearm(btn) {
+    btn.disabled = true;
+    await exec("rm -f /data/adb/nomount/disabled /data/adb/nomount/bootcount /data/adb/nomount/incident.log");
+    toast(currentLang === "zh" ? "保护已重置 — 重启后重新启用" : "Guard re-armed — reboot to re-enable", "ok");
+    btn.disabled = false; refreshGuard(); refreshIncident();
+  }
+  async function uidOp(op, btn) {
+    const v = $("uid").value.trim();
+    if (!v) { toast(currentLang === "zh" ? "请输入包名或 UID" : "Enter a package name or UID", "bad"); return; }
+    if (/[\s'"`;|&$<>()]/.test(v)) { toast(currentLang === "zh" ? "名称包含无效字符" : "Invalid characters in name", "bad"); return; }
+    btn.disabled = true;
+    const r = await nm(`uid ${op} ${v}`);
+    if (r.errno === 0) {
+      toast((r.stdout || "").replace(/^ok:\s*/, "").trim() || `${v} ` + (op === "block" ? (currentLang === "zh" ? "已隐藏" : "hidden") : (currentLang === "zh" ? "已取消隐藏" : "unhidden")), "ok");
+      if (op === "block") $("uid").value = "";
+      refreshBlocked();
+    } else {
+      toast((currentLang === "zh" ? "失败：" : "Failed: ") + (r.stderr || "error"), "bad");
+    }
+    btn.disabled = false;
+  }
+  // ---- blocked apps ----
+  async function refreshBlocked() {
+    const box = $("blocked");
+    const r = await nm("uid list");
+    const lines = (r.stdout || "").split("\n").map(s => s.trim()).filter(Boolean);
+    const none = !lines.length || lines[0] === "no blocked apps";
+    const uc = $("uidchip"); if (uc) uc.textContent = none ? "0" : String(lines.length);
+    if (none) {
+      box.innerHTML = `<div class="blk-none">` + (currentLang === "zh" ? "无按 UID 隐藏 — 未隐藏任何应用。" : "No per-UID hiding active — no apps hidden.") + `</div>`;
+      return;
+    }
+    const stateMap = {
+      "not installed": currentLang === "zh" ? "未安装" : "not installed",
+      "not applied": currentLang === "zh" ? "未应用" : "not applied",
+      "not saved": currentLang === "zh" ? "未保存" : "not saved"
+    };
+    const rows = lines.map(l => {
+      const [name, stateRaw] = l.split("\t");
+      const s = (stateRaw || "").trim();
+      let cls = "live";
+      if (/not installed/.test(s)) cls = "gone";
+      else if (/not applied/.test(s)) cls = "pending";
+      else if (/not saved/.test(s)) cls = "drift";
+      const uidM = s.match(/uid (\d+)/);
+      const target = /^uid \d+$/.test(name) ? (uidM ? uidM[1] : name) : name;
+      const t = target.replace(/'/g, "");
+      const displayS = stateMap[s] || s;
+      const save = cls === "drift"
+        ? `<button class="bx save" title="` + (currentLang === "zh" ? "保存以跨重启生效" : "Save so it survives reboot") + `" onclick="saveOne('${t}',this)">💾</button>` : "";
+      return `<div class="blk ${cls}">
+        <span class="dot"></span>
+        <span class="bn">${name}</span>
+        <span class="bs">${displayS}</span>
+        ${save}
+        <button class="bx" title="` + (currentLang === "zh" ? "取消隐藏" : "Unhide") + `" onclick="unblockOne('${t}',this)">✕</button>
+      </div>`;
+    }).join("");
+    const n = lines.length;
+    box.innerHTML = `<div class="blk-head">` + (currentLang === "zh" ? `已隐藏应用 · ${n}` : `Hidden apps · ${n}`) + `</div>` + rows;
+  }
+  // ---- package list ----
+  var _pkgsLoaded = false, _pkgs = [], _pkgSel = -1;
+  async function loadPkgList() {
+    if (_pkgsLoaded) return;
+    const r = await exec("pm list packages -3 -U 2>/dev/null | sort");
+    _pkgs = (r.stdout || "").split("\n").map(function (l) {
+      const m = l.match(/^package:(\S+)\s+uid:(\d+)/);
+      return m ? { name: m[1], uid: m[2] } : null;
+    }).filter(Boolean);
+    if (_pkgs.length) _pkgsLoaded = true;
+  }
+  function pkgHide() { const d = $("pkgdd"); d.classList.remove("show"); d.innerHTML = ""; _pkgSel = -1; }
+  function pkgBlur() { setTimeout(pkgHide, 130); }
+  function pkgFilter() {
+    const q = ($("uid").value || "").trim().toLowerCase();
+    const d = $("pkgdd"); _pkgSel = -1;
+    if (!_pkgs.length) { pkgHide(); return; }
+    const matches = q
+      ? _pkgs.filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1 || p.uid.indexOf(q) !== -1; })
+      : _pkgs;
+    if (!matches.length) { d.innerHTML = '<div class="none">' + (currentLang === "zh" ? "无匹配的已安装应用" : "No matching installed app") + '</div>'; d.classList.add("show"); return; }
+    const head = '<div class="pkghead">' + matches.length + (currentLang === "zh" ? ' 个应用' : ' app' + (matches.length > 1 ? 's' : '')) + (q ? (currentLang === "zh" ? ' 匹配' : ' match') : '') + ' · ' + (currentLang === "zh" ? '输入筛选' : 'type to filter') + '</div>';
+    d.innerHTML = head + matches.map(function (p) {
+      const nm = p.name.replace(/'/g, "");
+      return '<div class="opt" data-nm="' + nm + '" onmousedown="pkgPick(this)">' +
+             '<span class="pn">' + p.name + '</span><span class="pu">uid ' + p.uid + '</span></div>';
+    }).join("");
+    d.classList.add("show");
+  }
+  function pkgPick(el) { $("uid").value = el.getAttribute("data-nm"); pkgHide(); }
+  function pkgKey(e) {
+    const d = $("pkgdd"); if (!d.classList.contains("show")) return;
+    const opts = d.querySelectorAll(".opt");
+    if (e.key === "Escape") { pkgHide(); return; }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!opts.length) return;
+      _pkgSel = (_pkgSel + (e.key === "ArrowDown" ? 1 : -1) + opts.length) % opts.length;
+      opts.forEach(function (o, i) { o.classList.toggle("sel", i === _pkgSel); });
+      opts[_pkgSel].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && _pkgSel >= 0 && opts[_pkgSel]) {
+      e.preventDefault(); pkgPick(opts[_pkgSel]);
+    }
+  }
+  async function unblockOne(target, btn) {
+    btn.disabled = true;
+    const r = await nm(`uid unblock ${target}`);
+    if (r.errno === 0) toast(`${target} ` + (currentLang === "zh" ? "已取消隐藏" : "unhidden"), "ok");
+    else toast((currentLang === "zh" ? "失败：" : "Failed: ") + (r.stderr || "error"), "bad");
+    refreshBlocked();
+  }
+  async function saveOne(target, btn) {
+    btn.disabled = true;
+    const r = await nm(`uid block ${target}`);
+    if (r.errno === 0) toast(`${target} ` + (currentLang === "zh" ? "已保存" : "saved"), "ok");
+    else toast((currentLang === "zh" ? "失败：" : "Failed: ") + (r.stderr || "error"), "bad");
+    refreshBlocked();
+  }
+  // ---- spoofing ----
+  async function refreshSpoof() {
+    const conf = (await exec("cat /data/adb/nomount/spoof.conf 2>/dev/null")).stdout;
+    const get = (k, d) => {
+      const m = conf.match(new RegExp("^" + k + "=(.*)$", "m"));
+      if (!m) return d;
+      let v = m[1].trim();
+      if (v.length >= 2 && v[0] === "'" && v[v.length - 1] === "'") v = v.slice(1, -1).replace(/'\\''/g, "'");
+      return v;
+    };
+    const vb = get("vbmeta_digest", "auto");
+    $("spVb").checked = vb !== "off";
+    $("spProps").checked = get("spoof_props", "0") === "1";
+    $("spUname").checked = get("spoof_uname", "0") === "1";
+    $("spUnameTail").value = get("uname_tail", "");
+    $("spUnameDate").value = get("uname_date", "");
+    const dig = (await exec("getprop ro.boot.vbmeta.digest")).stdout.trim();
+    $("spVbVal").textContent = dig
+      ? dig.slice(0, 16) + "… (" + dig.length + " hex)"
+      : (currentLang === "zh" ? "空 — 下次启动时设置" : "empty — set at next boot");
+    const chk = $("spVbCheck");
+    chk.textContent = currentLang === "zh" ? "正在对照 AVB 链校验…" : "checking against the AVB chain…";
+    chk.style.color = "var(--muted)";
+    const v = (await exec("sh /data/adb/modules/meta-nomount/spoof.sh verify 2>/dev/null")).stdout.trim();
+    const st = v.split(" ")[0];
+    if (st === "match") {
+      chk.textContent = currentLang === "zh" ? "✓ 与引导加载程序一致 — 无需修复" : "✓ matches the bootloader — nothing to fix";
+      chk.style.color = "var(--ok)";
+    } else if (st === "mismatch") {
+      chk.textContent = currentLang === "zh" ? "⚠ 与真实链不一致 — 立即应用将修正" : "⚠ differs from the real chain — Apply now will correct it";
+      chk.style.color = "var(--warn)";
+    } else if (st === "absent") {
+      chk.textContent = currentLang === "zh" ? "未设置 — 立即应用（或重启）将设置" : "not set — Apply now (or a reboot) will set it";
+      chk.style.color = "var(--muted)";
+    } else {
+      chk.textContent = currentLang === "zh" ? "此设备无法计算摘要" : "could not compute the digest on this device";
+      chk.style.color = "var(--muted)";
+    }
+    const ps = (await exec("sh /data/adb/modules/meta-nomount/spoof.sh props 2>/dev/null")).stdout.trim();
+    const pv = $("spPropsVal");
+    if (ps === "clean") {
+      pv.textContent = currentLang === "zh" ? "✓ 所有属性已干净 — 无需修复" : "✓ all props already clean — nothing to fix";
+      pv.style.color = "var(--ok)";
+    } else if (ps.indexOf("dirty") === 0) {
+      pv.textContent = "⚠ " + (ps.split(" ")[1] || "?") + (currentLang === "zh" ? " 个属性不同 — 应用以修复" : " prop(s) differ — Apply to fix");
+      pv.style.color = "var(--warn)";
+    } else {
+      pv.textContent = $("spProps").checked ? (currentLang === "zh" ? "开启" : "on") : (currentLang === "zh" ? "关闭" : "off");
+      pv.style.color = "var(--muted)";
+    }
+    const ur = (await exec("uname -r")).stdout.trim();
+    const uv = (await exec("uname -v")).stdout.trim();
+    const curDate = (uv.match(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun) .*$/) || [uv])[0];
+    $("spUnameCur").textContent = (currentLang === "zh" ? "当前 uname：" : "current uname: ") + ur;
+    $("spDateCur").textContent  = (currentLang === "zh" ? "当前日期：" : "current date: ")  + curDate;
+    const uw = (await exec(`[ -x "${(await bin()).replace(/nomount$/, "nm")}" ] && echo 1 || echo 0`)).stdout.trim();
+    const uvl = $("spUnameVal");
+    if (uw !== "1") { uvl.textContent = currentLang === "zh" ? "需要内核支持" : "needs kernel support"; }
+    else if (!$("spUname").checked) { uvl.textContent = currentLang === "zh" ? "关闭" : "off"; }
+    else { uvl.textContent = (get("uname_tail", "") || get("uname_date", "")) ? (currentLang === "zh" ? "已激活" : "active") : (currentLang === "zh" ? "开启 — 保持当前值" : "on — keeping current"); }
+    const anyOn = $("spVb").checked || $("spProps").checked || $("spUname").checked;
+    const chip = $("spchip");
+    if (!anyOn) { chip.textContent = currentLang === "zh" ? "关闭" : "off"; chip.className = "chip"; }
+    else { chip.textContent = currentLang === "zh" ? "开启" : "on"; chip.className = "chip ok"; }
+  }
+  function shq(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'"; }
+  async function setConf(key, val) {
+    await exec(
+      "f=/data/adb/nomount/spoof.conf; [ -f \"$f\" ] || : > \"$f\"; " +
+      "grep -v '^" + key + "=' \"$f\" > \"$f.tmp\" 2>/dev/null; mv \"$f.tmp\" \"$f\"; " +
+      "printf '%s=%s\\n' " + shq(key) + " " + shq("'" + String(val).replace(/'/g, "'\\''") + "'") + " >> \"$f\""
+    );
+  }
+  async function toggleSpoof(key, el) {
+    await setConf(key, el.checked ? "auto" : "off");
+    toast(el.checked
+      ? (currentLang === "zh" ? "已启用 — 重启或立即应用生效" : "Enabled — reboot or Apply now")
+      : (currentLang === "zh" ? "下次启动时关闭" : "Off at next boot"), "ok");
+  }
+  async function applySpoof(btn) {
+    btn.disabled = true; const t = btn.textContent; btn.textContent = currentLang === "zh" ? "应用中…" : "Applying…";
+    await exec("sh /data/adb/modules/meta-nomount/spoof.sh 2>&1");
+    toast(currentLang === "zh" ? "已应用" : "Applied", "ok");
+    btn.textContent = t; btn.disabled = false;
+    refreshSpoof();
+  }
+  async function toggleSpoofBool(key, el) {
+    await setConf(key, el.checked ? "1" : "0");
+    toast(el.checked
+      ? (currentLang === "zh" ? "已启用 — 重启或立即应用生效" : "Enabled — reboot or Apply now")
+      : (currentLang === "zh" ? "下次启动时关闭" : "Off at next boot"), "ok");
+  }
+  function toggleUnameAdv(btn) {
+    const a = $("spUnameAdv"), show = a.style.display === "none";
+    a.style.display = show ? "block" : "none";
+    btn.textContent = show
+      ? (currentLang === "zh" ? "隐藏字符串" : "Hide strings")
+      : (currentLang === "zh" ? "编辑字符串" : "Edit strings");
+  }
+  async function fillUnameRomDate() {
+    const d = (await exec("getprop ro.build.date")).stdout.trim();
+    if (d) $("spUnameDate").value = d;
+  }
+  async function saveUname(btn) {
+    await setConf("uname_tail", $("spUnameTail").value.trim());
+    await setConf("uname_date", $("spUnameDate").value.trim());
+    toast(currentLang === "zh" ? "uname 字符串已保存 — 重启或立即应用生效" : "uname strings saved — reboot or Apply now", "ok");
+    refreshSpoof();
+  }
+  async function resetUname(btn) {
+    const r = (await exec("sh /data/adb/modules/meta-nomount/spoof.sh reset-uname 2>/dev/null")).stdout.trim();
+    if (r === "no-baseline") {
+      toast(currentLang === "zh" ? "请先重启一次以捕获原厂 uname，之后重置立即可用" : "Reboot once so the stock uname is captured, then Reset is instant", "bad");
+      return;
+    }
+    $("spUnameTail").value = ""; $("spUnameDate").value = "";
+    toast(currentLang === "zh" ? "已恢复内核默认值" : "Reset to kernel default", "ok");
+    refreshSpoof();
+  }
+  // ---- Tools accordion ----
+  function toggleCard(h) {
+    const card = h.closest(".card");
+    const on = card.classList.toggle("collapsed");
+    h.classList.toggle("open", !on);
+    if (card.id) { try { localStorage.setItem("nmcol:" + card.id, on ? "1" : "0"); } catch (e) {} }
+  }
+  function applyCardState() {
+    document.querySelectorAll("#tab-tools .card[id]").forEach(card => {
+      let v = null;
+      try { v = localStorage.getItem("nmcol:" + card.id); } catch (e) {}
+      const collapsed = v !== "0";
+      card.classList.toggle("collapsed", collapsed);
+      const h = card.querySelector(".card-h");
+      if (h) h.classList.toggle("open", !collapsed);
+    });
+  }
+  async function refreshAll(btn) {
+    const ic = btn && btn.querySelector("svg");
+    if (ic) ic.classList.add("spin");
+    const v = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "");
+    $("ver").textContent = v || "v?";
+    $("footver").textContent = v ? ("Suite " + v) : "";
+    await Promise.all([
+      refreshStatus(), refreshDevice(), refreshStealth(), refreshGuard(),
+      refreshModules(), refreshOverlays(), refreshVfs(), refreshRuleSummary(),
+      refreshIncident(), refreshSpoof(), refreshBlocked()
+    ]);
+    if (rulesShown) loadRules();
+    loadPkgList();
+    if (ic) ic.classList.remove("spin");
+  }
+  // ---- Cloak ----
+  const PH_CONF = "/data/adb/nomount/pathhide.conf";
+  const PH_EXCLUDE = "/data/adb/nomount/.cloak_exclude";
+  let PH = new Map(); let phShown = false; let EXCLUDE = new Set();
+  function phClean(s) { return (s || "").replace(/[^A-Za-z0-9._:/\-]/g, "").trim(); }
+  function saveExclude() {
+    if (!EXCLUDE.size) { exec(": > " + PH_EXCLUDE); return; }
+    let cmd = "{ ";
+    EXCLUDE.forEach(function (p) { cmd += "echo " + p + ";"; });
+    cmd += " } > " + PH_EXCLUDE;
+    exec(cmd);
+  }
+  async function loadCloak() {
+    const ok = (await exec("[ -e /proc/pathhide ] && echo y")).stdout.indexOf("y") >= 0;
+    document.getElementById("phApply").disabled = !ok;
+    document.getElementById("phScan").disabled = !ok;
+    if (!ok) document.getElementById("phchip").textContent = currentLang === "zh" ? "无内核" : "no kernel";
+    const r = await exec("cat " + PH_CONF + " 2>/dev/null");
+    r.stdout.split("\n").map(function (l) { return l.replace(/\r/g, "").trim(); })
+      .filter(function (l) { return l && l[0] !== "#"; })
+      .forEach(function (rule) { PH.set(rule, { hidden: true, xposed: false, hma: false, label: rule }); });
+    const c = await exec("sh /data/adb/modules/meta-nomount/scan.sh --cached 2>/dev/null");
+    let mode = null;
+    c.stdout.split("\n").map(function (s) { return s.trim(); }).forEach(function (l) {
+      if (l === "#XPOSED") { mode = "xposed"; return; }
+      if (l === "#HMA") { mode = "hma"; return; }
+      if (!l || mode === "hma") return;
+      const e = PH.get(l) || { hidden: false, label: l };
+      if (mode === "xposed") e.xposed = true;
+      if (mode === "hma") e.hma = true;
+      e.label = l; PH.set(l, e);
+    });
+    const ex = await exec("cat " + PH_EXCLUDE + " 2>/dev/null");
+    ex.stdout.split("\n").map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (p) {
+      EXCLUDE.add(p);
+      const e = PH.get(p);
+      if (e) { e.hidden = false; PH.set(p, e); }
+    });
+    renderCloak();
+  }
+  async function scanCloak(btn) {
+    const o = btn.textContent; btn.disabled = true; btn.textContent = currentLang === "zh" ? "扫描中…" : "Scanning…";
+    toast(currentLang === "zh" ? "正在扫描 Xposed 模块与隐藏黑名单…" : "Scanning Xposed modules & blacklist…");
+    const r = await exec("sh /data/adb/modules/meta-nomount/scan.sh 2>/dev/null");
+    let mode = null, added = 0;
+    r.stdout.split("\n").map(function (s) { return s.trim(); }).forEach(function (l) {
+      if (l === "#XPOSED") { mode = "xposed"; return; }
+      if (l === "#HMA") { mode = "hma"; return; }
+      if (!l || mode === "hma") return;
+      let e = PH.get(l);
+      if (!e) {
+        const wasExcluded = EXCLUDE.has(l);
+        e = { label: l, xposed: false, hma: false, hidden: !wasExcluded };
+        if (!wasExcluded) added++;
+      }
+      if (mode === "xposed") e.xposed = true;
+      if (mode === "hma") e.hma = true;
+      e.label = l;
+      PH.set(l, e);
+    });
+    btn.disabled = false; btn.textContent = o;
+    if (!phShown) phShowList(document.getElementById("phShow"));
+    renderCloak();
+    const ok = await doApplyCloak();
+    toast(ok
+      ? (currentLang === "zh" ? ("已加入 " + added + " 项（保留已有开关）") : ("Added " + added + " (kept existing toggles)"))
+      : (currentLang === "zh" ? "扫描完成但应用失败" : "Scanned but apply failed"),
+      ok ? "ok" : "bad");
+  }
+  function phShowList(btn) {
+    phShown = !phShown;
+    document.getElementById("phList").style.display = phShown ? "" : "none";
+    btn.textContent = phShown
+      ? (currentLang === "zh" ? "隐藏列表" : "Hide list")
+      : (currentLang === "zh" ? "显示列表" : "Show list");
+  }
+  async function addCloak() {
+    const el = document.getElementById("phManual"); const v = phClean(el.value);
+    if (!v) { toast(currentLang === "zh" ? "请输入包名或绝对路径" : "Enter a package or absolute path", "bad"); return; }
+    let paths = [v];
+    if (v[0] !== "/") {
+      const resolved = await exec("pm path " + v + " 2>/dev/null");
+      paths = resolved.stdout.split("\n").map(function (s) { return phClean(s.replace(/^package:/, "")); })
+        .filter(function (s) { return s[0] === "/"; });
+      if (!paths.length) { toast(currentLang === "zh" ? "包名不存在或无法解析 APK 路径" : "Package not found", "bad"); return; }
+    }
+    paths.forEach(function (p) {
+      const e = PH.get(p) || { xposed: false, hma: false, label: p };
+      e.hidden = true; PH.set(p, e); EXCLUDE.delete(p);
+    });
+    saveExclude(); el.value = "";
+    if (!phShown) phShowList(document.getElementById("phShow"));
+    renderCloak();
+  }
+  function renderCloak() {
+    const q = (document.getElementById("phSearch") || {}).value || "";
+    const ql = q.trim().toLowerCase();
+    let items = [...PH.entries()].sort(function (a, b) {
+      return (b[1].xposed ? 1 : 0) - (a[1].xposed ? 1 : 0) || a[0].localeCompare(b[0]);
+    });
+    if (ql) items = items.filter(function (x) { return x[0].toLowerCase().indexOf(ql) !== -1; });
+    const hid = items.filter(function (x) { return x[1].hidden; }).length;
+    const chip = document.getElementById("phchip");
+    if (chip.textContent !== (currentLang === "zh" ? "无内核" : "no kernel"))
+      chip.textContent = items.length ? (hid + " / " + items.length) : "0";
+    const list = document.getElementById("phList");
+    if (!items.length) {
+      list.innerHTML = '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "无规则 — 扫描或添加包。" : "No rules — scan or add a package.") + '</div>';
+      return;
+    }
+    list.innerHTML = items.map(function (it) {
+      const rule = it[0], e = it[1];
+      return '<div class="swrow"><div class="swi"><div class="lbl">' + e.label + '</div><div class="val">' +
+        (e.xposed ? (currentLang === "zh" ? 'xposed · ' : 'xposed · ') : '') +
+        (e.hma ? (currentLang === "zh" ? '黑名单 · ' : 'blacklist · ') : '') + rule + '</div></div>' +
+        '<label class="switch"><input type="checkbox" data-r="' + encodeURIComponent(rule) + '" ' +
+        (e.hidden ? 'checked' : '') + ' onchange="phToggle(this)"><span class="sl"></span></label></div>';
+    }).join("");
+  }
+  function phToggle(cb) {
+    const k = decodeURIComponent(cb.dataset.r); const e = PH.get(k);
+    if (e) {
+      e.hidden = cb.checked; PH.set(k, e);
+      if (cb.checked) EXCLUDE.delete(k); else EXCLUDE.add(k);
+      saveExclude();
+    } renderCloak();
+  }
+  async function doApplyCloak() {
+    const rules = [...PH.entries()].filter(function (x) { return x[1].hidden; })
+      .map(function (x) { return phClean(x[0]); }).filter(function (x) { return x[0] === "/"; });
+    let cmd = "mkdir -p /data/adb/nomount; { echo '# NoMount Cloak — pathhide rule list (managed by WebUI)'; ";
+    rules.forEach(function (r) { cmd += "echo '" + r + "'; "; });
+    cmd += "} > " + PH_CONF + "; sh /data/adb/modules/meta-nomount/pathhide-apply.sh 2>/dev/null; echo OK";
+    const r = await exec(cmd);
+    return r.stdout.indexOf("OK") >= 0;
+  }
+  async function applyCloak(btn) {
+    const rules = [...PH.entries()].filter(function (x) { return x[1].hidden; })
+      .map(function (x) { return phClean(x[0]); }).filter(Boolean);
+    const o = btn.textContent; btn.disabled = true; btn.textContent = currentLang === "zh" ? "应用中…" : "Applying…";
+    const ok = await doApplyCloak();
+    btn.disabled = false; btn.textContent = o;
+    toast(ok
+      ? (rules.length ? (currentLang === "zh" ? `正在隐藏 ${rules.length} 项 — 实时生效并已保存` : `Cloaking ${rules.length} — live & saved`) : (currentLang === "zh" ? "已清空所有规则" : "Cleared all rules"))
+      : (currentLang === "zh" ? "失败" : "Failed"),
+      ok ? "ok" : "bad");
+  }
+  async function cloakAllOff(btn) {
+    PH.forEach(function (e) { e.hidden = false; });
+    PH.forEach(function (e, k) { EXCLUDE.add(k); });
+    saveExclude();
+    renderCloak();
+    const o = btn.textContent; btn.disabled = true; btn.textContent = currentLang === "zh" ? "关闭中…" : "Turning off…";
+    const ok = await doApplyCloak();
+    btn.disabled = false; btn.textContent = o;
+    toast(ok
+      ? (currentLang === "zh" ? "已关闭全部隐藏并清空规则" : "All hiding off — rules cleared")
+      : (currentLang === "zh" ? "失败" : "Failed"),
+      ok ? "ok" : "bad");
+  }
+  // ---- init ----
+  (function restoreTab() {
+    let t = null;
+    try { t = sessionStorage.getItem("nm_tab"); } catch (e) {}
+    if (t && document.getElementById("tab-" + t)) showTab(t, document.getElementById("nb-" + t));
+  })();
+  movePill(false);
+  window.addEventListener("load", function () { movePill(false); });
+  applyCardState();
+  refreshAll();
+  loadCloak();
+</script>
+</body>
+</html>

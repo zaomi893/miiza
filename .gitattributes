@@ -1,0 +1,5 @@
+*.sh text eol=lf
+*.yml text eol=lf
+nomount/src/*.c text eol=lf
+nomount/src/*.h text eol=lf
+nomount/patches/*.patch text eol=lf

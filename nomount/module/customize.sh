@@ -1,0 +1,144 @@
+#!/system/bin/sh
+# NoMount metamodule installer. Requires the NoMount kernel patch (/dev/nomount).
+ui_print "- Installing NoMount metamodule"
+ui_print "- version $(grep_prop version "$MODPATH/module.prop")"
+
+# --- integrity check: verify bundled files against their sha256 manifest ---
+# Catches a corrupted download or a tampered zip before we run a root binary.
+SUMS="$MODPATH/nomount.sha256sums"
+if [ -f "$SUMS" ]; then
+    if command -v sha256sum >/dev/null 2>&1; then
+        if (cd "$MODPATH" && sha256sum -c "$SUMS" >/dev/null 2>&1); then
+            ui_print "- Integrity check passed ($(wc -l < "$SUMS") files)"
+        else
+            ui_print "*********************************************************"
+            ui_print "! Integrity check FAILED — a file does not match its hash."
+            ui_print "! This zip is corrupted or was modified. Re-download it."
+            ui_print "*********************************************************"
+            abort "- Aborting install: integrity check failed"
+        fi
+    else
+        ui_print "- sha256sum unavailable; skipping integrity check"
+    fi
+else
+    ui_print "- No sha256 manifest bundled; skipping integrity check"
+fi
+
+# --- refuse to co-exist with another metamodule ---
+# KSU/APatch allow only ONE metamodule to own module mounting; two will fight
+# in post-fs-data (broken mounts / bootloop). Abort early with a clear message.
+for mp in /data/adb/modules/*/module.prop; do
+    [ -f "$mp" ] || continue
+    mdir="${mp%/module.prop}"
+    id="${mdir##*/}"
+    [ "$id" = "meta-nomount" ] && continue          # our own (update/reinstall)
+    [ -f "$mdir/remove" ] && continue               # pending uninstall
+    [ -f "$mdir/disable" ] && continue              # disabled -> won't run
+    if grep -q '^metamodule=1' "$mp"; then
+        other="$(grep '^name=' "$mp" | head -n1 | cut -d= -f2-)"
+        ui_print "*********************************************************"
+        ui_print "! Another metamodule is already installed:"
+        ui_print "!   $id${other:+  ($other)}"
+        ui_print "! KernelSU/APatch allow only ONE metamodule."
+        ui_print "! Remove or disable it first, then flash NoMount."
+        ui_print "*********************************************************"
+        abort "- Aborting install: metamodule conflict"
+    fi
+done
+
+# Make the per-ABI binaries executable — BOTH the Suite driver (nomount) and the
+# hookless netlink client (nm) it shells out to. Missing +x on nm makes the boot
+# mount pass abort before it can inject.
+for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+    for b in nomount nm; do
+        if [ -f "$MODPATH/bin/$abi/$b" ]; then
+            set_perm "$MODPATH/bin/$abi/$b" 0 0 0755
+        fi
+    done
+done
+
+# --- spoof add-on: dynamic vbmeta.digest ---
+# Seed the persistent config (append-only so user edits survive an update), and
+# make the add-on script executable. The work itself happens at boot in spoof.sh.
+NMDIR=/data/adb/nomount
+mkdir -p "$NMDIR"
+set_perm "$NMDIR" 0 0 0700
+CONF="$NMDIR/spoof.conf"
+[ -f "$CONF" ] || cat > "$CONF" <<'EOF'
+# NoMount Suite — spoof add-on config
+# vbmeta_digest: auto (set only when the prop is missing) | force | off
+EOF
+seed_conf() { grep -q "^$1=" "$CONF" 2>/dev/null || echo "$1=$2" >> "$CONF"; }
+seed_conf vbmeta_digest auto
+seed_conf vbmeta_size auto
+seed_conf spoof_props 0
+seed_conf spoof_uname 0
+seed_conf uname_tail ""
+seed_conf uname_date ""
+seed_conf fix_shell_tmp 1
+set_perm "$CONF" 0 0 0644
+[ -f "$MODPATH/spoof.sh" ] && set_perm "$MODPATH/spoof.sh" 0 0 0755
+ui_print "- Spoof add-on enabled: dynamic vbmeta.digest"
+ui_print "  config: $CONF"
+
+# --- Cloak (pathhide maps/fd) add-on ---
+[ -f "$MODPATH/scan.sh" ] && set_perm "$MODPATH/scan.sh" 0 0 0755
+[ -f "$MODPATH/pathhide-apply.sh" ] && set_perm "$MODPATH/pathhide-apply.sh" 0 0 0755
+[ -f "$MODPATH/scene-debugfs-watch.sh" ] && set_perm "$MODPATH/scene-debugfs-watch.sh" 0 0 0755
+[ -f "$NMDIR/pathhide.conf" ] || echo "# NoMount Cloak — pathhide rule list (managed by WebUI › Tools › Cloak)" > "$NMDIR/pathhide.conf"
+
+# --- absorb opt-out list -----------------------------------------------------
+# `nomount absorb` converts other modules' bind mounts into injections. Safe for
+# a plain file bind (exec through an injection is verified working), but a hook
+# framework installs its bind from NATIVE daemon code that differs between forks
+# and versions, and the failure mode is SILENT AND DELAYED: dex2oat runs during
+# dexopt on app install, not at boot, so a broken hook surfaces hours later as
+# "modules stopped applying to new apps" and is near-impossible to attribute.
+# Skipped by default. The cost is one file keeping the bind's dev/ino/mtime
+# tell, which `nomount doctor` reports so it is not invisible. Delete a line to
+# absorb that module once you have verified your fork.
+# Migrate the pre-v1.2.1 extensionless name. COPY, never move: the outgoing
+# binary is still live until the next reboot and reads the OLD name, so renaming
+# here would silently drop its opt-outs for anything that runs absorb in that
+# window. The new binary prefers .txt and falls back to the old name, so both
+# work; the stale copy is simply ignored afterwards.
+[ -f "$NMDIR/absorb-skip" ] && [ ! -f "$NMDIR/absorb-skip.txt" ] && \
+    cp -f "$NMDIR/absorb-skip" "$NMDIR/absorb-skip.txt"
+if [ ! -f "$NMDIR/absorb-skip.txt" ]; then
+    {
+        echo "# One per line: an absolute TARGET PATH PREFIX, or a module id."
+        echo "#"
+        echo "# You rarely need to add a hook framework here: absorb already leaves"
+        echo "# alone everything mounted by a module that ships zygisk/<abi>.so (any"
+        echo "# Zygisk module, LSPosed and its forks included) or bin/zygisk* (the"
+        echo "# providers - Zygisk Next, ReZygisk, NeoZygisk). This file is for"
+        echo "# anything that marker does not cover."
+        echo "#"
+        echo "# Prefer a path: a hook framework's module id differs between forks"
+        echo "# (zygisk_lsposed, zygisk_lsposed_next, lsposed, ...) so an id list"
+        echo "# silently misses every fork it does not name, while the path being"
+        echo "# hooked is the same for all of them."
+        echo "#"
+        echo "# Why these are skipped: the bind is installed by native daemon code"
+        echo "# and the failure mode is silent and delayed - dex2oat runs during"
+        echo "# dexopt on app install, not at boot, so a broken hook shows up hours"
+        echo "# later as \"modules stopped applying to new apps\". Delete a line to"
+        echo "# absorb it once you have tested your fork."
+        echo "/apex/com.android.art/bin/dex2oat"
+        echo "/apex/com.android.runtime/bin/dex2oat"
+        echo "/system/bin/dex2oat"
+        echo "/system/bin/app_process"
+        echo "zygisksu"
+    } > "$NMDIR/absorb-skip.txt"
+fi
+set_perm "$NMDIR/absorb-skip.txt" 0 0 0600
+set_perm "$NMDIR/pathhide.conf" 0 0 0644
+if [ -e /proc/pathhide ]; then
+    ui_print "- Scoped PathMask/Cloak FOUND — Scene debugfs auto-detection enabled"
+else
+    ui_print "- Cloak add-on: /proc/pathhide not present (needs a pathhide-enabled kernel)"
+fi
+
+rm $MODPATH/nomount.sha256sums
+
+ui_print "- Modules under /data/adb/modules are injected mountlessly at boot."

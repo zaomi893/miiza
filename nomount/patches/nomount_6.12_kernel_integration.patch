@@ -57,20 +57,112 @@ diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 diff --git a/fs/proc/base.c b/fs/proc/base.c
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
-@@ -1842,6 +1842,16 @@
- 	len = PTR_ERR(pathname);
- 	if (IS_ERR(pathname))
- 		goto out;
+@@ -1832,6 +1832,14 @@
+ 	char *pathname;
+ 	int len;
+ 
 +#ifdef CONFIG_NOMOUNT
-+	{ extern bool nomount_pathhide_match_path(const char *);
-+	  if (nomount_pathhide_match_path(pathname)) {
-+		const char *null_target = "/dev/null";
-+		len = strlen(null_target);
-+		if (copy_to_user(buffer, null_target, len))
-+			len = -EFAULT;
-+		goto out;
++	{ extern bool nomount_pathhide_hide_path(const struct path *);
++	  if (nomount_pathhide_hide_path(path)) {
++		kfree(tmp);
++		return -ENOENT;
 +	  } }
 +#endif
- 	len = tmp + PATH_MAX - 1 - pathname;
++
+ 	if (!tmp)
+ 		return -ENOMEM;
  
- 	if (len > buflen)
+diff --git a/fs/namei.c b/fs/namei.c
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -511,6 +511,13 @@ int inode_permission(struct mnt_idmap *idmap,
+ 		     struct inode *inode, int mask)
+ {
+ 	int retval;
++#ifdef CONFIG_NOMOUNT
++	/* PathMask-compatible read/lookup hiding.  Write-class operations retain
++	 * native filesystem semantics instead of failing with a detectable errno. */
++	{ extern bool nomount_pathhide_hide_inode(const struct inode *);
++	  if (!(mask & MAY_WRITE) && nomount_pathhide_hide_inode(inode))
++		return -ENOENT; }
++#endif
+ 
+ 	retval = sb_permission(inode->i_sb, inode, mask);
+ 	if (retval)
+diff --git a/fs/stat.c b/fs/stat.c
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -138,6 +138,11 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
+ {
+ 	struct mnt_idmap *idmap;
+ 	struct inode *inode = d_backing_inode(path->dentry);
++#ifdef CONFIG_NOMOUNT
++	{ extern bool nomount_pathhide_hide_inode(const struct inode *);
++	  if (nomount_pathhide_hide_inode(inode))
++		return -ENOENT; }
++#endif
+ 
+ 	memset(stat, 0, sizeof(*stat));
+ 	stat->result_mask |= STATX_BASIC_STATS;
+diff --git a/fs/readdir.c b/fs/readdir.c
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -251,6 +251,7 @@ struct linux_dirent {
+ 
+ struct getdents_callback {
+ 	struct dir_context ctx;
++	struct inode *dir_inode;
+ 	struct linux_dirent __user * current_dir;
+ 	int prev_reclen;
+ 	int count;
+@@ -267,7 +268,13 @@ static bool filldir(struct dir_context *ctx, const char *name, int namlen,
+ 		container_of(ctx, struct getdents_callback, ctx);
+ 	unsigned long d_ino;
+ 	int reclen = ALIGN(offsetof(struct linux_dirent, d_name) + namlen + 2,
+ 		sizeof(long));
++#ifdef CONFIG_NOMOUNT
++	{ extern bool nomount_pathhide_hide_dirent(const struct inode *, u64,
++						      const char *, int);
++	  if (nomount_pathhide_hide_dirent(buf->dir_inode, ino, name, namlen))
++		return true; }
++#endif
+ 	int prev_reclen;
+ 
+ 	buf->error = verify_dirent_name(name, namlen);
+@@ -320,6 +327,7 @@ SYSCALL_DEFINE3(getdents, unsigned int, fd,
+ 	f = fdget_pos(fd);
+ 	if (!fd_file(f))
+ 		return -EBADF;
++	buf.dir_inode = file_inode(fd_file(f));
+ 
+ 	error = iterate_dir(fd_file(f), &buf.ctx);
+ 	if (error >= 0)
+@@ -339,6 +347,7 @@ SYSCALL_DEFINE3(getdents, unsigned int, fd,
+ 
+ struct getdents_callback64 {
+ 	struct dir_context ctx;
++	struct inode *dir_inode;
+ 	struct linux_dirent64 __user * current_dir;
+ 	int prev_reclen;
+ 	int count;
+@@ -354,6 +363,12 @@ static bool filldir64(struct dir_context *ctx, const char *name, int namlen,
+ 		container_of(ctx, struct getdents_callback64, ctx);
+ 	int reclen = ALIGN(offsetof(struct linux_dirent64, d_name) + namlen + 1,
+ 		sizeof(u64));
++#ifdef CONFIG_NOMOUNT
++	{ extern bool nomount_pathhide_hide_dirent(const struct inode *, u64,
++						      const char *, int);
++	  if (nomount_pathhide_hide_dirent(buf->dir_inode, ino, name, namlen))
++		return true; }
++#endif
+ 	int prev_reclen;
+ 
+ 	buf->error = verify_dirent_name(name, namlen);
+@@ -403,6 +418,7 @@ SYSCALL_DEFINE3(getdents64, unsigned int, fd,
+ 	f = fdget_pos(fd);
+ 	if (!fd_file(f))
+ 		return -EBADF;
++	buf.dir_inode = file_inode(fd_file(f));
+ 
+ 	error = iterate_dir(fd_file(f), &buf.ctx);
+ 	if (error >= 0)
