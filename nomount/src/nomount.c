@@ -4066,9 +4066,6 @@ bool nomount_pathhide_match_path(const char *path)
 	rcu_read_lock();
 	table = rcu_dereference(nm_pathhide_rules);
 	if (table && nm_pathhide_scope_matches(table)) {
-		if (!(table->inode_bloom & nm_pathhide_inode_bit(inode->i_sb->s_dev,
-							       inode->i_ino)))
-			goto out;
 		for (i = 0; i < table->count; i++) {
 			if (nm_pathhide_text_matches(path, table->rules[i].path)) {
 				hide = true;
@@ -4076,7 +4073,6 @@ bool nomount_pathhide_match_path(const char *path)
 			}
 		}
 	}
-out:
 	rcu_read_unlock();
 	return hide;
 }
@@ -4093,8 +4089,8 @@ bool nomount_pathhide_hide_inode(const struct inode *inode)
 	rcu_read_lock();
 	table = rcu_dereference(nm_pathhide_rules);
 	if (table && nm_pathhide_scope_matches(table)) {
-		if (!(table->inode_bloom & nm_pathhide_inode_bit(dir->i_sb->s_dev,
-							       (unsigned long)ino)))
+		if (!(table->inode_bloom & nm_pathhide_inode_bit(inode->i_sb->s_dev,
+							       inode->i_ino)))
 			goto out;
 		for (i = 0; i < table->count; i++) {
 			const struct nm_pathhide_rule *rule = &table->rules[i];
@@ -4123,6 +4119,9 @@ bool nomount_pathhide_hide_dirent(const struct inode *dir, u64 ino,
 	rcu_read_lock();
 	table = rcu_dereference(nm_pathhide_rules);
 	if (table && nm_pathhide_scope_matches(table)) {
+		if (!(table->inode_bloom & nm_pathhide_inode_bit(dir->i_sb->s_dev,
+							       (unsigned long)ino)))
+			goto out;
 		for (i = 0; i < table->count; i++) {
 			const struct nm_pathhide_rule *rule = &table->rules[i];
 			if (rule->inode_valid && rule->dev == dir->i_sb->s_dev &&
@@ -4132,6 +4131,7 @@ bool nomount_pathhide_hide_dirent(const struct inode *dir, u64 ino,
 			}
 		}
 	}
+out:
 	rcu_read_unlock();
 	return hide;
 }
