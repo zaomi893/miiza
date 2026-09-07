@@ -81,11 +81,11 @@ set_perm "$CONF" 0 0 0644
 ui_print "- Spoof add-on enabled: dynamic vbmeta.digest"
 ui_print "  config: $CONF"
 
-# --- Cloak (pathhide maps/fd) add-on ---
+# --- Integrated PathMask app-hiding engine ---
 [ -f "$MODPATH/scan.sh" ] && set_perm "$MODPATH/scan.sh" 0 0 0755
 [ -f "$MODPATH/pathhide-apply.sh" ] && set_perm "$MODPATH/pathhide-apply.sh" 0 0 0755
 [ -f "$MODPATH/scene-debugfs-watch.sh" ] && set_perm "$MODPATH/scene-debugfs-watch.sh" 0 0 0755
-[ -f "$NMDIR/pathhide.conf" ] || echo "# NoMount Cloak — pathhide rule list (managed by WebUI › Tools › Cloak)" > "$NMDIR/pathhide.conf"
+[ -f "$NMDIR/pathhide.conf" ] || echo "# NoMount PathMask rule list (managed by WebUI › Tools › PathMask)" > "$NMDIR/pathhide.conf"
 
 # --- absorb opt-out list -----------------------------------------------------
 # `nomount absorb` converts other modules' bind mounts into injections. Safe for
@@ -134,9 +134,10 @@ fi
 set_perm "$NMDIR/absorb-skip.txt" 0 0 0600
 set_perm "$NMDIR/pathhide.conf" 0 0 0644
 if [ -e /proc/pathhide ]; then
-    ui_print "- Scoped PathMask/Cloak FOUND — Scene debugfs auto-detection enabled"
+    ui_print "- PathMask 2.7.2 integration FOUND"
+    ui_print "  Xposed modules and Scene debugfs will be detected automatically"
 else
-    ui_print "- Cloak add-on: /proc/pathhide not present (needs a pathhide-enabled kernel)"
+    ui_print "- PathMask unavailable: /proc/pathhide is missing (matching kernel required)"
 fi
 
 rm $MODPATH/nomount.sha256sums

@@ -15,8 +15,18 @@ grep -q "^$PKG " /data/system/packages.list 2>/dev/null || {
     : > "$PATHS"
     exit 0
 }
-mkdir "$LOCK" 2>/dev/null || exit 0
-trap 'rmdir "$LOCK" 2>/dev/null' EXIT HUP INT TERM
+if ! mkdir "$LOCK" 2>/dev/null; then
+    _old_pid=$(cat "$LOCK/pid" 2>/dev/null)
+    if [ -n "$_old_pid" ] && kill -0 "$_old_pid" 2>/dev/null; then
+        _old_cmd=$(tr '\000' ' ' < "/proc/$_old_pid/cmdline" 2>/dev/null)
+        case "$_old_cmd" in *scene-debugfs-watch.sh*) exit 0 ;; esac
+    fi
+    rm -f "$LOCK/pid" 2>/dev/null
+    rmdir "$LOCK" 2>/dev/null || exit 0
+    mkdir "$LOCK" 2>/dev/null || exit 0
+fi
+printf '%s\n' "$$" > "$LOCK/pid" 2>/dev/null
+trap 'rm -f "$LOCK/pid" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT HUP INT TERM
 
 _find_scene_mounts() {
     : > "$NMDIR/.scene_paths.new"
@@ -31,7 +41,10 @@ _find_scene_mounts() {
         [ -d "$_mp" ] || continue
         _ctx=$(stat -c '%C' "$_mp" 2>/dev/null | head -n 1 | tr -d '\r')
         [ "$_ctx" = u:object_r:debugfs:s0 ] || continue
-        printf '%s/\n' "${_mp%/}" >> "$NMDIR/.scene_paths.new"
+        # Store the exact mount point. The in-kernel directory rule already
+        # covers descendants; a synthetic trailing slash can make the exact
+        # mount path fail a textual match before its inode has been resolved.
+        printf '%s\n' "${_mp%/}" >> "$NMDIR/.scene_paths.new"
     done < /proc/self/mountinfo
     sort -u "$NMDIR/.scene_paths.new" > "$NMDIR/.scene_paths.sorted" 2>/dev/null &&
         mv -f "$NMDIR/.scene_paths.sorted" "$NMDIR/.scene_paths.new"
@@ -44,8 +57,14 @@ while [ "$_i" -lt 300 ]; do
         mv -f "$NMDIR/.scene_paths.new" "$PATHS"
         printf 'status=found\ncount=%s\nupdated=%s\n' \
             "$(grep -c . "$PATHS" 2>/dev/null)" "$(date +%s 2>/dev/null)" > "$STATE"
-        sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1
-        exit 0
+        if sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1; then
+            printf 'status=applied\ncount=%s\nupdated=%s\n' \
+                "$(grep -c . "$PATHS" 2>/dev/null)" "$(date +%s 2>/dev/null)" > "$STATE"
+            exit 0
+        fi
+        printf 'status=apply-failed\ncount=%s\nupdated=%s\n' \
+            "$(grep -c . "$PATHS" 2>/dev/null)" "$(date +%s 2>/dev/null)" > "$STATE"
+        exit 1
     fi
     sleep 2
     _i=$((_i + 1))

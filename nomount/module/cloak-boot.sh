@@ -21,7 +21,8 @@ touch "$EXCLUDE" 2>/dev/null
 {
     echo '# NoMount Cloak — pathhide rule list (managed by WebUI)'
     sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d; /^\//!d' "$NMDIR/pathhide.conf" 2>/dev/null
-    awk '/^#XPOSED$/{f=1;next} /^#HMA$/{f=0} f && NF' "$NMDIR/.cloak_scan.tmp" 2>/dev/null
+    awk '/^#XPOSED$/{f=1;next} /^#HMA$/{f=0} f && NF { print (NF > 1 ? $NF : $0) }' \
+        "$NMDIR/.cloak_scan.tmp" 2>/dev/null
 } | sort -u | awk 'FILENAME==ARGV[1]{ex[$0]=1;next} !($0 in ex)' "$EXCLUDE" - > "$NMDIR/.cloak_conf.new"
 mv -f "$NMDIR/.cloak_conf.new" "$NMDIR/pathhide.conf"
 
