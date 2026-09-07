@@ -1085,10 +1085,11 @@ jobs:
           if [[ ${{ github.event.inputs.kpm_enable }} == 'true' ]]; then
             wget https://github.com/cctv18/KPatch-Next/releases/latest/download/kpn.zip
           fi
+          DEVICE_SERIAL_TAG="$(printf '%s' '${{ inputs.device_serial }}' | sed 's/[^A-Za-z0-9._-]/_/g')"
           if [[ -n "${{ github.event.inputs.kernel_suffix }}" ]]; then
-            AK3_NAME=${AK3_PREFIX}_${KSU_TYPENAME}_${KSUVER}_${{ env.KERNEL_VERSION }}_${{ github.event.inputs.kernel_suffix }}.zip
+            AK3_NAME=${AK3_PREFIX}_${KSU_TYPENAME}_${KSUVER}_${{ env.KERNEL_VERSION }}_${{ github.event.inputs.kernel_suffix }}_SN-${DEVICE_SERIAL_TAG}.zip
           else
-            AK3_NAME=${AK3_PREFIX}_${KSU_TYPENAME}_${KSUVER}_${{ env.KERNEL_VERSION }}_${{ env.KERNEL_NAME }}.zip
+            AK3_NAME=${AK3_PREFIX}_${KSU_TYPENAME}_${KSUVER}_${{ env.KERNEL_VERSION }}_${{ env.KERNEL_NAME }}_SN-${DEVICE_SERIAL_TAG}.zip
           fi
           zip -r ../$AK3_NAME ./*
           echo "ak3name=$AK3_NAME" >> $GITHUB_OUTPUT
