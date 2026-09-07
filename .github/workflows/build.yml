@@ -922,7 +922,13 @@ jobs:
           grep -q '[[:space:]]init_sched_ext_class$' "$OUT/System.map"
           # Stock PLK110 rust_binder.ko was built against these Rust 1.82 crate
           # hashes. Refuse to publish when the GKI would reject that module.
+          echo "Detected Rust core crate hashes:"
+          grep -oE 'Cs[A-Za-z0-9_]+_4core' "$OUT/System.map" | sort -u || true
+          echo "Detected Rust kernel crate hashes:"
+          grep -oE 'Cs[A-Za-z0-9_]+_6kernel' "$OUT/System.map" | sort -u || true
+          echo "Checking stock Rust core crate hash..."
           grep -q 'Cs3o2tGsuHyou_4core' "$OUT/System.map"
+          echo "Checking stock Rust kernel crate hash..."
           grep -q 'CsdfZWD8DztAw_6kernel' "$OUT/System.map"
           echo "PASS: bootable 6.12.23 chain retains all ${#HMBIRD_HOOKS[@]} stock HMBIRD sched_ext hooks"
           echo "PASS: Rust core/kernel crate hashes match stock PLK110 modules"
