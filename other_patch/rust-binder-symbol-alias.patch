@@ -1,0 +1,97 @@
+diff --git a/kernel/module/main.c b/kernel/module/main.c
+index f6efc62..3d724a1 100644
+--- a/kernel/module/main.c
++++ b/kernel/module/main.c
+@@ -1158,6 +1158,60 @@ static bool is_permitted_symbol_import(const char *name)
+ }
+ #endif
+ 
++#ifdef CONFIG_DEBUG_INFO_BTF_MODULES
++#define OPLUS_RUST_CRATE_HASH_LEN 13U
++
++struct oplus_rust_crate_alias {
++	char stock[OPLUS_RUST_CRATE_HASH_LEN + 1];
++	char gki[OPLUS_RUST_CRATE_HASH_LEN + 1];
++};
++
++static const struct oplus_rust_crate_alias oplus_rust_crate_aliases[] = {
++	{ "Cs3o2tGsuHyou", "CscKZuwGeZtqh" }, /* core */
++	{ "CsdfZWD8DztAw", "Cs2T9Dodn8vEz" }, /* kernel */
++	{ "Csg7kyWky7wBq", "Cs1ltoFyQsbvC" }, /* bindings */
++};
++
++static const char *oplus_rust_binder_alias_symbol(
++		struct module *mod, const char *name,
++		char aliased[KSYM_NAME_LEN])
++{
++	unsigned int i;
++	bool changed = false;
++	char *cursor;
++
++	/* Restrict this bridge to the verified PLK110 stock Binder module. */
++	if (!oplus_device_serial_verified() ||
++	    strcmp(mod->name, "rust_binder") || !mod->scmversion ||
++	    strcmp(mod->scmversion, "gb2a876903b49"))
++		return name;
++	if (strscpy(aliased, name, KSYM_NAME_LEN) < 0)
++		return name;
++
++	for (i = 0; i < ARRAY_SIZE(oplus_rust_crate_aliases); i++) {
++		cursor = aliased;
++		while ((cursor = strstr(cursor,
++				oplus_rust_crate_aliases[i].stock))) {
++			memcpy(cursor, oplus_rust_crate_aliases[i].gki,
++			       OPLUS_RUST_CRATE_HASH_LEN);
++			cursor += OPLUS_RUST_CRATE_HASH_LEN;
++			changed = true;
++		}
++	}
++
++	if (changed)
++		pr_info_once("rust_binder: using verified PLK110 Rust crate aliases\n");
++	return changed ? aliased : name;
++}
++#else
++static inline const char *oplus_rust_binder_alias_symbol(
++		struct module *mod, const char *name,
++		char aliased[KSYM_NAME_LEN])
++{
++	return name;
++}
++#endif
++
+ /* Resolve a symbol for this module.  I.e. if we find one, record usage. */
+ static const struct kernel_symbol *resolve_symbol(struct module *mod,
+ 						  const struct load_info *info,
+@@ -1167,8 +1221,11 @@ static const struct kernel_symbol *resolve_symbol(struct module *mod,
+ 	bool is_vendor_module;
+ 	bool is_vendor_exported_symbol;
+ #endif
++	char aliased_name[KSYM_NAME_LEN];
++	const char *lookup_name = oplus_rust_binder_alias_symbol(mod, name,
++							       aliased_name);
+ 	struct find_symbol_arg fsa = {
+-		.name	= name,
++		.name	= lookup_name,
+ 		.gplok	= !(mod->taints & (1 << TAINT_PROPRIETARY_MODULE)),
+ 		.warn	= true,
+ 	};
+@@ -1187,7 +1244,7 @@ static const struct kernel_symbol *resolve_symbol(struct module *mod,
+ 	if (fsa.license == GPL_ONLY)
+ 		mod->using_gplonly_symbols = true;
+ 
+-	if (!inherit_taint(mod, fsa.owner, name)) {
++	if (!inherit_taint(mod, fsa.owner, lookup_name)) {
+ 		fsa.sym = NULL;
+ 		goto getname;
+ 	}
+@@ -1218,8 +1275,8 @@ static const struct kernel_symbol *resolve_symbol(struct module *mod,
+ 	is_vendor_exported_symbol = fsa.owner && !fsa.owner->sig_ok;
+ 
+ 	if (is_vendor_module &&
+ 	    !is_vendor_exported_symbol &&
+-	    !is_permitted_symbol_import(name)) {
++	    !is_permitted_symbol_import(lookup_name)) {
+ 		fsa.sym = ERR_PTR(-EACCES);
+ 		goto getname;
+ 	}

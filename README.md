@@ -42,7 +42,7 @@
 
 ## 原厂模块兼容日志
 
-- `rust_binder: Unknown symbol` 是自定义 GKI 曾使用了同版本但不同源码修订的 Rust `core/kernel` crate 哈希导致的。构建现会还原到 PLK110 原厂 Rust 1.82 libcore，并强制检查原厂 crate 哈希；校验失败则不发布。
+- `rust_binder: Unknown symbol` 是原厂模块与自定义 GKI 的 Rust `core/kernel/bindings` crate 哈希不同导致的。实机逐项核对的 76 个引用在本 GKI 中都有同名、同签名导出；兼容桥只在设备序列号已验证、模块名为 `rust_binder` 且 `scmversion=gb2a876903b49` 时替换 3 个精确 crate 哈希，并继续执行内核原有的 modversion CRC 检查。构建也会确认全部映射目标存在，避免静默放宽模块解析。
 - `hb_bpf_cpuperf_set -> kernel/sched/sched.h:1705` WARN 在原厂 boot 和自定义 boot 上均可复现，且两者风驰均正常接管、`nr_rejected=0`。这是原厂风驰路径的行为，不通过隐藏日志或更改调度逻辑来冒险“修复”。
 
 ## 构建与设备序列号锁
