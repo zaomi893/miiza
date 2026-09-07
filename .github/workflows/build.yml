@@ -9,6 +9,8 @@ env:
   KERNEL_SOURCE_REPO: 'cvhhji/android_kernel_common_oneplus_sm8850'
   # Official OnePlus 15 history with the verified cctv18 boot-fix sequence.
   KERNEL_SOURCE_BRANCH: 'oneplus/sm8850_v_16.0.0_oneplus_15'
+  # PLK110 16.0.9.400 (CN01) is included in this official synchronized revision.
+  HMBIRD_SOURCE_COMMIT: '5ab2a689ff87d7d28c511f1762cf41c1b90d965a'
   CCACHE_KEY: ccache-ecsv4-6.12.23
 
 on:
@@ -164,9 +166,7 @@ jobs:
           #sudo apt-get install -y --no-install-recommends curl bison flex make binutils git perl gcc python3 python-is-python3 bc libssl-dev libelf-dev libdw-dev zip unzip ccache
 
           #使用最新版ccache v4.12.2（Ubuntu软件仓库的版本并非最新）
-          curl --fail --location --retry 3 \
-            -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
-            "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/lib/ccache-x86-64" -o ccache &&
+          cp "$GITHUB_WORKSPACE/lib/ccache-x86-64" ccache &&
           sudo cp -f ./ccache /usr/bin/ccache &&
           sudo chmod +x /usr/bin/ccache &&
           rm -f ./ccache
@@ -212,6 +212,7 @@ jobs:
           patch -d kernel_workspace/common -p1 < other_patch/hmbird-stock-module-btf.patch
           test -f kernel_workspace/common/kernel/module/oplus_hmbird_btf.inc
           test -f kernel_workspace/common/kernel/module/oplus_hmbird_btf_ids.inc
+          test -f kernel_workspace/common/kernel/module/oplus_legacy_btf_denylist.inc
 
       - name: 写入设备序列号锁
         env:
@@ -223,13 +224,27 @@ jobs:
             exit 1
           fi
           patch -d kernel_workspace/common -p1 < other_patch/device-serial-lock.patch
-          sed -i "s/__OPLUS_BOUND_SERIAL__/$DEVICE_SERIAL/g" \
-            kernel_workspace/common/init/main.c
-          if grep -q '__OPLUS_BOUND_SERIAL__' kernel_workspace/common/init/main.c; then
-            echo "设备序列号未成功写入内核源码"
-            exit 1
-          fi
-          echo "设备序列号锁已启用；不在构建日志中显示序列号"
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import secrets
+          from pathlib import Path
+
+          serial = os.environ["DEVICE_SERIAL"].encode("ascii")
+          salt = secrets.token_bytes(32)
+          digest = hashlib.sha256(salt + serial).digest()
+          path = Path("kernel_workspace/common/init/main.c")
+          source = path.read_text()
+          encode = lambda value: ", ".join(f"0x{byte:02x}" for byte in value)
+          source = source.replace("__OPLUS_SERIAL_SALT__", encode(salt), 1)
+          source = source.replace("__OPLUS_SERIAL_DIGEST__", encode(digest), 1)
+          if "__OPLUS_SERIAL_" in source:
+              raise SystemExit("设备序列号摘要未成功写入内核源码")
+          if serial in source.encode():
+              raise SystemExit("内核源码中意外出现明文设备序列号")
+          path.write_text(source)
+          print("设备序列号锁已写入随机盐 SHA-256 摘要")
+          PY
 
       - name: 配置ccache目录
         run: |
@@ -353,7 +368,7 @@ jobs:
             sed -i "s/KSU_VERSION_TAG_FALLBACK := v0.0.1/KSU_VERSION_TAG_FALLBACK := $KSU_GIT_TAG/g" kernel/Kbuild
             #为KernelSU Next添加WildKSU管理器支持
             cd ../common/drivers/kernelsu
-            curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/other_patch/apk_sign.patch" -O
+            cp "$GITHUB_WORKSPACE/other_patch/apk_sign.patch" .
             patch -p2 -N -F 3 < apk_sign.patch || true
           elif [[ ${{ github.event.inputs.ksu_type }} == "ksu" ]]; then
             echo "正在配置原版 KernelSU (tiann/KernelSU)..."
@@ -408,10 +423,8 @@ jobs:
         run: |
           echo "正在添加lz4 1.10.0 & zstd 1.5.7补丁…"
           cd kernel_workspace/common
-          auth_header="Authorization: Bearer ${{ secrets.GH_TOKEN }}"
-          base_url="https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/zram_patch"
-          curl --fail --location --retry 3 -H "$auth_header" "$base_url/001-lz4.patch" -o 001-lz4.patch
-          curl --fail --location --retry 3 -H "$auth_header" "$base_url/002-zstd.patch" -o 002-zstd.patch
+          cp "$GITHUB_WORKSPACE/zram_patch/001-lz4.patch" 001-lz4.patch
+          cp "$GITHUB_WORKSPACE/zram_patch/002-zstd.patch" 002-zstd.patch
           awk '/^diff --git / { skip = (index($0, "diff --git a/fs/f2fs/Makefile " ) == 1 || index($0, "diff --git a/fs/f2fs/compress.c " ) == 1) } !skip' 001-lz4.patch > 001-lz4.filtered.patch
           patch --batch --forward --no-backup-if-mismatch -p1 < 001-lz4.filtered.patch
           patch --batch --forward --no-backup-if-mismatch -p1 < 002-zstd.patch
@@ -422,7 +435,7 @@ jobs:
         run: |
           echo "正在添加lz4kd补丁…"
           cd kernel_workspace/common
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/other_patch/lz4kd.patch" -O
+          cp "$GITHUB_WORKSPACE/other_patch/lz4kd.patch" .
           patch -p1 -F 3 < lz4kd.patch || true
 
       - name: UNICODE_BYPASS补丁
@@ -430,7 +443,7 @@ jobs:
         run: |
           echo "正在添加零宽补丁…"
           cd kernel_workspace/common
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/other_patch/unicode.patch" -O
+          cp "$GITHUB_WORKSPACE/other_patch/unicode.patch" .
           patch -p1 -F 3 --forward < unicode.patch || true
 
       - name: 添加SUSFS 配置项
@@ -486,7 +499,7 @@ jobs:
             --module ANDROID_BINDER_IPC_RUST
           # 应用 CVE_2026_43499 修复补丁
           cd common
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/other_patch/cve-2026-43499-rtmutex-6.12.patch" -O
+          cp "$GITHUB_WORKSPACE/other_patch/cve-2026-43499-rtmutex-6.12.patch" .
           patch -p1 -F 3 < cve-2026-43499-rtmutex-6.12.patch
 
       - name: 启用网络功能增强优化配置
@@ -520,7 +533,7 @@ jobs:
           echo "CONFIG_IP6_NF_TARGET_MASQUERADE=y" >> ./common/arch/arm64/configs/gki_defconfig
           #由于部分机型的vintf兼容性检测规则，在开启CONFIG_IP6_NF_NAT后开机会出现"您的设备内部出现了问题。请联系您的设备制造商了解详情。"的提示，故添加一个配置修复补丁，在编译内核时隐藏CONFIG_IP6_NF_NAT=y但不影响对应功能编译
           cd common
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/other_patch/config.patch" -O
+          cp "$GITHUB_WORKSPACE/other_patch/config.patch" .
           patch -p1 -F 3 < config.patch || true
 
       - name: 添加 BBR 等一系列拥塞控制算法
@@ -569,16 +582,16 @@ jobs:
             echo "正在启用 Droidspaces 容器支持..."
             cd kernel_workspace/common
             # 应用 Droidspaces 容器必须补丁
-            curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/droidspaces_patch/fix_sysvipc_kabi_a16-6.12.patch" -O
+            cp "$GITHUB_WORKSPACE/droidspaces_patch/fix_sysvipc_kabi_a16-6.12.patch" .
             patch -p1 -F 3 < fix_sysvipc_kabi_a16-6.12.patch || true
             # 修补 oplus_bsp_midas 行为，避免开机崩溃
-            curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/droidspaces_patch/fix_oplus_bsp_midas.patch" -O
+            cp "$GITHUB_WORKSPACE/droidspaces_patch/fix_oplus_bsp_midas.patch" .
             patch -p1 -F 3 < fix_oplus_bsp_midas.patch || true
             # 修补 oplus_bsp_sched_assist 数组越界访问导致的运行随机崩溃
-            curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/droidspaces_patch/ddl_hit_hook.patch" -O
+            cp "$GITHUB_WORKSPACE/droidspaces_patch/ddl_hit_hook.patch" .
             patch -p1 -F 3 < ddl_hit_hook.patch || true
             # 应用 NTSync 补丁
-            curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/droidspaces_patch/ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch" -O
+            cp "$GITHUB_WORKSPACE/droidspaces_patch/ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch" .
             patch -p1 -F 3 < ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
             # 开启 Droidspaces 容器所需内核支持
             echo "CONFIG_PID_NS=y" >> ./arch/arm64/configs/gki_defconfig
@@ -682,10 +695,9 @@ jobs:
         run: |
           echo "正在集成 NoMount (hookless) 6.12 内核补丁..."
           cd kernel_workspace/common
-          NM_BASE="https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/nomount"
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "${NM_BASE}/patches/nomount_6.12_kernel_integration.patch" -o nomount_6.12.patch
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "${NM_BASE}/src/nomount.c" -o fs/nomount.c
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "${NM_BASE}/src/nomount.h" -o fs/nomount.h
+          cp "$GITHUB_WORKSPACE/nomount/patches/nomount_6.12_kernel_integration.patch" nomount_6.12.patch
+          cp "$GITHUB_WORKSPACE/nomount/src/nomount.c" fs/nomount.c
+          cp "$GITHUB_WORKSPACE/nomount/src/nomount.h" fs/nomount.h
           if patch -p1 --forward --fuzz=1 < nomount_6.12.patch; then
             grep -q 'config NOMOUNT' fs/Kconfig || { echo "错误: fs/Kconfig 缺少 config NOMOUNT"; exit 1; }
             grep -qF 'obj-$(CONFIG_NOMOUNT) += nomount.o' fs/Makefile || { echo "错误: fs/Makefile 缺少 nomount.o"; exit 1; }
@@ -748,8 +760,8 @@ jobs:
           echo "sloppiness = file_stat_matches,include_file_ctime,include_file_mtime,pch_defines,file_macro,time_macros" >> "$CCACHE_DIR/ccache.conf"
 
           cd kernel_workspace/common
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/lib/libfakestat.so" -O
-          curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/lib/libfaketimeMT.so" -O
+          cp "$GITHUB_WORKSPACE/lib/libfakestat.so" .
+          cp "$GITHUB_WORKSPACE/lib/libfaketimeMT.so" .
           chmod 777 ./*.so
           if [[ -n "${{ github.event.inputs.build_date }}" ]]; then
             KERNEL_BUILD_DATE="${{ github.event.inputs.build_date }}"
@@ -874,6 +886,10 @@ jobs:
           OUT=kernel_workspace/common/out
           test -s "$IMAGE"
           grep -aFq 'Linux version 6.12.23-android16-5-gb2a876903b49-ab14541642-4k ' "$IMAGE"
+          if grep -aFq -- '${{ inputs.device_serial }}' "$IMAGE"; then
+            echo "错误：内核 Image 中发现明文设备序列号"
+            exit 1
+          fi
           grep -qx 'CONFIG_SCHED_CLASS_EXT=y' "$OUT/.config"
           grep -qx 'CONFIG_ANDROID_VENDOR_HOOKS=y' "$OUT/.config"
           grep -qx 'CONFIG_DEBUG_INFO_BTF=y' "$OUT/.config"
@@ -904,11 +920,14 @@ jobs:
           set -euxo pipefail
           cd kernel_workspace
 
-          git clone --depth=1 --filter=blob:none --sparse \
-            --branch oneplus/sm8850_b_16.0.0_oneplus_15 \
-            https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850.git \
-            oplus_modules
+          git init oplus_modules
+          git -C oplus_modules remote add origin \
+            https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850.git
+          git -C oplus_modules sparse-checkout init --cone
           git -C oplus_modules sparse-checkout set vendor/oplus/kernel/cpu
+          git -C oplus_modules fetch --depth=1 --filter=blob:none origin "$HMBIRD_SOURCE_COMMIT"
+          git -C oplus_modules checkout --detach FETCH_HEAD
+          test "$(git -C oplus_modules rev-parse HEAD)" = "$HMBIRD_SOURCE_COMMIT"
 
           MODULE_DIR="$PWD/oplus_modules/vendor/oplus/kernel/cpu"
           cp "$GITHUB_WORKSPACE/hmbird_module/Makefile" "$MODULE_DIR/Makefile"
@@ -1056,7 +1075,7 @@ jobs:
           fi
           if [[ "${{ inputs.lz4kd_enable }}" == "true" && "${{ inputs.zarm_tool }}" == "true" ]]; then
             echo "LZ4KD 与 zarm工具均已启用，正在下载工具模块..."
-            curl --fail --location --retry 3 -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" "https://raw.githubusercontent.com/cvhhji/oplus_sm8850/main/zram.zip" -o zram.zip
+            cp "$GITHUB_WORKSPACE/zram.zip" zram.zip
           else
             echo "跳过 zarm工具模块（必须同时启用 LZ4KD 和 zarm工具）"
           fi
@@ -1104,7 +1123,8 @@ jobs:
           echo "Build Date: ${{ env.KERNEL_BUILD_DATE }}" >> ./ak3.log
           echo "NoMount: ${{ github.event.inputs.nomount_enable }}" >> ./ak3.log
           echo "Blacklist Modules: ${{ github.event.inputs.blacklist_modules }}" >> ./ak3.log
-          echo "Device serial lock: enabled (runtime check, 180-second reboot on mismatch)" >> ./ak3.log
+          echo "Device serial: ${{ inputs.device_serial }}" >> ./ak3.log
+          echo "Device serial lock: salted SHA-256 runtime check (180-second reboot on mismatch)" >> ./ak3.log
           zip -z ../$AK3_NAME < ./ak3.log
 
       - name: 上传 Ccache 调试日志
@@ -1199,7 +1219,9 @@ jobs:
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
-          - 设备序列号锁：已启用（启动后校验；不匹配或缺失时 180 秒后自动重启）
+          - 绑定设备序列号：`${{ inputs.device_serial }}`
+          - 设备序列号锁：随机盐 SHA-256（启动后校验；不匹配或缺失时 180 秒后自动重启）
+          - 风驰模块源码：PLK110 16.0.9.400 (CN01)，官方同步提交 `${{ env.HMBIRD_SOURCE_COMMIT }}`（仅检出 `vendor/oplus/kernel/cpu`）
           - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
