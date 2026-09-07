@@ -1237,6 +1237,7 @@ jobs:
           ### ⏫️ 更新内容：
           - 更新${{ env.KSU_TYPENAME }}至最新版本（${{ needs.build.outputs.ksuver }}）
           - 保留原厂风驰 HMBIRD II，并加入构建时设备序列号绑定
+          - 兼容 PLK110 原厂 rust_binder 模块的 Rust crate 符号，并保留 modversion CRC 校验
 
           ### 📋 安装方法 | Installation Guide
           1. 若你的手机已经安装了第三方Recovery（如TWRP)，可下载对应机型的AnyKernel刷机包后进入Recovery模式，通过Recovery刷入刷机包后重启设备；
