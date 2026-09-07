@@ -1,0 +1,76 @@
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 7172c0f3b..5506022ce 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -432,4 +432,11 @@ source "fs/unicode/Kconfig"
+ config IO_WQ
+ 	bool
+ 
++config NOMOUNT
++	bool "NoMount Path Redirection Subsystem"
++	default n
++	help
++	  NoMount allows path redirection and virtual file injection
++	  without mounting filesystems. Useful for systemless modifications.
++
+ endmenu
+diff --git a/fs/Makefile b/fs/Makefile
+index 9f5d06f4a..cf4b31921 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -22,6 +22,8 @@ obj-y :=	open.o read_write.o file_table.o super.o \
+ 		fs_types.o fs_context.o fs_parser.o fsopen.o init.o \
+ 		kernel_read_file.o mnt_idmapping.o remap_range.o pidfs.o
+ 
++obj-$(CONFIG_NOMOUNT) += nomount.o
++
+ obj-$(CONFIG_BUFFER_HEAD)	+= buffer.o mpage.o
+ obj-$(CONFIG_PROC_FS)		+= proc_namespace.o
+ obj-$(CONFIG_LEGACY_DIRECT_IO)	+= direct-io.o
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -468,6 +468,11 @@
+ 
+ 		dev = inode->i_sb->s_dev;
+ 		ino = inode->i_ino;
++#ifdef CONFIG_NOMOUNT
++		{ extern void nomount_spoof_mmap_metadata(const struct inode *,
++						  dev_t *, unsigned long *);
++		  nomount_spoof_mmap_metadata(inode, &dev, &ino); }
++#endif
+ 		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
+ 	}
+ 
+@@ -479,6 +484,11 @@
+ 	show_vma_header_prefix(m, start, end, flags, pgoff, dev, ino);
+ 
+ 	get_vma_name(vma, &path, &name, &name_fmt);
++#ifdef CONFIG_NOMOUNT
++	{ extern bool nomount_pathhide_hide_path(const struct path *);
++	  if (path && nomount_pathhide_hide_path(path))
++		path = NULL; }
++#endif
+ 	if (path) {
+ 		seq_pad(m, ' ');
+ 		seq_path(m, path, "\n");
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -1842,6 +1842,16 @@
+ 	len = PTR_ERR(pathname);
+ 	if (IS_ERR(pathname))
+ 		goto out;
++#ifdef CONFIG_NOMOUNT
++	{ extern bool nomount_pathhide_match_path(const char *);
++	  if (nomount_pathhide_match_path(pathname)) {
++		const char *null_target = "/dev/null";
++		len = strlen(null_target);
++		if (copy_to_user(buffer, null_target, len))
++			len = -EFAULT;
++		goto out;
++	  } }
++#endif
+ 	len = tmp + PATH_MAX - 1 - pathname;
+ 
+ 	if (len > buflen)

@@ -1,28 +1,74 @@
 diff --git a/init/main.c b/init/main.c
-index 3738d72116c8..1f7333c779bf 100644
+index c12ac39..3b05a6d 100644
 --- a/init/main.c
 +++ b/init/main.c
-@@ -18,5 +18,6 @@
+@@ -18,6 +18,7 @@
+ #include <linux/proc_fs.h>
  #include <linux/binfmts.h>
  #include <linux/kernel.h>
 +#include <linux/reboot.h>
  #include <linux/syscalls.h>
  #include <linux/stackprotector.h>
  #include <linux/string.h>
-@@ -112,6 +113,39 @@
+@@ -103,6 +104,8 @@
+ #include <linux/randomize_kstack.h>
+ #include <linux/pidfs.h>
+ #include <linux/ptdump.h>
++#include <crypto/sha2.h>
++#include <crypto/utils.h>
+ #include <net/net_namespace.h>
+ 
+ #include <asm/io.h>
+@@ -117,6 +120,75 @@
  
  static int kernel_init(void *);
  
-+/* Replaced by the build workflow. The value is intentionally in vmlinux. */
-+#define OPLUS_BOUND_DEVICE_SERIAL "__OPLUS_BOUND_SERIAL__"
++#define OPLUS_SERIAL_SALT_SIZE 32
++#define OPLUS_SERIAL_MAX_SIZE 64
 +#define OPLUS_SERIAL_REBOOT_DELAY_SECONDS 180
 +
-+/* Fail closed if bootconfig is absent or cannot be parsed. */
-+static bool oplus_serial_lock_mismatch = true;
++/* Per-build values. The workflow replaces both placeholders before compile. */
++static const u8 oplus_serial_salt[OPLUS_SERIAL_SALT_SIZE] = {
++	__OPLUS_SERIAL_SALT__
++};
++static const u8 oplus_serial_digest[SHA256_DIGEST_SIZE] = {
++	__OPLUS_SERIAL_DIGEST__
++};
++
++/* Fail closed if bootconfig is absent, malformed, or cannot be parsed. */
++static bool oplus_serial_lock_verified;
++
++bool oplus_device_serial_verified(void)
++{
++	return READ_ONCE(oplus_serial_lock_verified);
++}
++
++static void __init oplus_verify_device_serial(const char *serial)
++{
++	struct sha256_state state;
++	u8 digest[SHA256_DIGEST_SIZE];
++	size_t serial_len;
++
++	if (!serial)
++		return;
++	serial_len = strnlen(serial, OPLUS_SERIAL_MAX_SIZE + 1);
++	if (!serial_len || serial_len > OPLUS_SERIAL_MAX_SIZE)
++		return;
++
++	sha256_init(&state);
++	sha256_update(&state, oplus_serial_salt, sizeof(oplus_serial_salt));
++	sha256_update(&state, serial, serial_len);
++	sha256_final(&state, digest);
++	WRITE_ONCE(oplus_serial_lock_verified,
++		   !crypto_memneq(digest, oplus_serial_digest, sizeof(digest)));
++	memzero_explicit(digest, sizeof(digest));
++}
 +
 +static int oplus_serial_lock_reboot_thread(void *unused)
 +{
 +	ssleep(OPLUS_SERIAL_REBOOT_DELAY_SECONDS);
++	if (oplus_device_serial_verified())
++		return 0;
 +	pr_emerg("device serial lock: refusing to run on this device\n");
 +	emergency_restart();
 +	return 0;
@@ -32,7 +78,7 @@ index 3738d72116c8..1f7333c779bf 100644
 +{
 +	struct task_struct *task;
 +
-+	if (!oplus_serial_lock_mismatch)
++	if (oplus_device_serial_verified())
 +		return 0;
 +
 +	pr_emerg("device serial lock: mismatch; emergency restart in %u seconds\n",
@@ -49,7 +95,7 @@ index 3738d72116c8..1f7333c779bf 100644
  /*
   * Debug helper: via this flag we know that we are in 'early bootup code'
   * where only the boot processor is running with IRQ disabled.  This means
-@@ -518,8 +552,10 @@ static void __init setup_boot_config(void)
+@@ -415,8 +487,10 @@ static void __init setup_boot_config(void)
  {
  	static char tmp_cmdline[COMMAND_LINE_SIZE] __initdata;
  	const char *msg, *data;
@@ -60,15 +106,14 @@ index 3738d72116c8..1f7333c779bf 100644
  	char *err;
  
  	/* Cut out the bootconfig data even if we have no bootconfig option */
-@@ -558,6 +594,14 @@ static void __init setup_boot_config(void)
+@@ -465,6 +539,13 @@ static void __init setup_boot_config(void)
  		extra_command_line = xbc_make_cmdline("kernel");
  		/* Also, "init." keys are init arguments */
  		extra_init_args = xbc_make_cmdline("init");
 +
 +		device_serial = xbc_find_value("androidboot.serialno", &serial_node);
-+		oplus_serial_lock_mismatch = !device_serial ||
-+			strcmp(device_serial, OPLUS_BOUND_DEVICE_SERIAL);
-+		if (oplus_serial_lock_mismatch)
++		oplus_verify_device_serial(device_serial);
++		if (!oplus_device_serial_verified())
 +			pr_emerg("device serial lock: boot serial is missing or mismatched\n");
 +		else
 +			pr_info("device serial lock: verified\n");
