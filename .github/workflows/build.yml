@@ -17,9 +17,10 @@ on:
   workflow_dispatch:
     inputs:
       device_serial:
-        description: '绑定设备序列号（写入内核，启动后校验）'
-        required: true
+        description: '绑定设备序列号（留空时使用默认自用序列号；写入内核并在启动后校验）'
+        required: false
         type: string
+        default: '3B15A800Y5D00000'
       self_config:
         description: '自用配置'
         required: true
