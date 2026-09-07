@@ -197,7 +197,8 @@ struct nomount_proxy_ctx {
     struct dir_context ctx;
     struct dir_context *orig_ctx;
     struct nomount_dir_node *dir_node;
-    int emitted;
+    uid_t fsuid;
+    bool emitted;
 };
 
 static NM_ACTOR_RET nomount_actor_proxy(struct dir_context *ctx, const char *name, int namelen,
@@ -220,7 +221,7 @@ static NM_ACTOR_RET nomount_actor_proxy(struct dir_context *ctx, const char *nam
     rcu_read_lock();
     hash_for_each_possible_rcu(proxy->dir_node->children_ht, child, hnode, hash) {
         if (child->name_hash == hash && child->name_len == namelen && memcmp(child->name, name, namelen) == 0) {
-            if (child->rule && (child->rule->target_uid == 0 || child->rule->target_uid == current_uid().val)) {
+            if (child->rule && (child->rule->target_uid == 0 || child->rule->target_uid == proxy->fsuid)) {
                 rcu_read_unlock();
                 proxy->ctx.pos = offset;
                 return NM_ACTOR_CONTINUE;
@@ -235,7 +236,7 @@ do_real_actor:
     proxy->orig_ctx->pos = proxy->ctx.pos;
     ret = proxy->orig_ctx->actor(proxy->orig_ctx, name, namelen, offset, ino, d_type);
     proxy->ctx.pos = proxy->orig_ctx->pos;
-    if (ret == NM_ACTOR_CONTINUE) proxy->emitted++;
+    if (ret == NM_ACTOR_CONTINUE) proxy->emitted = true;
 
     return ret;
 }
@@ -267,6 +268,7 @@ static bool nm_emit_dots(struct file *file, struct dir_context *ctx,
 static inline void nomount_emit_virtual_children(struct dir_context *ctx, struct nomount_dir_node *dir_node)
 {
     struct nomount_child_node *child;
+    uid_t fsuid = __kuid_val(current_fsuid());
     int id;
 
     if (!dir_node) return;
@@ -290,7 +292,7 @@ static inline void nomount_emit_virtual_children(struct dir_context *ctx, struct
         rcu_read_lock();
         while ((child = idr_get_next(&dir_node->children_idr, &id)) != NULL) {
             if (child->rule &&
-                (child->rule->target_uid == 0 || child->rule->target_uid == current_uid().val) &&
+                (child->rule->target_uid == 0 || child->rule->target_uid == fsuid) &&
                 !(child->flags & NM_FLAG_WHITEOUT)) {
                 found = id;
                 nlen = min_t(int, (int)child->name_len, NAME_MAX);
@@ -550,6 +552,7 @@ static int nomount_hijacked_iterate_dir(struct file *file, struct dir_context *c
     const struct file_operations *orig_fop;
     struct nomount_proxy_ctx proxy_ctx = {
         .ctx.actor = nomount_actor_proxy,
+        .fsuid = __kuid_val(current_fsuid()),
     };
     int res = 0;
 
@@ -563,7 +566,7 @@ static int nomount_hijacked_iterate_dir(struct file *file, struct dir_context *c
     if (pdir && !atomic_inc_not_zero(&pdir->refcount)) pdir = NULL;
     rcu_read_unlock();
 
-    if (unlikely(nomount_is_uid_blocked(current_uid().val) || !orig_fop || !pdir))
+    if (unlikely(nomount_is_uid_blocked(proxy_ctx.fsuid) || !orig_fop || !pdir))
         goto do_real_iterate;
 
     if (unlikely(nm_is_virtual_pos(pdir, ctx->pos))) {
@@ -574,11 +577,11 @@ static int nomount_hijacked_iterate_dir(struct file *file, struct dir_context *c
     proxy_ctx.ctx.pos = ctx->pos;
     proxy_ctx.orig_ctx = ctx;
     proxy_ctx.dir_node = pdir;
-    proxy_ctx.emitted = 0;
+    proxy_ctx.emitted = false;
 
     res = nm_call_iterate(file, &proxy_ctx.ctx, orig_fop);
     ctx->pos = proxy_ctx.ctx.pos;
-    if (res < 0 || proxy_ctx.emitted > 0) goto out;
+    if (res < 0 || proxy_ctx.emitted) goto out;
 
     nm_publish_real_eof(pdir, ctx->pos);
     ctx->pos = nm_pack_pos(pdir, 0);
@@ -1283,11 +1286,12 @@ static int nm_dir_iterate_dir(struct file *file, struct dir_context *ctx)
     if (real_file) {
         struct nomount_proxy_ctx proxy_ctx = {
             .ctx.actor = nomount_actor_proxy, .ctx.pos = ctx->pos,
-            .orig_ctx = ctx, .dir_node = dir_node, .emitted = 0
+            .orig_ctx = ctx, .dir_node = dir_node,
+            .fsuid = __kuid_val(current_fsuid()), .emitted = false
         };
         res = nm_call_iterate(real_file, &proxy_ctx.ctx, real_file->f_op);
         ctx->pos = proxy_ctx.ctx.pos;
-        if (res < 0 || proxy_ctx.emitted > 0) return res;
+        if (res < 0 || proxy_ctx.emitted) return res;
         if (!dir_node) return res;
         nm_publish_real_eof(dir_node, ctx->pos);
         ctx->pos = nm_pack_pos(dir_node, 0);
@@ -3982,114 +3986,326 @@ void nomount_spoof_mmap_metadata(const struct inode *inode, dev_t *dev,
 #define NM_PATHHIDE_MAX_PATHS    256
 #define NM_PATHHIDE_MAX_PATH_LEN 512
 
-static struct {
-	char paths[NM_PATHHIDE_MAX_PATHS][NM_PATHHIDE_MAX_PATH_LEN];
-	int count;
-	spinlock_t lock;
-} nm_pathhide;
+enum nm_pathhide_scope {
+	NM_PATHHIDE_SCOPE_DENY = 0,
+	NM_PATHHIDE_SCOPE_GLOBAL,
+};
+
+struct nm_pathhide_rule {
+	char path[NM_PATHHIDE_MAX_PATH_LEN];
+	dev_t dev;
+	unsigned long ino;
+	bool inode_valid;
+	bool needs_path_match;
+};
+
+struct nm_pathhide_table {
+	struct rcu_head rcu;
+	u16 count;
+	u8 scope;
+	bool has_path_rules;
+	u64 inode_bloom;
+	struct nm_pathhide_rule rules[];
+};
+
+static DEFINE_MUTEX(nm_pathhide_mutex);
+static DEFINE_STATIC_KEY_FALSE(nm_pathhide_active);
+static struct nm_pathhide_table __rcu *nm_pathhide_rules;
 static struct proc_dir_entry *nm_pathhide_pde;
 
-static void nm_pathhide_clear_locked(void)
+static struct nm_pathhide_table *nm_pathhide_alloc(unsigned int count)
 {
-	nm_pathhide.count = 0;
+	struct nm_pathhide_table *table;
+
+	if (count > NM_PATHHIDE_MAX_PATHS)
+		return NULL;
+	table = kvzalloc(struct_size(table, rules, count), GFP_KERNEL);
+	if (table)
+		table->count = count;
+	return table;
 }
 
-/* Exported to fs/proc/base.c: substring match (package name or path). */
+static bool nm_pathhide_scope_matches(const struct nm_pathhide_table *table)
+{
+	if (table->scope == NM_PATHHIDE_SCOPE_GLOBAL)
+		return true;
+	return nomount_is_uid_blocked(__kuid_val(current_fsuid()));
+}
+
+static __always_inline u64 nm_pathhide_inode_bit(dev_t dev, unsigned long ino)
+{
+	u64 key = ((u64)new_encode_dev(dev) << 32) ^ (u64)ino;
+
+	return 1ULL << hash_64(key, 6);
+}
+
+/* Exact path or directory-prefix matching only.  The old strstr() rule made
+ * "com.foo" also hide "com.foobar" and was the source of several app crashes. */
+static bool nm_pathhide_text_matches(const char *path, const char *rule)
+{
+	size_t len;
+
+	if (!path || !rule || rule[0] != '/')
+		return false;
+	len = strlen(rule);
+	if (strncmp(path, rule, len))
+		return false;
+	return path[len] == '\0' || path[len] == '/' ||
+	       (len && rule[len - 1] == '/');
+}
+
 bool nomount_pathhide_match_path(const char *path)
 {
+	const struct nm_pathhide_table *table;
+	bool hide = false;
 	int i;
-	bool blocked = false;
-	unsigned long flags;
 
-	if (unlikely(!path || !*path))
+	if (unlikely(!path || !*path) ||
+	    !static_branch_unlikely(&nm_pathhide_active))
 		return false;
-	spin_lock_irqsave(&nm_pathhide.lock, flags);
-	for (i = 0; i < nm_pathhide.count; i++) {
-		if (nm_pathhide.paths[i][0] &&
-		    strstr(path, nm_pathhide.paths[i])) {
-			blocked = true;
-			break;
+	rcu_read_lock();
+	table = rcu_dereference(nm_pathhide_rules);
+	if (table && nm_pathhide_scope_matches(table)) {
+		if (!(table->inode_bloom & nm_pathhide_inode_bit(inode->i_sb->s_dev,
+							       inode->i_ino)))
+			goto out;
+		for (i = 0; i < table->count; i++) {
+			if (nm_pathhide_text_matches(path, table->rules[i].path)) {
+				hide = true;
+				break;
+			}
 		}
 	}
-	spin_unlock_irqrestore(&nm_pathhide.lock, flags);
-	return blocked;
+out:
+	rcu_read_unlock();
+	return hide;
 }
 
-/* Exported to fs/proc/task_mmu.c: resolve a struct path and test it. */
+bool nomount_pathhide_hide_inode(const struct inode *inode)
+{
+	const struct nm_pathhide_table *table;
+	bool hide = false;
+	int i;
+
+	if (unlikely(!inode || !inode->i_sb) ||
+	    !static_branch_unlikely(&nm_pathhide_active))
+		return false;
+	rcu_read_lock();
+	table = rcu_dereference(nm_pathhide_rules);
+	if (table && nm_pathhide_scope_matches(table)) {
+		if (!(table->inode_bloom & nm_pathhide_inode_bit(dir->i_sb->s_dev,
+							       (unsigned long)ino)))
+			goto out;
+		for (i = 0; i < table->count; i++) {
+			const struct nm_pathhide_rule *rule = &table->rules[i];
+			if (rule->inode_valid && rule->dev == inode->i_sb->s_dev &&
+			    rule->ino == inode->i_ino) {
+				hide = true;
+				break;
+			}
+		}
+	}
+out:
+	rcu_read_unlock();
+	return hide;
+}
+
+bool nomount_pathhide_hide_dirent(const struct inode *dir, u64 ino,
+				  const char *name, int namelen)
+{
+	const struct nm_pathhide_table *table;
+	bool hide = false;
+	int i;
+
+	if (unlikely(!dir || !dir->i_sb || ino == 0 || namelen <= 0) ||
+	    !static_branch_unlikely(&nm_pathhide_active))
+		return false;
+	rcu_read_lock();
+	table = rcu_dereference(nm_pathhide_rules);
+	if (table && nm_pathhide_scope_matches(table)) {
+		for (i = 0; i < table->count; i++) {
+			const struct nm_pathhide_rule *rule = &table->rules[i];
+			if (rule->inode_valid && rule->dev == dir->i_sb->s_dev &&
+			    rule->ino == ino) {
+				hide = true;
+				break;
+			}
+		}
+	}
+	rcu_read_unlock();
+	return hide;
+}
+
+/* /proc/maps and /proc/fd normally hit the identity fast path.  d_path() is
+ * only needed for a directory-prefix rule whose descendant has another inode. */
 bool nomount_pathhide_hide_path(const struct path *path)
 {
+	const struct nm_pathhide_table *table;
+	const struct inode *inode;
+	bool need_text = false;
 	char *buf, *name;
-	bool hide = false;
+	int i;
 
-	if (unlikely(!path))
+	if (unlikely(!path || !path->dentry) ||
+	    !static_branch_unlikely(&nm_pathhide_active))
 		return false;
-	buf = kmalloc(PATH_MAX, GFP_KERNEL);
+	inode = d_backing_inode(path->dentry);
+	if (nomount_pathhide_hide_inode(inode))
+		return true;
+	rcu_read_lock();
+	table = rcu_dereference(nm_pathhide_rules);
+	if (table && nm_pathhide_scope_matches(table))
+		need_text = table->has_path_rules;
+	rcu_read_unlock();
+	if (!need_text)
+		return false;
+	buf = (char *)__get_free_page(GFP_KERNEL);
 	if (!buf)
 		return false;
-	name = d_path(path, buf, PATH_MAX);
-	if (!IS_ERR(name))
-		hide = nomount_pathhide_match_path(name);
-	kfree(buf);
-	return hide;
+	name = d_path(path, buf, PAGE_SIZE);
+	i = !IS_ERR(name) && nomount_pathhide_match_path(name);
+	free_page((unsigned long)buf);
+	return i;
 }
 
 static int nm_pathhide_add(const char *path)
 {
-	unsigned long flags;
-	int i, len;
+	struct nm_pathhide_table *old, *new;
+	struct path resolved;
+	struct inode *inode;
+	int i, len, ret = 0;
 
 	len = strlen(path);
-	if (len <= 0 || len >= NM_PATHHIDE_MAX_PATH_LEN)
+	if (len <= 0 || len >= NM_PATHHIDE_MAX_PATH_LEN || path[0] != '/')
 		return -EINVAL;
-	spin_lock_irqsave(&nm_pathhide.lock, flags);
-	for (i = 0; i < nm_pathhide.count; i++) {
-		if (!strcmp(nm_pathhide.paths[i], path)) {
-			spin_unlock_irqrestore(&nm_pathhide.lock, flags);
-			return 0;
+	mutex_lock(&nm_pathhide_mutex);
+	old = rcu_dereference_protected(nm_pathhide_rules,
+					lockdep_is_held(&nm_pathhide_mutex));
+	for (i = 0; old && i < old->count; i++)
+		if (!strcmp(old->rules[i].path, path))
+			goto out;
+	if (old && old->count >= NM_PATHHIDE_MAX_PATHS) {
+		ret = -ENOSPC;
+		goto out;
+	}
+	new = nm_pathhide_alloc(old ? old->count + 1 : 1);
+	if (!new) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	new->scope = old ? old->scope : NM_PATHHIDE_SCOPE_DENY;
+	if (old)
+		memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
+	strscpy(new->rules[new->count - 1].path, path,
+		sizeof(new->rules[new->count - 1].path));
+	/* A trailing slash denotes a directory-prefix rule. */
+	new->rules[new->count - 1].needs_path_match = path[len - 1] == '/';
+	if (!kern_path(path, LOOKUP_FOLLOW, &resolved)) {
+		inode = d_backing_inode(resolved.dentry);
+		if (inode && inode->i_sb) {
+			new->rules[new->count - 1].dev = inode->i_sb->s_dev;
+			new->rules[new->count - 1].ino = inode->i_ino;
+			new->rules[new->count - 1].inode_valid = inode->i_ino != 0;
+			new->rules[new->count - 1].needs_path_match |= S_ISDIR(inode->i_mode);
 		}
+		path_put(&resolved);
+	} else {
+		new->rules[new->count - 1].needs_path_match = true;
 	}
-	if (nm_pathhide.count >= NM_PATHHIDE_MAX_PATHS) {
-		spin_unlock_irqrestore(&nm_pathhide.lock, flags);
-		return -ENOSPC;
+	for (i = 0; i < new->count; i++) {
+		new->has_path_rules |= new->rules[i].needs_path_match;
+		if (new->rules[i].inode_valid)
+			new->inode_bloom |= nm_pathhide_inode_bit(new->rules[i].dev,
+							      new->rules[i].ino);
 	}
-	strcpy(nm_pathhide.paths[nm_pathhide.count++], path);
-	spin_unlock_irqrestore(&nm_pathhide.lock, flags);
-	return 0;
+	rcu_assign_pointer(nm_pathhide_rules, new);
+	if (!old)
+		static_branch_enable(&nm_pathhide_active);
+	else
+		kvfree_rcu(old, rcu);
+out:
+	mutex_unlock(&nm_pathhide_mutex);
+	return ret;
 }
 
 static int nm_pathhide_remove(const char *path)
 {
-	unsigned long flags;
-	int i;
+	struct nm_pathhide_table *old, *new = NULL;
+	int i, j, found = -1, ret = 0;
 
-	if (!*path) {
-		spin_lock_irqsave(&nm_pathhide.lock, flags);
-		nm_pathhide_clear_locked();
-		spin_unlock_irqrestore(&nm_pathhide.lock, flags);
-		return 0;
+	mutex_lock(&nm_pathhide_mutex);
+	old = rcu_dereference_protected(nm_pathhide_rules,
+					lockdep_is_held(&nm_pathhide_mutex));
+	if (!old) {
+		ret = *path ? -ENOENT : 0;
+		goto out;
 	}
-	spin_lock_irqsave(&nm_pathhide.lock, flags);
-	for (i = 0; i < nm_pathhide.count; i++) {
-		if (!strcmp(nm_pathhide.paths[i], path)) {
-			nm_pathhide.count--;
-			strcpy(nm_pathhide.paths[i], nm_pathhide.paths[nm_pathhide.count]);
-			spin_unlock_irqrestore(&nm_pathhide.lock, flags);
-			return 0;
+	if (*path) {
+		for (i = 0; i < old->count; i++)
+			if (!strcmp(old->rules[i].path, path)) { found = i; break; }
+		if (found < 0) { ret = -ENOENT; goto out; }
+	}
+	if (*path && old->count > 1) {
+		new = nm_pathhide_alloc(old->count - 1);
+		if (!new) { ret = -ENOMEM; goto out; }
+		new->scope = old->scope;
+		for (i = 0, j = 0; i < old->count; i++) {
+			if (i == found) continue;
+			new->rules[j] = old->rules[i];
+			new->has_path_rules |= new->rules[j].needs_path_match;
+			if (new->rules[j].inode_valid)
+				new->inode_bloom |= nm_pathhide_inode_bit(new->rules[j].dev,
+								      new->rules[j].ino);
+			j++;
 		}
 	}
-	spin_unlock_irqrestore(&nm_pathhide.lock, flags);
-	return -ENOENT;
+	rcu_assign_pointer(nm_pathhide_rules, new);
+	if (!new)
+		static_branch_disable(&nm_pathhide_active);
+	kvfree_rcu(old, rcu);
+out:
+	mutex_unlock(&nm_pathhide_mutex);
+	return ret;
+}
+
+static int nm_pathhide_set_scope(const char *scope)
+{
+	struct nm_pathhide_table *old, *new;
+	u8 value;
+
+	if (!strcmp(scope, "deny")) value = NM_PATHHIDE_SCOPE_DENY;
+	else if (!strcmp(scope, "global")) value = NM_PATHHIDE_SCOPE_GLOBAL;
+	else return -EINVAL;
+	mutex_lock(&nm_pathhide_mutex);
+	old = rcu_dereference_protected(nm_pathhide_rules,
+					lockdep_is_held(&nm_pathhide_mutex));
+	if (!old) { mutex_unlock(&nm_pathhide_mutex); return 0; }
+	new = nm_pathhide_alloc(old->count);
+	if (!new) { mutex_unlock(&nm_pathhide_mutex); return -ENOMEM; }
+	memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
+	new->scope = value;
+	new->has_path_rules = old->has_path_rules;
+	new->inode_bloom = old->inode_bloom;
+	rcu_assign_pointer(nm_pathhide_rules, new);
+	kvfree_rcu(old, rcu);
+	mutex_unlock(&nm_pathhide_mutex);
+	return 0;
 }
 
 static int nm_pathhide_show(struct seq_file *m, void *v)
 {
+	const struct nm_pathhide_table *table;
 	int i;
-	unsigned long flags;
 
-	spin_lock_irqsave(&nm_pathhide.lock, flags);
-	for (i = 0; i < nm_pathhide.count; i++)
-		seq_printf(m, "%s\n", nm_pathhide.paths[i]);
-	spin_unlock_irqrestore(&nm_pathhide.lock, flags);
+	rcu_read_lock();
+	table = rcu_dereference(nm_pathhide_rules);
+	if (table) {
+		seq_printf(m, "@%s\n", table->scope == NM_PATHHIDE_SCOPE_GLOBAL ?
+			   "global" : "deny");
+		for (i = 0; i < table->count; i++)
+			seq_printf(m, "%s\n", table->rules[i].path);
+	}
+	rcu_read_unlock();
 	return 0;
 }
 
@@ -4124,6 +4340,8 @@ static ssize_t nm_pathhide_write(struct file *file, const char __user *ubuf,
 		ret = nm_pathhide_add(buf + 1);
 	else if (buf[0] == '-')
 		ret = nm_pathhide_remove(buf + 1);
+	else if (buf[0] == '@')
+		ret = nm_pathhide_set_scope(buf + 1);
 	else
 		ret = -EINVAL;
 	kfree(buf);
@@ -4150,8 +4368,7 @@ static const struct file_operations nm_pathhide_fops = {
 
 static int __init nomount_pathhide_init(void)
 {
-	spin_lock_init(&nm_pathhide.lock);
-	nm_pathhide.count = 0;
+	RCU_INIT_POINTER(nm_pathhide_rules, NULL);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 	nm_pathhide_pde = proc_create("pathhide", 0644, NULL, &nm_pathhide_proc_ops);
 #else
@@ -4164,10 +4381,21 @@ static int __init nomount_pathhide_init(void)
 
 static void nomount_pathhide_exit(void)
 {
+	struct nm_pathhide_table *table;
+
 	if (nm_pathhide_pde) {
 		remove_proc_entry("pathhide", NULL);
 		nm_pathhide_pde = NULL;
 	}
+	mutex_lock(&nm_pathhide_mutex);
+	table = rcu_dereference_protected(nm_pathhide_rules,
+					  lockdep_is_held(&nm_pathhide_mutex));
+	RCU_INIT_POINTER(nm_pathhide_rules, NULL);
+	if (table)
+		static_branch_disable(&nm_pathhide_active);
+	mutex_unlock(&nm_pathhide_mutex);
+	synchronize_rcu();
+	kvfree(table);
 }
 static void __exit nomount_exit(void)
 {

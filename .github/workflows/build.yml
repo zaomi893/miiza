@@ -1134,6 +1134,15 @@ jobs:
           echo "Device serial lock: salted SHA-256 runtime check (180-second reboot on mismatch)" >> ./ak3.log
           zip -z ../$AK3_NAME < ./ak3.log
 
+      - name: 打包匹配内核的 NoMount Suite 模块
+        if: inputs.nomount_enable
+        run: |
+          set -euxo pipefail
+          cd "$GITHUB_WORKSPACE/nomount/module"
+          sha256sum -c nomount.sha256sums
+          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.4.0.zip" . \
+            -x '*.git*'
+
       - name: 上传 Ccache 调试日志
         if: always() && inputs.ccache_debug
         uses: actions/upload-artifact@v7
@@ -1145,6 +1154,14 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           path: ${{ github.workspace }}/kernel_workspace/${{ steps.create_zip.outputs.ak3name }}
+          archive: false
+
+      - name: 上传 NoMount Suite 模块
+        if: inputs.nomount_enable
+        uses: actions/upload-artifact@v7
+        with:
+          name: NoMount-Suite-v1.4.0
+          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.4.0.zip
           archive: false
 
       - name: 上传匹配 GKI 的风驰驱动测试工件
@@ -1166,6 +1183,14 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ${{ needs.build.outputs.ak3name }}
+          path: ./release_zips
+          skip-decompress: true
+
+      - name: 下载 NoMount Suite 模块
+        if: inputs.nomount_enable
+        uses: actions/download-artifact@v8
+        with:
+          name: NoMount-Suite-v1.4.0
           path: ./release_zips
           skip-decompress: true
 
@@ -1225,6 +1250,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
+          - NoMount Suite：v1.4.0（按 UID 的 PathMask/Cloak、Scene debugfs 自动识别、PathHide 闪退修复）
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
           - 绑定设备序列号：`${{ inputs.device_serial }}`
           - 设备序列号锁：随机盐 SHA-256（启动后校验；不匹配或缺失时 180 秒后自动重启）
@@ -1238,6 +1264,7 @@ jobs:
           - 更新${{ env.KSU_TYPENAME }}至最新版本（${{ needs.build.outputs.ksuver }}）
           - 保留原厂风驰 HMBIRD II，并加入构建时设备序列号绑定
           - 兼容 PLK110 原厂 rust_binder 模块的 Rust crate 符号，并保留 modversion CRC 校验
+          - 同步 NoMount 上游目录遍历 UID 缓存优化；路径规则采用 RCU 快照、inode Bloom 快速拒绝，规则为空时静态分支零常驻扫描
 
           ### 📋 安装方法 | Installation Guide
           1. 若你的手机已经安装了第三方Recovery（如TWRP)，可下载对应机型的AnyKernel刷机包后进入Recovery模式，通过Recovery刷入刷机包后重启设备；

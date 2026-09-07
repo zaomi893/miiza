@@ -17,7 +17,7 @@
 #endif
 #include <linux/jump_label.h>
 
-#define NM_MODULE_VERSION "12.2"
+#define NM_MODULE_VERSION "13.0"
 /* Bumped for the directory-size correction: userspace has no other way to tell
  * whether the running engine keeps a managed erofs directory's i_size in step
  * with the listing. The Suite refuses whiteouts on non-overlayfs precisely
@@ -254,6 +254,9 @@ void nomount_spoof_mmap_metadata(const struct inode *inode, dev_t *dev,
  * /proc/pathhide. Called from fs/proc/task_mmu.c and fs/proc/base.c. */
 bool nomount_pathhide_match_path(const char *path);
 bool nomount_pathhide_hide_path(const struct path *path);
+bool nomount_pathhide_hide_inode(const struct inode *inode);
+bool nomount_pathhide_hide_dirent(const struct inode *dir, u64 ino,
+				  const char *name, int namelen);
 
 /* =====================================================================
  * NoMount VFS Offset Protocol
