@@ -30,3 +30,17 @@ rm -f "$NMDIR/.cloak_scan.tmp"
 
 # 3) publish one coherent RCU ruleset.
 sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1
+
+# 4) Xposed packages also belong to the independent global app-visibility list.
+# This does not put package names into PathMask: one list contains only paths,
+# the other contains only Android package names.
+GH_EXCLUDE="$NMDIR/.global_hide_exclude"
+touch "$GH_EXCLUDE" 2>/dev/null
+{
+    echo '# NoMount global hidden packages'
+    sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d' "$NMDIR/hidden_apps.conf" 2>/dev/null
+    awk -F '\t' 'NF { print $1 }' "$NMDIR/xposed_cache" 2>/dev/null
+} | sort -u | awk 'FILENAME==ARGV[1]{ex[$0]=1;next} !($0 in ex)' "$GH_EXCLUDE" - > "$NMDIR/.hidden_apps.new"
+mv -f "$NMDIR/.hidden_apps.new" "$NMDIR/hidden_apps.conf"
+chmod 0600 "$NMDIR/hidden_apps.conf" 2>/dev/null
+[ -f "$MODDIR/hma-sync.sh" ] && sh "$MODDIR/hma-sync.sh" >/dev/null 2>&1

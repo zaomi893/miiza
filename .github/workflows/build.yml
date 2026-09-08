@@ -11,6 +11,8 @@ env:
   KERNEL_SOURCE_BRANCH: 'oneplus/sm8850_v_16.0.0_oneplus_15'
   # PLK110 16.0.9.400 (CN01) is included in this official synchronized revision.
   HMBIRD_SOURCE_COMMIT: '5ab2a689ff87d7d28c511f1762cf41c1b90d965a'
+  NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
+  NOMOUNT_UPSTREAM_COMMIT: '2b8891614399692dec443d27bffbc179cfeb6f6b'
   CCACHE_KEY: ccache-ecsv4-6.12.23
 
 on:
@@ -1139,13 +1141,60 @@ jobs:
           echo "Device serial lock: salted SHA-256 runtime check (180-second reboot on mismatch)" >> ./ak3.log
           zip -z ../$AK3_NAME < ./ak3.log
 
+      - name: 为 NoMount HMA-OSS 后端配置 JDK
+        if: inputs.nomount_enable
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 验证正确的 NoMount Suite 上游与许可证
+        if: inputs.nomount_enable
+        run: |
+          set -euxo pipefail
+          cd "$GITHUB_WORKSPACE/kernel_workspace"
+          git clone "https://github.com/${NOMOUNT_UPSTREAM_REPO}.git" nomount_upstream
+          cd nomount_upstream
+          git checkout "$NOMOUNT_UPSTREAM_COMMIT"
+          test "$(git rev-parse HEAD)" = "$NOMOUNT_UPSTREAM_COMMIT"
+          grep -q '^version=v1.3.170$' module/module.prop
+          cp LICENSE "$GITHUB_WORKSPACE/nomount/module/NoMount-Suite-GPL-3.0-LICENSE"
+          printf '%s@%s\n' "$NOMOUNT_UPSTREAM_REPO" "$NOMOUNT_UPSTREAM_COMMIT" \
+            > "$GITHUB_WORKSPACE/nomount/module/NOMOUNT-UPSTREAM"
+
+      - name: 构建并集成 NoMount HMA-OSS 应用隐藏后端
+        if: inputs.nomount_enable
+        run: |
+          set -euxo pipefail
+          cd "$GITHUB_WORKSPACE/kernel_workspace"
+          git clone https://github.com/frknkrc44/HMA-OSS.git hma_oss
+          cd hma_oss
+          git checkout d1cfcbce72ac07eb998cd49be1d5385ade48f713
+          git apply "$GITHUB_WORKSPACE/nomount/hma-oss-nomount-global.patch"
+          : > local.properties
+          ./gradlew :app:assembleRelease
+          ./gradlew :zygote:assembleRelease
+          HMA_ZIP="$(find zygote/build/outputs/magisk/release -maxdepth 1 -name '*.zip' -print -quit)"
+          test -f "$HMA_ZIP"
+          DEST="$GITHUB_WORKSPACE/nomount/module"
+          cp LICENSE.md "$DEST/HMA-OSS-LICENSE.md"
+          unzip -jo "$HMA_ZIP" manager.apk classes.dex -d "$DEST"
+          mkdir -p "$DEST/zygisk" "$DEST/packages"
+          unzip -jo "$HMA_ZIP" zygisk/arm64-v8a.so -d "$DEST/zygisk"
+          printf 'android\n' > "$DEST/packages/android"
+          test -s "$DEST/manager.apk"
+          test -s "$DEST/classes.dex"
+          test -s "$DEST/zygisk/arm64-v8a.so"
+
       - name: 打包匹配内核的 NoMount Suite 模块
         if: inputs.nomount_enable
         run: |
           set -euxo pipefail
           cd "$GITHUB_WORKSPACE/nomount/module"
           sha256sum -c nomount.sha256sums
-          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.5.1.zip" . \
+          find . -type f ! -name nomount.sha256sums -print0 | sort -z | xargs -0 sha256sum > nomount.sha256sums
+          sha256sum -c nomount.sha256sums
+          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.6.0.zip" . \
             -x '*.git*'
 
       - name: 上传 Ccache 调试日志
@@ -1165,8 +1214,8 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/upload-artifact@v7
         with:
-          name: NoMount-Suite-v1.5.1
-          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.5.1.zip
+          name: NoMount-Suite-v1.6.0
+          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.6.0.zip
           archive: false
 
       - name: 上传匹配 GKI 的风驰驱动测试工件
@@ -1195,7 +1244,7 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/download-artifact@v8
         with:
-          name: NoMount-Suite-v1.5.1.zip
+          name: NoMount-Suite-v1.6.0.zip
           path: ./release_zips
           skip-decompress: true
 
@@ -1255,7 +1304,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
-          - NoMount Suite：v1.5.1（隐藏应用与路径遮罩分类、Xposed 自动识别、Scene debugfs 自动遮罩、PathHide 闪退修复）
+          - NoMount Suite：v1.6.0（完整路径遮罩、HMA-OSS 全局应用隐藏、Xposed 自动加入两类列表、Scene debugfs 自动遮罩）
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
           - 绑定设备序列号：`${{ inputs.device_serial }}`
           - 设备序列号锁：随机盐 SHA-256（启动后校验；不匹配或缺失时 180 秒后自动重启）

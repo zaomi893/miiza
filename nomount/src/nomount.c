@@ -95,6 +95,7 @@ static int nomount_hijacked_iterate_dir(struct file *file, struct dir_context *c
  * synthesized dir must report the erofs-shaped size instead of 4096. See
  * NM_KNOB_VDIR_EROFS_SIZE for why this cannot be inferred in-kernel. */
 static bool nm_vdir_erofs_size __read_mostly;
+static loff_t nm_vdir_size(struct nomount_dir_node *d, unsigned int blocksize);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0)
 static int nomount_hijacked_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat);
 #else
@@ -700,6 +701,29 @@ static loff_t nm_llseek(struct file *file, loff_t offset, int whence)
         case SEEK_END: offset += i_size_read(file_inode(file)); break;
         case SEEK_CUR: offset += file->f_pos; break;
         case SEEK_SET: break;
+        /* Backport of Bouteillepleine/NoMount-Suite@286c2ac, boot-verified on
+         * OnePlus 15 upstream. A real erofs directory answers SEEK_DATA and
+         * SEEK_HOLE; returning EINVAL here exposed every synthesized directory
+         * to an unprivileged two-call probe. Use the same reported size as
+         * getattr/SEEK_END so this does not move the discrepancy elsewhere. */
+        case SEEK_DATA:
+        case SEEK_HOLE: {
+            struct nm_inode_info *vi = file_inode(file)->i_private;
+            struct super_block *sb = file_inode(file)->i_sb;
+            loff_t sz = i_size_read(file_inode(file));
+
+            if (vi && vi->dir_node &&
+                (sb->s_magic == EROFS_SUPER_MAGIC_V1 || READ_ONCE(nm_vdir_erofs_size)))
+                sz = nm_vdir_size(vi->dir_node, sb->s_blocksize);
+            if (offset < 0)
+                return -EINVAL;
+            if (offset >= sz)
+                return -ENXIO;
+            if (whence == SEEK_HOLE)
+                offset = sz;
+            file->f_pos = offset;
+            return offset;
+        }
         default:       return -EINVAL;
         }
         if (offset < 0) return -EINVAL;

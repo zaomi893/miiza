@@ -846,19 +846,34 @@
       <button class="act danger" id="phOff" onclick="cloakAllOff(this)" data-i18n="btn_turn_off_all">Turn off all</button>
     </div>
     <div style="display:flex;gap:8px;margin:8px 0 2px">
-      <input class="txin" id="phManual" data-i18n-placeholder="ph_add_package" placeholder="add an installed package" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
+      <input class="txin" id="phManual" data-i18n-placeholder="ph_add_path" placeholder="add an absolute path" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
       <button class="act" style="flex:none;min-width:0;padding:7px 13px" onclick="addCloak()" data-i18n="btn_add">Add</button>
     </div>
         <div style="margin:8px 0 2px">
-      <input class="txin" id="phSearch" data-i18n-placeholder="ph_search" placeholder="search packages" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderCloak()">
+      <input class="txin" id="phSearch" data-i18n-placeholder="ph_search_path" placeholder="search full paths" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderCloak()">
     </div>
     <div class="list" id="phList" style="display:none"></div>
     <div class="btns"><button class="act primary" id="phApply" onclick="applyCloak(this)" data-i18n="btn_apply_save">Apply & save</button></div>
   </div>
+  <div class="card" id="cardGlobalHide">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
+      <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
+    </div>
+    <p class="note" data-i18n="note_global_hide">Packages selected here are removed from package queries made by ordinary apps through the integrated HMA-OSS system-service backend. Xposed modules are added automatically. Critical system packages, the caller itself, and WebView safety exceptions are preserved.</p>
+    <div class="val multiline" id="ghstatus" data-i18n="gh_checking">HMA backend: checking…</div>
+    <div style="display:flex;gap:8px;margin:8px 0 2px">
+      <input class="txin" id="ghManual" data-i18n-placeholder="ph_add_hidden_app" placeholder="package name to hide globally" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
+      <button class="act" style="flex:none;min-width:0;padding:7px 13px" onclick="addGlobalHide()" data-i18n="btn_hide">Hide</button>
+    </div>
+    <div style="margin:8px 0 2px"><input class="txin" id="ghSearch" data-i18n-placeholder="ph_search_apps" placeholder="search app name or package" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
+    <div class="list" id="ghList"></div>
+    <div class="btns"><button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button></div>
+  </div>
   <div class="card" id="cardPerUID">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-      <h2 data-i18n="h2_per_uid">Hidden target apps</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
+      <h2 data-i18n="h2_per_uid">Path-mask target apps</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
     </div>
     <div class="uidbar">
       <div class="pkgwrap">
@@ -981,12 +996,17 @@
       scene_checking: "Scene: checking automatic debugfs detection…",
       btn_scan_xposed: "Rescan Xposed modules",
       btn_show_list: "Show list",
-      ph_add_package: "add an installed package",
+      ph_add_path: "add an absolute path",
       btn_add: "Add",
       btn_apply_save: "Apply & save",
       btn_turn_off_all: "Turn off all",
-      ph_search: "search packages",
-      h2_per_uid: "Hidden target apps",
+      ph_search_path: "search full paths",
+      h2_global_hide: "Global hidden applications",
+      note_global_hide: "Packages selected here are removed from package queries made by ordinary apps through the integrated HMA-OSS system-service backend. Xposed modules are added automatically. Critical system packages, the caller itself, and WebView safety exceptions are preserved.",
+      gh_checking: "HMA backend: checking…",
+      ph_add_hidden_app: "package name to hide globally",
+      ph_search_apps: "search app name or package",
+      h2_per_uid: "Path-mask target apps",
       ph_uid_picker: "Package name or UID — start typing to pick an app",
       btn_hide: "Hide",
       btn_unhide: "Unhide",
@@ -1065,12 +1085,17 @@
       scene_checking: "Scene：正在检查 debugfs 自动识别状态…",
       btn_scan_xposed: "重新扫描 Xposed 模块",
       btn_show_list: "显示列表",
-      ph_add_package: "添加已安装应用包名",
+      ph_add_path: "添加绝对路径",
       btn_add: "添加",
       btn_apply_save: "应用并保存",
       btn_turn_off_all: "一键关闭",
-      ph_search: "搜索已添加包名",
-      h2_per_uid: "隐藏目标应用",
+      ph_search_path: "搜索完整路径",
+      h2_global_hide: "全局隐藏应用",
+      note_global_hide: "这里选中的包会由内置 HMA-OSS 系统服务拦截层从普通应用的包查询结果中移除；Xposed 模块会自动加入。为防止系统异常，保留系统关键包、调用者自身与 WebView 安全例外。",
+      gh_checking: "HMA 后端：检查中…",
+      ph_add_hidden_app: "输入要全局隐藏的包名",
+      ph_search_apps: "搜索应用名或包名",
+      h2_per_uid: "路径遮罩生效应用",
       ph_uid_picker: "包名或 UID — 输入以选择应用",
       btn_hide: "隐藏",
       btn_unhide: "取消隐藏",
@@ -2022,6 +2047,77 @@
   // ---- Cloak ----
   const PH_CONF = "/data/adb/nomount/pathhide.conf";
   const PH_EXCLUDE = "/data/adb/nomount/.cloak_exclude";
+  const GH_CONF = "/data/adb/nomount/hidden_apps.conf";
+  const GH_EXCLUDE = "/data/adb/nomount/.global_hide_exclude";
+  let GH = new Map(); let GHX = new Set();
+  function validPkg(s) { return /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(s || ""); }
+  async function loadGlobalHide() {
+    await loadPkgList(); GH.clear(); GHX.clear();
+    const ex = await exec("cat " + GH_EXCLUDE + " 2>/dev/null");
+    ex.stdout.split("\n").map(function(s){ return s.trim(); }).filter(validPkg).forEach(function(p){ GHX.add(p); });
+    const saved = await exec("cat " + GH_CONF + " 2>/dev/null");
+    saved.stdout.split("\n").map(function(s){ return s.trim(); }).filter(function(s){ return validPkg(s) && s[0] !== '#'; })
+      .forEach(function(p){ GH.set(p, { hidden:true, xposed:false }); });
+    const cached = await exec("sh /data/adb/modules/meta-nomount/scan.sh --cached 2>/dev/null");
+    let mode = null;
+    cached.stdout.split("\n").map(function(s){ return s.trim(); }).forEach(function(l){
+      if (l === "#XPOSED") { mode = "xposed"; return; }
+      if (!l || mode !== "xposed") return;
+      const rec = phXposedRecord(l); if (!validPkg(rec.pkg)) return;
+      const e = GH.get(rec.pkg) || { hidden: !GHX.has(rec.pkg), xposed:false };
+      e.xposed = true; GH.set(rec.pkg, e);
+    });
+    renderGlobalHide(); await refreshGlobalHideStatus();
+  }
+  function saveGlobalExclude() {
+    let cmd = "mkdir -p /data/adb/nomount; { ";
+    GHX.forEach(function(p){ cmd += "echo '" + p + "'; "; });
+    cmd += "} > " + GH_EXCLUDE; exec(cmd);
+  }
+  function renderGlobalHide() {
+    const q = ((document.getElementById("ghSearch") || {}).value || "").trim().toLowerCase();
+    let items = [...GH.entries()].filter(function(x){
+      const a = _pkgByName.get(x[0]);
+      return !q || x[0].toLowerCase().indexOf(q) !== -1 || (a && (a.label || "").toLowerCase().indexOf(q) !== -1);
+    }).sort(function(a,b){ const aa=_pkgByName.get(a[0]), bb=_pkgByName.get(b[0]); return ((aa&&aa.label)||a[0]).localeCompare((bb&&bb.label)||b[0]); });
+    const active = [...GH.values()].filter(function(e){ return e.hidden; }).length;
+    const chip = document.getElementById("ghchip"); if (chip) chip.textContent = String(active);
+    const list = document.getElementById("ghList"); if (!list) return;
+    if (!items.length) { list.innerHTML = '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "尚未添加全局隐藏应用。" : "No globally hidden applications yet.") + '</div>'; return; }
+    list.innerHTML = items.map(function(it){
+      const pkg=it[0], e=it[1], app=_pkgByName.get(pkg), label=(app&&app.label)||pkg;
+      return '<div class="swrow"><div class="swi"><div class="lbl">'+esc(label)+'</div><div class="val">'+esc(pkg)+(e.xposed?' · Xposed':'')+'</div></div>'+
+        '<label class="switch"><input type="checkbox" data-p="'+encodeURIComponent(pkg)+'" '+(e.hidden?'checked':'')+' onchange="toggleGlobalHide(this)"><span class="sl"></span></label></div>';
+    }).join("");
+  }
+  function toggleGlobalHide(cb) {
+    const p=decodeURIComponent(cb.dataset.p), e=GH.get(p); if (!e) return;
+    e.hidden=cb.checked; GH.set(p,e); if (e.xposed) { if (e.hidden) GHX.delete(p); else GHX.add(p); saveGlobalExclude(); }
+    renderGlobalHide();
+  }
+  function addGlobalHide() {
+    const el=document.getElementById("ghManual"), p=(el.value||"").trim();
+    if (!validPkg(p)) { toast(currentLang === "zh" ? "请输入有效包名" : "Enter a valid package name", "bad"); return; }
+    const e=GH.get(p)||{hidden:true,xposed:false}; e.hidden=true; GH.set(p,e); GHX.delete(p); saveGlobalExclude(); el.value=""; renderGlobalHide();
+  }
+  async function writeGlobalHide() {
+    const pkgs=[...GH.entries()].filter(function(x){return x[1].hidden;}).map(function(x){return x[0];}).sort();
+    let cmd="mkdir -p /data/adb/nomount; { echo '# NoMount global hidden packages'; ";
+    pkgs.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_CONF+"; chmod 0600 "+GH_CONF+"; sh /data/adb/modules/meta-nomount/hma-sync.sh 2>/dev/null";
+    return await exec(cmd);
+  }
+  async function applyGlobalHide(btn) {
+    const old=btn.textContent; btn.disabled=true; btn.textContent=currentLang === "zh" ? "应用中…" : "Applying…";
+    const r=await writeGlobalHide(); btn.disabled=false; btn.textContent=old; await refreshGlobalHideStatus();
+    const ok=(r.stdout||"").indexOf("synced") !== -1;
+    toast(ok ? (currentLang === "zh" ? "全局隐藏列表已同步；新查询立即生效" : "Global hide list synced; new queries use it immediately") :
+      (currentLang === "zh" ? "已保存列表，但未检测到内置 HMA 后端；请重启或检查 Zygisk" : "List saved, but the integrated HMA backend was not found; reboot or check Zygisk"), ok?"ok":"bad");
+  }
+  async function refreshGlobalHideStatus() {
+    const r=await exec("sh /data/adb/modules/meta-nomount/hma-sync.sh --status 2>/dev/null");
+    const ok=(r.stdout||"").indexOf("ready") !== -1, el=document.getElementById("ghstatus"); if (!el) return;
+    el.textContent = currentLang === "zh" ? (ok ? "HMA 后端：已集成并就绪" : "HMA 后端：尚未就绪（启用 Zygisk 后重启）") : (ok ? "HMA backend: integrated and ready" : "HMA backend: not ready (enable Zygisk and reboot)");
+  }
   let PH = new Map(); let phShown = false; let EXCLUDE = new Set();
   function phClean(s) { return (s || "").replace(/[^A-Za-z0-9._:/\-]/g, "").trim(); }
   function phXposedRecord(line) {
@@ -2061,6 +2157,10 @@
       const meta = phAppMeta(rec.pkg);
       e.xposed = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel;
       PH.set(rec.path, e);
+      if (validPkg(rec.pkg)) {
+        const ge = GH.get(rec.pkg) || { hidden: !GHX.has(rec.pkg), xposed: false };
+        ge.xposed = true; GH.set(rec.pkg, ge);
+      }
     });
     const ex = await exec("cat " + PH_EXCLUDE + " 2>/dev/null");
     ex.stdout.split("\n").map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (p) {
@@ -2105,11 +2205,17 @@
       const meta = phAppMeta(rec.pkg);
       e.xposed = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel;
       PH.set(rec.path, e);
+      if (validPkg(rec.pkg)) {
+        const ge = GH.get(rec.pkg) || { hidden: !GHX.has(rec.pkg), xposed: false };
+        ge.xposed = true; GH.set(rec.pkg, ge);
+      }
     });
     btn.disabled = false; btn.textContent = o;
     if (!phShown) phShowList(document.getElementById("phShow"));
     renderCloak();
     const ok = await doApplyCloak();
+    renderGlobalHide();
+    await writeGlobalHide();
     toast(ok
       ? (currentLang === "zh" ? ("已加入 " + added + " 项（保留已有开关）") : ("Added " + added + " (kept existing toggles)"))
       : (currentLang === "zh" ? "扫描完成但应用失败" : "Scanned but apply failed"),
@@ -2124,16 +2230,9 @@
   }
   async function addCloak() {
     const el = document.getElementById("phManual"); const v = phClean(el.value);
-    if (!v) { toast(currentLang === "zh" ? "请输入包名或绝对路径" : "Enter a package or absolute path", "bad"); return; }
-    let paths = [v];
-    if (v[0] !== "/") {
-      const resolved = await exec("pm path " + v + " 2>/dev/null");
-      paths = resolved.stdout.split("\n").map(function (s) { return phClean(s.replace(/^package:/, "")); })
-        .filter(function (s) { return s[0] === "/"; });
-      if (!paths.length) { toast(currentLang === "zh" ? "包名不存在或无法解析 APK 路径" : "Package not found", "bad"); return; }
-    }
-    paths.forEach(function (p) {
-      const meta = phAppMeta(v[0] === "/" ? "" : v);
+    if (!v || v[0] !== "/") { toast(currentLang === "zh" ? "请输入以 / 开头的绝对路径" : "Enter an absolute path beginning with /", "bad"); return; }
+    [v].forEach(function (p) {
+      const meta = phAppMeta("");
       const e = PH.get(p) || { xposed: false };
       e.hidden = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel; PH.set(p, e); EXCLUDE.delete(p);
     });
@@ -2147,7 +2246,7 @@
     let items = [...PH.entries()].sort(function (a, b) {
       return (b[1].xposed ? 1 : 0) - (a[1].xposed ? 1 : 0) || a[0].localeCompare(b[0]);
     });
-    if (ql) items = items.filter(function (x) { const e = x[1]; return (e.pkg || "").toLowerCase().indexOf(ql) !== -1 || (e.appLabel || "").toLowerCase().indexOf(ql) !== -1; });
+    if (ql) items = items.filter(function (x) { return x[0].toLowerCase().indexOf(ql) !== -1; });
     const hid = items.filter(function (x) { return x[1].hidden; }).length;
     const chip = document.getElementById("phchip");
     if (chip.textContent !== (currentLang === "zh" ? "无内核" : "no kernel"))
@@ -2159,11 +2258,8 @@
     }
     list.innerHTML = items.map(function (it) {
       const rule = it[0], e = it[1];
-      const title = e.appLabel || e.pkg || (currentLang === "zh" ? "自定义路径规则" : "Custom path rule");
-      const detail = (e.pkg ? esc(e.pkg) : (currentLang === "zh" ? "手动规则" : "manual rule")) +
-        (e.xposed ? ' · Xposed' : '') + (e.scene ? ' · Scene debugfs' : '') +
-        (e.hma ? (currentLang === "zh" ? ' · 黑名单' : ' · blacklist') : '');
-      return '<div class="swrow"><div class="swi"><div class="lbl">' + esc(title) + '</div><div class="val">' + detail + '</div></div>' +
+      const title = e.xposed ? 'Xposed APK' : (e.scene ? 'Scene debugfs' : (currentLang === "zh" ? "自定义路径" : "Custom path"));
+      return '<div class="swrow"><div class="swi"><div class="lbl">' + esc(title) + '</div><div class="val" style="white-space:normal;overflow-wrap:anywhere">' + esc(rule) + '</div></div>' +
         '<label class="switch"><input type="checkbox" data-r="' + encodeURIComponent(rule) + '" ' +
         (e.hidden ? 'checked' : '') + (e.scene ? ' disabled' : '') + ' onchange="phToggle(this)"><span class="sl"></span></label></div>';
     }).join("");
@@ -2220,6 +2316,7 @@
   applyCardState();
   refreshAll();
   loadCloak();
+  loadGlobalHide();
 </script>
 </body>
 </html>
