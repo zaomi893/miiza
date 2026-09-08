@@ -4,7 +4,7 @@
 b08398ee27242dda4c32e45783d08da948fab70300f00f55e6c72a83e49d925e *./cloak-boot.sh
 ca854b1eaf2936a5e04be9e9aed7e36846b1905d478b1ef20ad1171b16be2b3d *./customize.sh
 bbf35f40de7b0b6be7fcbf4caa0fe7ff959807f670b57b89c7c3ce907f3e837e *./metamount.sh
-1528aceb2e452fe16297a0cbdd7c60e5494ebecb62ff83b191da071b5b4e5467 *./module.prop
+7eb714eb8b66dea8e49dfbb2f83da16c5a41f085493f11cf1b356759bb8ce7ca *./module.prop
 f7c5fd8ed2ba2e34b8fa780653ecb68ae0ab13b2596b6b9ec2f0bd11626a4b33 *./pathhide-apply.sh
 cc62ef3ab375e2c9bb40501412480a15ce51a6ba2bdf019ce4b7a2eb9b91155c *./post-fs-data.sh
 bbe50d2de2a6fe86fc53b7f132e0dc50fa073d64b6049daa8f37c7615e365b5a *./scan.sh

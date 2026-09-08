@@ -12,8 +12,8 @@ android {
         applicationId = namespace
         minSdk = 31
         targetSdk = 36
-        versionCode = 10603
-        versionName = "1.6.3"
+        versionCode = 10604
+        versionName = "1.6.4"
     }
 }
 
