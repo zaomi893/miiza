@@ -418,6 +418,24 @@ jobs:
             fi
             cd ./common
             patch -p1 < 50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
+            # Current ReSukiSU rewrites the executable path directly and no longer
+            # provides ksu_install_su_fd(). Adapt the older SUSFS hook accordingly.
+            if grep -q 'ksu_install_su_fd' fs/exec.c && \
+               ! grep -Rqs '^[[:space:]]*int ksu_install_su_fd' ../KernelSU/kernel; then
+              python3 - <<'PY'
+            from pathlib import Path
+            path = Path('fs/exec.c')
+            src = path.read_text()
+            src = src.replace('extern int ksu_install_su_fd(void);\n', '')
+            src = src.replace('\tbool is_su_session = false;\n', '')
+            src = src.replace('is_su_session = !ksu_handle_execveat(', 'ksu_handle_execveat(')
+            src = src.replace('is_su_session = !ksu_handle_execveat_sucompat(', 'ksu_handle_execveat_sucompat(')
+            src = src.replace('#ifdef CONFIG_KSU_SUSFS\n\tif (unlikely(is_su_session && retval >= 0))\n\t\tksu_install_su_fd();\n+#endif // #ifdef CONFIG_KSU_SUSFS\n', '')
+            if 'ksu_install_su_fd' in src or 'is_su_session' in src:
+                raise SystemExit('failed to adapt SUSFS exec hook to current ReSukiSU')
+            path.write_text(src)
+            PY
+            fi
             cd ..
           else
             echo "已选择无内置KernelSU模式，跳过susfs配置..."
