@@ -3,7 +3,7 @@
 7807f3129463360adf7c882a687ef658746febd0582a69947815fdbd8990624f *./bin/arm64-v8a/nomount
 d99cb50f0e170947dc2c5c904e8b83a7377b7092acf1ccef620d97ef3b046859 *./customize.sh
 bbf35f40de7b0b6be7fcbf4caa0fe7ff959807f670b57b89c7c3ce907f3e837e *./metamount.sh
-0cd4eb08e781114d605f379aa49f4befb1dbfcd4d9fee8aa0c6cea8caefed603 *./module.prop
+3d534585fcda2f53c1b9d54a867de04de33af51d68b370824a783c492e637d2c *./module.prop
 f7c5fd8ed2ba2e34b8fa780653ecb68ae0ab13b2596b6b9ec2f0bd11626a4b33 *./pathhide-apply.sh
 cc62ef3ab375e2c9bb40501412480a15ce51a6ba2bdf019ce4b7a2eb9b91155c *./post-fs-data.sh
 2f7231c9173b929fc2e95b6ee3d7a0955d3d342d569d49eab79c80cd9cce9f5e *./scene-debugfs-watch.sh
@@ -15,4 +15,4 @@ f8cfc4478a2f118bd4dabcda257f4f14bd549932e77fad412f86e1ae52daa40d *./spoof.sh
 03ac7d5248a244d8bcf225339f7476ca08c2a214bd69abb6a0a9d8f1e4f78335 *./webroot/icon-192.png
 b04480e77f00b3510b23e6e0ae8a7e9a3826dcb208902a95410a2ee906435175 *./webroot/icon-512.png
 b04480e77f00b3510b23e6e0ae8a7e9a3826dcb208902a95410a2ee906435175 *./webroot/icon.png
-b6dec0afa4aeaffef2ee51b5f42d1ebfc8f2d33ee1e975a803f064de7d415547 *./webroot/index.html
+ba72439e6d73a7f1741a29b3c678f0e4631352868ae69312ba6e6b7cd2e41b7f *./webroot/index.html

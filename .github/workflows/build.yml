@@ -1198,7 +1198,7 @@ jobs:
           find . -type f ! -name nomount.sha256sums ! -path './META-INF/*' -print0 \
             | sort -z | xargs -0 sha256sum > nomount.sha256sums
           sha256sum -c nomount.sha256sums
-          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.6.6.zip" . \
+          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.6.7.zip" . \
             -x '*.git*'
 
       - name: 上传 Ccache 调试日志
@@ -1218,8 +1218,8 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/upload-artifact@v7
         with:
-          name: NoMount-Suite-v1.6.6
-          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.6.6.zip
+          name: NoMount-Suite-v1.6.7
+          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.6.7.zip
           archive: false
 
       - name: 上传匹配 GKI 的风驰驱动测试工件
@@ -1248,7 +1248,7 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/download-artifact@v8
         with:
-          name: NoMount-Suite-v1.6.6.zip
+          name: NoMount-Suite-v1.6.7.zip
           path: ./release_zips
           skip-decompress: true
 
@@ -1308,7 +1308,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
-          - NoMount Suite：v1.6.6（PathMask 固定全局；AppCloak 隐藏目标和生效应用均由 WebUI 勾选）
+          - NoMount Suite：v1.6.7（PathMask 固定全局；AppCloak 隐藏目标和生效应用均由 WebUI 勾选）
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
           - 绑定设备序列号：`${{ inputs.device_serial }}`
           - 设备序列号锁：随机盐 SHA-256（启动后校验；不匹配或缺失时 180 秒后自动重启）
