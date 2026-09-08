@@ -1,5 +1,3 @@
-4019c699739e5748fdbe25973773b51d232e18f4e8aa34a2c89c24fa5a6cfe92 *./META-INF/com/google/android/update-binary
-01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b *./META-INF/com/google/android/updater-script
 ad77b28cc3ec7e02a4fa9e2111376dec5e299cf0285d6e0bfa9f6c7bddd2d856 *./appcloak-sync.sh
 1c36ce07bc829b3b8923262a1c620a3d20bafc29482be2d1376b8c53cb21e910 *./bin/arm64-v8a/nm
 7807f3129463360adf7c882a687ef658746febd0582a69947815fdbd8990624f *./bin/arm64-v8a/nomount

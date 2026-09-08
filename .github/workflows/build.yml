@@ -1197,7 +1197,10 @@ jobs:
           set -euxo pipefail
           cd "$GITHUB_WORKSPACE/nomount/module"
           sha256sum -c nomount.sha256sums
-          find . -type f ! -name nomount.sha256sums -print0 | sort -z | xargs -0 sha256sum > nomount.sha256sums
+          # KernelSU/APatch intentionally do not extract ZIP installer metadata
+          # (META-INF) into MODPATH, so those files cannot be checked by customize.sh.
+          find . -type f ! -name nomount.sha256sums ! -path './META-INF/*' -print0 \
+            | sort -z | xargs -0 sha256sum > nomount.sha256sums
           sha256sum -c nomount.sha256sums
           zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.6.0.zip" . \
             -x '*.git*'
