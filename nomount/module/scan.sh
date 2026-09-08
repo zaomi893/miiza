@@ -9,7 +9,9 @@
 #   3. manifest xposedmodule/xposedminversion/xposeddescription
 #   4. manifest XposedProvider / libxposed    libxposed (new LSPosed) module
 # Output sections:
-#   #XPOSED  ... package<TAB>APK path pairs for Xposed/LSPosed modules
+#   #XPOSED  ... package<TAB>APK path pairs used only to identify module
+#                 packages for the application-hide list. APK paths are never
+#                 added to PathMask.
 CACHE=/data/adb/nomount/xposed_cache
 mkdir -p /data/adb/nomount && chmod 0700 /data/adb/nomount
 

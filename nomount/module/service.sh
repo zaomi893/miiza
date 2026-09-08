@@ -29,8 +29,8 @@ fi
 # --- Cloak / PathMask: publish saved rules without rescanning packages. ---
 [ -f "$MODDIR/pathhide-apply.sh" ] && sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1
 
-# Boot-time Cloak: scan once in the background, merge new Xposed/LSPosed APK
-# paths into pathhide.conf and re-apply (one scan per boot).
+# Scan Xposed/LSPosed packages once in the background for the application-hide
+# list. This never adds APK paths to PathMask.
 [ -f /data/adb/modules/meta-nomount/cloak-boot.sh ] && \
     (sh /data/adb/modules/meta-nomount/cloak-boot.sh >/dev/null 2>&1 &)
 

@@ -18,6 +18,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /** Minimal NoMount-owned filter for Android's central package-visibility gate. */
@@ -25,6 +26,7 @@ final class AppCloak {
     private static final String TAG = "NoMount-AppCloak";
     private static final File POLICY = new File("/data/system/nomount_appcloak/hidden_apps.conf");
     private static final File ACTIVE = new File("/data/system/nomount_appcloak/active");
+    private static final File STATUS = new File("/data/system/nomount_appcloak/status");
     private static volatile Set<String> hidden = Collections.emptySet();
     private static volatile long policyStamp = Long.MIN_VALUE;
     private static volatile long checkedAt;
@@ -32,13 +34,18 @@ final class AppCloak {
     private AppCloak() {}
 
     static void start() {
+        publishStatus("entrypoint");
         Thread worker = new Thread(() -> {
             try {
+                publishStatus("waiting-pm");
                 waitForPackageManager();
+                publishStatus("installing");
                 install();
                 markActive();
+                publishStatus("active");
                 Log.i(TAG, "package visibility filter installed");
             } catch (Throwable t) {
+                publishStatus("failed:" + t.getClass().getSimpleName());
                 Log.e(TAG, "filter install failed", t);
             }
         }, "NoMount-AppCloak");
@@ -63,18 +70,48 @@ final class AppCloak {
                 .getDeclaredMethod("getOrCreateSystemServerClassLoader");
         loaderMethod.setAccessible(true);
         ClassLoader loader = (ClassLoader) loaderMethod.invoke(null);
-        Class<?> filter = Class.forName("com.android.server.pm.AppsFilterImpl", true, loader);
+        Set<Executable> gates = new LinkedHashSet<>();
+        String[] candidates = {
+                "com.android.server.pm.AppsFilterImpl",
+                "com.android.server.pm.AppsFilterBase",
+                "com.android.server.pm.AppsFilterLocked",
+                "com.android.server.pm.AppsFilterSnapshotImpl"
+        };
+        for (String name : candidates) {
+            try {
+                Class<?> type = Class.forName(name, true, loader);
+                while (type != null && type != Object.class) {
+                    Collections.addAll(gates, Reflection.getHiddenExecutables(type));
+                    type = type.getSuperclass();
+                }
+            } catch (ClassNotFoundException ignored) {}
+        }
         int count = 0;
-        for (Executable method : Reflection.getHiddenExecutables(filter)) {
-            if (!(method instanceof Method) || !"shouldFilterApplication".equals(method.getName())
-                    || ((Method) method).getReturnType() != boolean.class)
-                continue;
+        for (Executable executable : gates) {
+            if (!(executable instanceof Method)) continue;
+            Method method = (Method) executable;
+            if (!"shouldFilterApplication".equals(method.getName())
+                    || method.getReturnType() != boolean.class) continue;
+            int callerIndex = -1, targetIndex = -1, snapshotIndex = -1;
+            Class<?>[] params = method.getParameterTypes();
+            for (int i = 0; i < params.length; i++) {
+                String name = params[i].getName();
+                if (callerIndex < 0 && params[i] == int.class) callerIndex = i + 1;
+                if (name.endsWith("PackageStateInternal")) targetIndex = i + 1;
+                if (snapshotIndex < 0 && (name.endsWith("PackageDataSnapshot")
+                        || name.endsWith("Computer"))) snapshotIndex = i + 1;
+            }
+            if (callerIndex < 0 || targetIndex < 0) continue;
+            final int caller = callerIndex;
+            final int target = targetIndex;
+            final int snapshot = snapshotIndex;
             Hooks.hook(method, Hooks.EntryPointType.DIRECT,
-                    (MethodHandle original, EmulatedStackFrame frame) -> dispatch(original, frame),
+                    (MethodHandle original, EmulatedStackFrame frame) ->
+                            dispatch(original, frame, caller, target, snapshot),
                     Hooks.EntryPointType.DIRECT);
             count++;
         }
-        if (count == 0) throw new NoSuchMethodException("AppsFilterImpl.shouldFilterApplication");
+        if (count == 0) throw new NoSuchMethodException("AppsFilter*.shouldFilterApplication");
         Log.i(TAG, "hooked " + count + " package visibility gate(s)");
     }
 
@@ -87,13 +124,30 @@ final class AppCloak {
         }
     }
 
-    private static void dispatch(MethodHandle original, EmulatedStackFrame frame) throws Throwable {
+    private static void publishStatus(String value) {
+        try (FileWriter out = new FileWriter(STATUS, false)) {
+            out.write(value.replaceAll("[^A-Za-z0-9:_-]", "_"));
+            out.write('\n');
+        } catch (Throwable ignored) {}
+    }
+
+    private static void dispatch(MethodHandle original, EmulatedStackFrame frame,
+            int callerIndex, int targetIndex, int snapshotIndex) throws Throwable {
         try {
-            int callerUid = intArgument(frame, 2);
-            Object targetState = referenceArgument(frame, 4);
+            int callerUid = intArgument(frame, callerIndex);
+            Object targetState = referenceArgument(frame, targetIndex);
             String target = packageName(targetState);
-            if (callerUid >= 10000 && target != null && isHidden(target)
-                    && !callerOwnsTarget(frame, callerUid, target)) {
+            int callerAppId = callerUid % 100000;
+            if (callerAppId >= 10000
+                    && callerIsHidden(frame, callerUid, snapshotIndex)) {
+                // A hidden caller sees the complete package set, including
+                // other members of the hidden group.
+                frame.accessor().setBoolean(EmulatedStackFrame.RETURN_VALUE_IDX, false);
+                return;
+            }
+            if (callerAppId >= 10000 && target != null && isHidden(target)
+                    && !callerOwnsTarget(frame, callerUid, targetState, target,
+                            snapshotIndex)) {
                 frame.accessor().setBoolean(EmulatedStackFrame.RETURN_VALUE_IDX, true);
                 return;
             }
@@ -112,13 +166,42 @@ final class AppCloak {
         return frame.accessor().getReference(index);
     }
 
-    private static boolean callerOwnsTarget(EmulatedStackFrame frame, int uid, String target) {
+    private static boolean callerOwnsTarget(EmulatedStackFrame frame, int uid,
+            Object targetState, String target, int snapshotIndex) {
         try {
-            Object computer = referenceArgument(frame, 1);
+            Method appId = targetState.getClass().getMethod("getAppId");
+            appId.setAccessible(true);
+            Object value = appId.invoke(targetState);
+            if (value instanceof Integer && uid % 100000 == (Integer) value) return true;
+        } catch (Throwable ignored) {}
+        try {
+            if (snapshotIndex < 0) return false;
+            Object computer = referenceArgument(frame, snapshotIndex);
             Method m = computer.getClass().getMethod("getPackagesForUid", int.class);
             m.setAccessible(true);
             String[] packages = (String[]) m.invoke(computer, uid);
             if (packages != null) for (String p : packages) if (target.equals(p)) return true;
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    /**
+     * Hidden applications form a one-way-visible group: each hidden caller can
+     * still enumerate every package, while ordinary callers cannot enumerate
+     * any member of the hidden group.
+     */
+    private static boolean callerIsHidden(EmulatedStackFrame frame, int uid,
+            int snapshotIndex) {
+        if (snapshotIndex < 0) return false;
+        try {
+            Object computer = referenceArgument(frame, snapshotIndex);
+            if (computer == null) return false;
+            Method m = computer.getClass().getMethod("getPackagesForUid", int.class);
+            m.setAccessible(true);
+            String[] packages = (String[]) m.invoke(computer, uid);
+            if (packages != null) {
+                for (String pkg : packages) if (isHidden(pkg)) return true;
+            }
         } catch (Throwable ignored) {}
         return false;
     }

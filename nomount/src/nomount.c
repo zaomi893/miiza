@@ -3999,12 +3999,14 @@ void nomount_spoof_mmap_metadata(const struct inode *inode, dev_t *dev,
 /* =====================================================================
  * PathHide (Cloak maps/fd)
  * =====================================================================
- * Hides user-selected paths (e.g. Xposed/LSPosed module APKs) from
+ * Hides user-selected full file paths from
  * /proc/<pid>/maps and /proc/<pid>/fd, controlled through the
  * /proc/pathhide interface expected by the WebUI Cloak card:
  *   write '-'         -> clear all rules
  *   write '+<path>'   -> add a hide rule (prefix match on '/' boundary)
  *   write '-<path>'   -> remove one rule
+ *   write '@global'   -> apply rules to every process (default)
+ *   write '@deny'     -> apply rules only to NoMount-blocked UIDs
  *   read              -> one rule per line
  * ===================================================================== */
 #define NM_PATHHIDE_MAX_PATHS    256
@@ -4217,7 +4219,7 @@ static int nm_pathhide_add(const char *path)
 		ret = -ENOMEM;
 		goto out;
 	}
-	new->scope = old ? old->scope : NM_PATHHIDE_SCOPE_DENY;
+	new->scope = old ? old->scope : NM_PATHHIDE_SCOPE_GLOBAL;
 	if (old)
 		memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
 	strscpy(new->rules[new->count - 1].path, path,
