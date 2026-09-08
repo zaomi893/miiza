@@ -56,6 +56,30 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 
 构建所需补丁、Droidspaces、NoMount、压缩资源及辅助文件从本仓库检出。LLVM/Rust 工具链、KernelSU 组件等大型上游依赖仍由 CI 从其各自官方或固定发布地址获取。
 
+同一仓库现在还提供三条独立构建入口：
+
+- `fastbuild_6.12.38.yml`：沿用 Ace6T 源码的 6.12.38 构建。
+- `fastbuild_6.12.38_oneplus_15t.yml`：使用本账号 OnePlus 15T 源码分支的 6.12.38 构建，并生成风驰研究工件。
+- `fastbuild_6.12.58.yml`：6.12.58 构建。
+
+三者均复用本仓库的序列号锁、NoMount v1.6.7、AppCloak、PathMask 和刷机包命名规则。当前验证先关闭 SUSFS；15T 在取得对应真机的原厂内核与风驰运行资料前只标记为研究构建，不宣称已经验证可启动或可刷。
+
+### OnePlus 15T 风驰资料采集
+
+请让持有 15T 的测试者保持原厂内核，打开支持风驰的游戏并停留在游戏前台，然后在电脑执行：
+
+```sh
+adb push tools/collect-oneplus15t-hmbird.sh /data/local/tmp/
+adb shell
+su
+sh /data/local/tmp/collect-oneplus15t-hmbird.sh
+exit
+exit
+adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
+```
+
+把生成的 `oneplus15t-hmbird-stock-*.tar.gz` 发回分析。压缩包包含序列号、内核日志、符号、BTF 和模块元数据，属于敏感设备诊断资料，不要公开上传。
+
 ## NoMount Suite 与 PathMask
 
 选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.6.7.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
@@ -82,15 +106,17 @@ AppCloak 的隐藏组内应用仍可以看到自己和所有其他应用；系�
 先在未打开游戏时执行，再打开支持风驰的游戏重复执行：
 
 ```sh
-su -c 'dmesg | grep -E "device serial lock|hmbird_dfx|hmbird_II|sched_ext|rust_binder"'
-su -c 'cat /sys/kernel/sched_ext/state'
-su -c 'cat /sys/kernel/sched_ext/root/ops 2>/dev/null'
-su -c 'cat /sys/kernel/sched_ext/nr_rejected'
-su -c 'cat /proc/sys/hmbird/common/hmbird_manager_register'
-su -c 'cat /proc/sys/hmbird_II/frame_per_sec'
-su -c 'cat /proc/sys/hmbird_II/prefer_cpu'
-su -c 'cat /proc/sys/hmbird_II/prefer_idle'
-su -c 'cat /proc/sys/hmbird_II/prefer_preempt'
+adb shell
+su
+dmesg | grep -E "device serial lock|hmbird_dfx|hmbird_II|sched_ext|rust_binder"
+cat /sys/kernel/sched_ext/state
+cat /sys/kernel/sched_ext/root/ops 2>/dev/null
+cat /sys/kernel/sched_ext/nr_rejected
+cat /proc/sys/hmbird/common/hmbird_manager_register
+cat /proc/sys/hmbird_II/frame_per_sec
+cat /proc/sys/hmbird_II/prefer_cpu
+cat /proc/sys/hmbird_II/prefer_idle
+cat /proc/sys/hmbird_II/prefer_preempt
 ```
 
 正确设备应出现 `device serial lock: verified`。游戏前风驰通常为 `disabled`；游戏启动后应为 `enabled`、ops 为 `hmbird_II`、`nr_rejected=0`，并出现针对游戏进程的线程规则。
