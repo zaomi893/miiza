@@ -97,10 +97,11 @@ if [ ! -f "$NMDIR/.appcloak_manual_v2" ]; then
     : > "$NMDIR/.appcloak_manual_v2"
 fi
 [ -f "$NMDIR/scope_apps.conf" ] || echo "# NoMount AppCloak caller scope (managed by WebUI)" > "$NMDIR/scope_apps.conf"
-# v1.6.6 removes automatic HMA/Xposed imports. Old caches and opt-out state
-# must not silently repopulate the user-controlled application list.
-rm -f "$NMDIR/xposed_cache" "$NMDIR/hma_blacklist_cache" \
-    "$NMDIR/.global_hide_exclude" "$NMDIR/.cloak_scan.tmp"
+# Xposed modules and HMA blacklist entries are auto-selected in WebUI. An
+# internal opt-out file remembers items the user explicitly unchecked; there
+# is no import button, manual package input, or persistent background scanner.
+[ -f "$NMDIR/.global_hide_exclude" ] || : > "$NMDIR/.global_hide_exclude"
+set_perm "$NMDIR/.global_hide_exclude" 0 0 0600
 [ -f "$MODPATH/appcloak-sync.sh" ] && sh "$MODPATH/appcloak-sync.sh" >/dev/null 2>&1
 
 # --- absorb opt-out list -----------------------------------------------------
@@ -153,7 +154,7 @@ set_perm "$NMDIR/hidden_apps.conf" 0 0 0600
 set_perm "$NMDIR/scope_apps.conf" 0 0 0600
 if [ -e /proc/pathhide ]; then
     ui_print "- PathMask 2.7.2 integration FOUND"
-    ui_print "  AppCloak targets and caller scope are managed only in WebUI"
+    ui_print "  AppCloak targets/scope use WebUI; Xposed/HMA targets auto-select"
 else
     ui_print "- PathMask unavailable: /proc/pathhide is missing (matching kernel required)"
 fi

@@ -839,15 +839,17 @@
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
       <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
     </div>
-    <p class="note" data-i18n="note_global_hide">Choose hidden targets and the caller applications affected by that list. System apps are unchecked by default.</p>
+    <p class="note" data-i18n="note_global_hide">Choose hidden targets and the caller applications affected by that list. Detected Xposed modules and HMA blacklist entries are selected automatically.</p>
     <div class="val multiline" id="ghstatus" data-i18n="gh_checking">AppCloak: checking…</div>
     <div class="btns"><button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button></div>
     <div class="subhead" data-i18n="h3_hide_targets">Hidden targets</div>
     <div style="margin:8px 0 2px"><input class="txin" id="ghSearch" data-i18n-placeholder="ph_search_apps" placeholder="search app name or package" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
+    <div class="swrow"><div class="swi"><div class="lbl" data-i18n="app_show_system">Show system applications</div></div><label class="switch"><input type="checkbox" id="ghShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label></div>
     <div class="list" id="ghList"></div>
     <div class="subhead" data-i18n="h3_hide_scope">Effective applications</div>
     <p class="note" data-i18n="note_hide_scope">Only checked caller applications cannot see the hidden targets.</p>
     <div style="margin:8px 0 2px"><input class="txin" id="gsSearch" data-i18n-placeholder="ph_search_scope" placeholder="search effective applications" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
+    <div class="swrow"><div class="swi"><div class="lbl" data-i18n="app_show_system">Show system applications</div></div><label class="switch"><input type="checkbox" id="gsShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label></div>
     <div class="list" id="gsList"></div>
   </div>
   <div class="card" id="cardCloak">
@@ -983,7 +985,7 @@
       btn_turn_off_all: "Turn off all",
       ph_search_path: "search full paths",
       h2_global_hide: "Global hidden applications",
-      note_global_hide: "Choose hidden targets and the caller applications affected by that list. System apps are unchecked by default.",
+      note_global_hide: "Choose hidden targets and the caller applications affected by that list. Detected Xposed modules and HMA blacklist entries are selected automatically.",
       gh_checking: "AppCloak: checking…",
       ph_search_apps: "search app name or package",
       h3_hide_targets: "Hidden targets",
@@ -991,6 +993,7 @@
       note_hide_scope: "Only checked caller applications cannot see the hidden targets. PathMask remains global.",
       ph_search_scope: "search effective applications",
       app_system: "system",
+      app_show_system: "Show system applications",
       foot_engine: "hookless engine via netlink",
       nav_status: "Status",
       nav_modules: "Modules",
@@ -1070,7 +1073,7 @@
       btn_turn_off_all: "一键关闭",
       ph_search_path: "搜索完整路径",
       h2_global_hide: "全局隐藏应用",
-      note_global_hide: "选择要隐藏的目标应用，以及哪些调用应用受该列表影响。系统应用默认不勾选。",
+      note_global_hide: "选择要隐藏的目标应用，以及哪些调用应用受该列表影响。检测到的 Xposed 模块和 HMA 黑名单条目会自动勾选。",
       gh_checking: "AppCloak：检查中…",
       ph_search_apps: "搜索应用名或包名",
       h3_hide_targets: "隐藏目标",
@@ -1078,6 +1081,7 @@
       note_hide_scope: "只有勾选的调用应用看不到隐藏目标。PathMask 仍固定全局生效。",
       ph_search_scope: "搜索生效应用",
       app_system: "系统",
+      app_show_system: "显示系统应用",
       foot_engine: "基于 netlink 的无钩子引擎",
       nav_status: "状态",
       nav_modules: "模块",
@@ -1934,17 +1938,32 @@
   const PH_EXCLUDE = "/data/adb/nomount/.cloak_exclude";
   const GH_CONF = "/data/adb/nomount/hidden_apps.conf";
   const GS_CONF = "/data/adb/nomount/scope_apps.conf";
-  let GH = new Map(); let GS = new Set();
+  const GH_EXCLUDE = "/data/adb/nomount/.global_hide_exclude";
+  let GH = new Map(); let GS = new Set(); let GHX = new Set();
   function validPkg(s) { return /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(s || ""); }
   async function loadGlobalHide() {
-    await loadPkgList(); GH.clear(); GS.clear();
+    await loadPkgList(); GH.clear(); GS.clear(); GHX.clear();
     _pkgs.forEach(function(app){ GH.set(app.name, { hidden:false, app:app }); });
+    await exec("sh /data/adb/modules/meta-nomount/scan.sh >/dev/null 2>&1");
+    const excluded = await exec("cat " + GH_EXCLUDE + " 2>/dev/null");
+    excluded.stdout.split("\n").map(function(s){ return s.trim(); }).filter(validPkg).forEach(function(p){ GHX.add(p); });
     const saved = await exec("cat " + GH_CONF + " 2>/dev/null");
     saved.stdout.split("\n").map(function(s){ return s.trim(); }).filter(function(s){ return validPkg(s) && s[0] !== '#'; })
       .forEach(function(p){
         const app=_pkgByName.get(p) || {name:p,label:p,uid:"",system:false};
         GH.set(p, { hidden:true, app:app });
       });
+    function markAuto(pkg, source) {
+      if (!validPkg(pkg)) return;
+      const app=_pkgByName.get(pkg) || {name:pkg,label:pkg,uid:"",system:false};
+      const e=GH.get(pkg) || {hidden:false,app:app};
+      e[source]=true; e.auto=true; e.hidden=!GHX.has(pkg);
+      GH.set(pkg,e);
+    }
+    const xp = await exec("cat /data/adb/nomount/xposed_cache 2>/dev/null");
+    xp.stdout.split("\n").forEach(function(line){ markAuto((line.split("\t")[0] || "").trim(), "xposed"); });
+    const hma = await exec("cat /data/adb/nomount/hma_blacklist_cache 2>/dev/null");
+    hma.stdout.split("\n").map(function(s){return s.trim();}).forEach(function(p){markAuto(p,"hma");});
     const scope = await exec("cat " + GS_CONF + " 2>/dev/null");
     scope.stdout.split("\n").map(function(s){ return s.trim(); }).filter(validPkg).forEach(function(p){
       if (_pkgByName.has(p)) GS.add(p);
@@ -1955,19 +1974,23 @@
     const q = ((document.getElementById("ghSearch") || {}).value || "").trim().toLowerCase();
     let items = [...GH.entries()].filter(function(x){
       const a = x[1].app || _pkgByName.get(x[0]);
-      return !q || x[0].toLowerCase().indexOf(q) !== -1 || (a && (a.label || "").toLowerCase().indexOf(q) !== -1);
+      const showSystem = !!((document.getElementById("ghShowSystem") || {}).checked);
+      return (!a || !a.system || showSystem) && (!q || x[0].toLowerCase().indexOf(q) !== -1 || (a && (a.label || "").toLowerCase().indexOf(q) !== -1));
     }).sort(function(a,b){ return ((a[1].app&&a[1].app.label)||a[0]).localeCompare((b[1].app&&b[1].app.label)||b[0]); });
     const active = [...GH.values()].filter(function(e){ return e.hidden; }).length;
     const chip = document.getElementById("ghchip"); if (chip) chip.textContent = active + " / " + GH.size;
     const list = document.getElementById("ghList"); if (!list) return;
     list.innerHTML = !items.length ? '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "没有匹配的应用。" : "No matching applications.") + '</div>' : items.map(function(it){
       const pkg=it[0], e=it[1], app=e.app||_pkgByName.get(pkg), label=(app&&app.label)||pkg;
-      const tag=app&&app.system ? ' · '+(currentLang === "zh" ? '系统' : 'system') : '';
+      let tag=app&&app.system ? ' · '+(currentLang === "zh" ? '系统' : 'system') : '';
+      if (e.xposed) tag += ' · Xposed';
+      if (e.hma) tag += currentLang === "zh" ? ' · HMA 黑名单' : ' · HMA blacklist';
       return '<div class="swrow"><div class="swi"><div class="lbl">'+esc(label)+'</div><div class="val">'+esc(pkg)+tag+'</div></div>'+
         '<label class="switch"><input type="checkbox" data-p="'+encodeURIComponent(pkg)+'" '+(e.hidden?'checked':'')+' onchange="toggleGlobalHide(this)"><span class="sl"></span></label></div>';
     }).join("");
     const sq = ((document.getElementById("gsSearch") || {}).value || "").trim().toLowerCase();
-    const scopeItems = _pkgs.filter(function(app){ return !sq || app.name.toLowerCase().indexOf(sq)!==-1 || (app.label||"").toLowerCase().indexOf(sq)!==-1; });
+    const scopeShowSystem = !!((document.getElementById("gsShowSystem") || {}).checked);
+    const scopeItems = _pkgs.filter(function(app){ return (!app.system || scopeShowSystem) && (!sq || app.name.toLowerCase().indexOf(sq)!==-1 || (app.label||"").toLowerCase().indexOf(sq)!==-1); });
     const scopeList=document.getElementById("gsList");
     scopeList.innerHTML=!scopeItems.length ? '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "没有匹配的应用。" : "No matching applications.") + '</div>' : scopeItems.map(function(app){
       const tag=app.system ? ' · '+(currentLang === "zh" ? '系统' : 'system') : '';
@@ -1986,9 +2009,11 @@
   }
   async function writeGlobalHide() {
     const pkgs=[...GH.entries()].filter(function(x){return x[1].hidden;}).map(function(x){return x[0];}).sort();
+    const excluded=[...GH.entries()].filter(function(x){return x[1].auto && !x[1].hidden;}).map(function(x){return x[0];}).sort();
     let cmd="mkdir -p /data/adb/nomount; { echo '# NoMount global hidden packages'; ";
-    pkgs.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_CONF+"; { echo '# NoMount AppCloak caller scope'; ";
-    [...GS].sort().forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GS_CONF+"; chmod 0600 "+GH_CONF+" "+GS_CONF+"; sh /data/adb/modules/meta-nomount/appcloak-sync.sh 2>/dev/null";
+    pkgs.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_CONF+"; { ";
+    excluded.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_EXCLUDE+"; { echo '# NoMount AppCloak caller scope'; ";
+    [...GS].sort().forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GS_CONF+"; chmod 0600 "+GH_CONF+" "+GS_CONF+" "+GH_EXCLUDE+"; sh /data/adb/modules/meta-nomount/appcloak-sync.sh 2>/dev/null";
     return await exec(cmd);
   }
   async function applyGlobalHide(btn) {

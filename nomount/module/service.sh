@@ -29,6 +29,9 @@ fi
 # --- Cloak / PathMask: publish saved rules without rescanning packages. ---
 [ -f "$MODDIR/pathhide-apply.sh" ] && sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1
 
+# Refresh changed APK/HMA inventories, auto-select their packages unless the
+# user explicitly unchecked them, then publish AppCloak policy.
+[ -f "$MODDIR/scan.sh" ] && sh "$MODDIR/scan.sh" --apply >/dev/null 2>&1
 # Publish the global package-visibility list to NoMount's AppCloak backend.
 [ -f "$MODDIR/appcloak-sync.sh" ] && sh "$MODDIR/appcloak-sync.sh" >/dev/null 2>&1
 
