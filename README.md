@@ -58,7 +58,7 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 
 ## NoMount Suite 与 PathMask
 
-选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.6.4.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
+选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.6.5.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
 - 正确上游为 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite)，已审阅到 `2b8891614399692dec443d27bffbc179cfeb6f6b`（Suite v1.3.170 / Prism engine v30）。当前内核仍如实标记为已在本机验证的 v13 定制分支；v30 涉及内核与用户态成对升级，在 PathMask 移植和 OP15 实机验证完成前不会冒充“已同步”。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。
@@ -67,7 +67,7 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 - 借鉴 LKM-PathMask `2.7.2` 的目标身份与 Scene 发现设计，内核直接覆盖 inode 权限、stat、getdents、proc maps/fd，不加载常驻 syscall kprobe。官方 Scene（`com.omarea.vtools`）存在时，模块最多观察十分钟，只接受 `/dev` 下、SELinux 标签为 `u:object_r:debugfs:s0` 的 debugfs 挂载；发现或超时后进程退出。
 - Xposed 扫描只把模块包名加入“全局隐藏应用”，不再把 APK 路径自动加入 PathMask；PathMask 只保存用户手动输入的完整文件路径和 Scene 自动发现的 debugfs 路径。
 
-v1.6.4 在 WebUI 的“隐藏”中把“全局隐藏应用”放在“路径遮罩”上方，删除路径生效应用列表。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动项是 Scene debugfs）。全局隐藏应用会导入 HMA 黑名单与扫描到的 Xposed 模块，再由本仓库的 AppCloak 在 Android 中央包可见性出口过滤。
+v1.6.5 在 WebUI 的“隐藏”中把“全局隐藏应用”放在“路径遮罩”上方，删除路径生效应用列表。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动项是 Scene debugfs）。全局隐藏应用会导入 HMA 黑名单与扫描到的 Xposed 模块，再由本仓库的 AppCloak 在 Android 中央包可见性出口过滤。系统桌面作为唯一的可见性豁免调用方，保留隐藏应用图标与启动能力。
 
 AppCloak 不复用 HMA 的隐藏代码，只读取其现有黑名单作为导入数据。系统 UID 不过滤；隐藏组内的应用可以看到自己和所有其他应用，其他普通应用看不到隐藏组中的包。策略文件最多每秒检查一次时间戳，列表未变化时不读取文件。
 

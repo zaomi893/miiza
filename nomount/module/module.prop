@@ -1,7 +1,7 @@
 id=meta-nomount
 name=NoMount Suite
-version=v1.6.4
-versionCode=10604
+version=v1.6.5
+versionCode=10605
 author=zaomi
 description=NoMount Suite — global PathMask and one-way AppCloak hiding with HMA blacklist/Xposed import. Root/su independent (sucompat). 🫥
 metamodule=1
