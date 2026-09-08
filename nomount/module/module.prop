@@ -1,9 +1,9 @@
 id=meta-nomount
 name=NoMount Suite
-version=v1.6.5
-versionCode=10605
+version=v1.6.6
+versionCode=10606
 author=zaomi
-description=NoMount Suite — global PathMask and one-way AppCloak hiding with HMA blacklist/Xposed import. Root/su independent (sucompat). 🫥
+description=NoMount Suite — global PathMask plus scoped, one-way AppCloak package hiding. Root/su independent (sucompat). 🫥
 metamodule=1
 entrypoint=io.github.cvhhji.nomount.appcloak.EntryPoint
 attachNativeLibs=false

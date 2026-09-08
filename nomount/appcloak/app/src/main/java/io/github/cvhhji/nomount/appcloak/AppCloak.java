@@ -23,11 +23,11 @@ import java.util.Set;
 final class AppCloak {
     private static final String TAG = "NoMount-AppCloak";
     private static final File POLICY = new File("/data/system/nomount_appcloak/hidden_apps.conf");
+    private static final File SCOPE_POLICY = new File("/data/system/nomount_appcloak/scope_apps.conf");
     private static final File ACTIVE = new File("/data/system/nomount_appcloak/active");
     private static final File STATUS = new File("/data/system/nomount_appcloak/status");
-    private static final Set<String> EXEMPT_CALLERS =
-            Collections.singleton("com.android.launcher");
     private static volatile Set<String> hidden = Collections.emptySet();
+    private static volatile Set<String> scoped = Collections.emptySet();
     private static volatile long policyStamp = Long.MIN_VALUE;
     private static volatile long checkedAt;
     private static volatile String phase = "init";
@@ -150,19 +150,14 @@ final class AppCloak {
             int callerAppId = callerUid % 100000;
             String[] callerPackages = callerAppId >= 10000
                     ? packagesForUid(frame, callerUid, snapshotIndex) : null;
-            if (containsAny(callerPackages, EXEMPT_CALLERS)) {
-                // Keep launcher icons usable while ordinary package-query
-                // callers continue to see the filtered package set.
-                Transformers.invokeExactNoChecks(original, frame);
-                return;
-            }
             if (callerAppId >= 10000 && containsHidden(callerPackages)) {
                 // A hidden caller sees the complete package set, including
                 // other members of the hidden group.
                 frame.accessor().setBoolean(EmulatedStackFrame.RETURN_VALUE_IDX, false);
                 return;
             }
-            if (callerAppId >= 10000 && target != null && isHidden(target)
+            if (callerAppId >= 10000 && containsScoped(callerPackages)
+                    && target != null && isHidden(target)
                     && !callerOwnsTarget(frame, callerUid, targetState, target,
                             snapshotIndex)) {
                 frame.accessor().setBoolean(EmulatedStackFrame.RETURN_VALUE_IDX, true);
@@ -227,9 +222,10 @@ final class AppCloak {
         return false;
     }
 
-    private static boolean containsAny(String[] packages, Set<String> expected) {
+    private static boolean containsScoped(String[] packages) {
+        reloadIfNeeded();
         if (packages != null) {
-            for (String pkg : packages) if (expected.contains(pkg)) return true;
+            for (String pkg : packages) if (scoped.contains(pkg)) return true;
         }
         return false;
     }
@@ -253,26 +249,41 @@ final class AppCloak {
     }
 
     private static boolean isHidden(String pkg) {
+        reloadIfNeeded();
+        return hidden.contains(pkg);
+    }
+
+    private static void reloadIfNeeded() {
         long now = SystemClock.uptimeMillis();
         if (now - checkedAt >= 1000) reload(now);
-        return hidden.contains(pkg);
     }
 
     private static synchronized void reload(long now) {
         if (now - checkedAt < 1000) return;
         checkedAt = now;
-        long stamp = POLICY.exists() ? POLICY.lastModified() ^ POLICY.length() : Long.MIN_VALUE;
+        long hiddenStamp = POLICY.exists() ? POLICY.lastModified() ^ POLICY.length() : Long.MIN_VALUE;
+        long scopeStamp = SCOPE_POLICY.exists()
+                ? SCOPE_POLICY.lastModified() ^ SCOPE_POLICY.length() : Long.MIN_VALUE;
+        long stamp = hiddenStamp * 31L + scopeStamp;
         if (stamp == policyStamp) return;
+        Set<String> nextHidden = readPolicy(POLICY);
+        Set<String> nextScoped = readPolicy(SCOPE_POLICY);
+        hidden = Collections.unmodifiableSet(nextHidden);
+        scoped = Collections.unmodifiableSet(nextScoped);
+        policyStamp = stamp;
+        Log.i(TAG, "loaded " + nextHidden.size() + " hidden target(s), "
+                + nextScoped.size() + " scoped caller(s)");
+    }
+
+    private static Set<String> readPolicy(File file) {
         Set<String> next = new HashSet<>();
-        try (BufferedReader in = new BufferedReader(new FileReader(POLICY))) {
+        try (BufferedReader in = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = in.readLine()) != null) {
                 line = line.trim();
                 if (line.matches("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+")) next.add(line);
             }
         } catch (Throwable ignored) {}
-        hidden = Collections.unmodifiableSet(next);
-        policyStamp = stamp;
-        Log.i(TAG, "loaded " + next.size() + " hidden package(s)");
+        return next;
     }
 }
