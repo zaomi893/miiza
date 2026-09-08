@@ -860,8 +860,8 @@
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
       <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
     </div>
-    <p class="note" data-i18n="note_global_hide">Packages selected here are removed from package queries made by ordinary apps through the integrated HMA-OSS system-service backend. Xposed modules are added automatically. Critical system packages, the caller itself, and WebView safety exceptions are preserved.</p>
-    <div class="val multiline" id="ghstatus" data-i18n="gh_checking">HMA backend: checking…</div>
+    <p class="note" data-i18n="note_global_hide">Packages selected here are removed from package queries made by ordinary apps through NoMount AppCloak. Xposed modules are added automatically. Core system services and the hidden application itself remain exempt for stability.</p>
+    <div class="val multiline" id="ghstatus" data-i18n="gh_checking">AppCloak: checking…</div>
     <div style="display:flex;gap:8px;margin:8px 0 2px">
       <input class="txin" id="ghManual" data-i18n-placeholder="ph_add_hidden_app" placeholder="package name to hide globally" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
       <button class="act" style="flex:none;min-width:0;padding:7px 13px" onclick="addGlobalHide()" data-i18n="btn_hide">Hide</button>
@@ -1002,8 +1002,8 @@
       btn_turn_off_all: "Turn off all",
       ph_search_path: "search full paths",
       h2_global_hide: "Global hidden applications",
-      note_global_hide: "Packages selected here are removed from package queries made by ordinary apps through the integrated HMA-OSS system-service backend. Xposed modules are added automatically. Critical system packages, the caller itself, and WebView safety exceptions are preserved.",
-      gh_checking: "HMA backend: checking…",
+      note_global_hide: "Packages selected here are removed from package queries made by ordinary apps through NoMount AppCloak. Xposed modules are added automatically. Core system services and the hidden application itself remain exempt for stability.",
+      gh_checking: "AppCloak: checking…",
       ph_add_hidden_app: "package name to hide globally",
       ph_search_apps: "search app name or package",
       h2_per_uid: "Path-mask target apps",
@@ -1091,8 +1091,8 @@
       btn_turn_off_all: "一键关闭",
       ph_search_path: "搜索完整路径",
       h2_global_hide: "全局隐藏应用",
-      note_global_hide: "这里选中的包会由内置 HMA-OSS 系统服务拦截层从普通应用的包查询结果中移除；Xposed 模块会自动加入。为防止系统异常，保留系统关键包、调用者自身与 WebView 安全例外。",
-      gh_checking: "HMA 后端：检查中…",
+      note_global_hide: "这里选中的包会由 NoMount 自有 AppCloak 从普通应用的包查询结果中移除；Xposed 模块会自动加入。为防止系统异常，核心系统服务与被隐藏应用自身保留可见。",
+      gh_checking: "AppCloak：检查中…",
       ph_add_hidden_app: "输入要全局隐藏的包名",
       ph_search_apps: "搜索应用名或包名",
       h2_per_uid: "路径遮罩生效应用",
@@ -2103,20 +2103,22 @@
   async function writeGlobalHide() {
     const pkgs=[...GH.entries()].filter(function(x){return x[1].hidden;}).map(function(x){return x[0];}).sort();
     let cmd="mkdir -p /data/adb/nomount; { echo '# NoMount global hidden packages'; ";
-    pkgs.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_CONF+"; chmod 0600 "+GH_CONF+"; sh /data/adb/modules/meta-nomount/hma-sync.sh 2>/dev/null";
+    pkgs.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_CONF+"; chmod 0600 "+GH_CONF+"; sh /data/adb/modules/meta-nomount/appcloak-sync.sh 2>/dev/null";
     return await exec(cmd);
   }
   async function applyGlobalHide(btn) {
     const old=btn.textContent; btn.disabled=true; btn.textContent=currentLang === "zh" ? "应用中…" : "Applying…";
     const r=await writeGlobalHide(); btn.disabled=false; btn.textContent=old; await refreshGlobalHideStatus();
     const ok=(r.stdout||"").indexOf("synced") !== -1;
-    toast(ok ? (currentLang === "zh" ? "全局隐藏列表已同步；新查询立即生效" : "Global hide list synced; new queries use it immediately") :
-      (currentLang === "zh" ? "已保存列表，但未检测到内置 HMA 后端；请重启或检查 Zygisk" : "List saved, but the integrated HMA backend was not found; reboot or check Zygisk"), ok?"ok":"bad");
+    toast(ok ? (currentLang === "zh" ? "全局隐藏列表已同步；后端生效时最多 1 秒刷新" : "Global hide list synced; an active backend refreshes within 1 second") :
+      (currentLang === "zh" ? "已保存列表，但 AppCloak 尚未就绪；请重启或检查 Zygisk" : "List saved, but AppCloak is not ready; reboot or check Zygisk"), ok?"ok":"bad");
   }
   async function refreshGlobalHideStatus() {
-    const r=await exec("sh /data/adb/modules/meta-nomount/hma-sync.sh --status 2>/dev/null");
-    const ok=(r.stdout||"").indexOf("ready") !== -1, el=document.getElementById("ghstatus"); if (!el) return;
-    el.textContent = currentLang === "zh" ? (ok ? "HMA 后端：已集成并就绪" : "HMA 后端：尚未就绪（启用 Zygisk 后重启）") : (ok ? "HMA backend: integrated and ready" : "HMA backend: not ready (enable Zygisk and reboot)");
+    const r=await exec("sh /data/adb/modules/meta-nomount/appcloak-sync.sh --status 2>/dev/null");
+    const state=(r.stdout||"").trim(), el=document.getElementById("ghstatus"); if (!el) return;
+    if (state === "active") el.textContent = currentLang === "zh" ? "AppCloak：system_server 过滤已生效" : "AppCloak: system_server filter active";
+    else if (state === "waiting") el.textContent = currentLang === "zh" ? "AppCloak：文件已就绪，等待 Zygisk 加载（请重启）" : "AppCloak: files ready; waiting for Zygisk (reboot)";
+    else el.textContent = currentLang === "zh" ? "AppCloak：组件缺失，请重新刷入模块" : "AppCloak: component missing; reinstall the module";
   }
   let PH = new Map(); let phShown = false; let EXCLUDE = new Set();
   function phClean(s) { return (s || "").replace(/[^A-Za-z0-9._:/\-]/g, "").trim(); }

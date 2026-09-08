@@ -58,7 +58,7 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 
 ## NoMount Suite 与 PathMask
 
-选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.6.0.zip`。模块源码、WebUI 和二进制均保存在本仓库；HMA-OSS 后端固定到已审计提交后由 CI 从上游源码构建并应用仓库内补丁。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
+选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.6.0.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
 - 正确上游为 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite)，已审阅到 `2b8891614399692dec443d27bffbc179cfeb6f6b`（Suite v1.3.170 / Prism engine v30）。当前内核仍如实标记为已在本机验证的 v13 定制分支；v30 涉及内核与用户态成对升级，在 PathMask 移植和 OP15 实机验证完成前不会冒充“已同步”。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。
@@ -67,9 +67,9 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 - 借鉴 LKM-PathMask `2.7.2` 的目标身份与 Scene 发现设计，内核直接覆盖 inode 权限、stat、getdents、proc maps/fd，不加载常驻 syscall kprobe。官方 Scene（`com.omarea.vtools`）存在时，模块最多观察十分钟，只接受 `/dev` 下、SELinux 标签为 `u:object_r:debugfs:s0` 的 debugfs 挂载；发现或超时后进程退出。
 - Xposed 扫描只保存 APK 的真实绝对路径；隐藏对象由 WebUI 中原有的“包名→UID 屏蔽”列表管理，不会把包名错当成路径子串，避免旧 PathHide 规则导致目标应用闪退。
 
-v1.6.0 将三种职责明确分开：“路径遮罩”只保存并完整显示绝对路径；“全局隐藏应用”使用集成的 HMA-OSS system_server 拦截层，使所选包不出现在普通应用的包查询/解析结果中；“路径遮罩生效应用”继续使用 NoMount 原有的包名解析 UID 逻辑。扫描出的 Xposed 模块会同时加入 APK 路径遮罩与全局隐藏应用列表。为避免 PackageManager 双重 Hook，刷入前必须禁用或卸载独立的 HMA-OSS Zygisk 模块。
+v1.6.0 将三种职责明确分开：“路径遮罩”只保存并完整显示绝对路径；“全局隐藏应用”由本仓库自有的轻量 AppCloak 在 Android 中央包可见性出口过滤，使所选包不出现在普通应用的 PackageManager 查询结果中；“路径遮罩生效应用”继续使用 NoMount 原有的包名解析 UID 逻辑。扫描出的 Xposed 模块会同时加入 APK 路径遮罩与全局隐藏应用列表。
 
-全局应用隐藏后端基于 [HMA-OSS](https://github.com/frknkrc44/HMA-OSS)（AGPL-3.0），固定上游提交 `d1cfcbce72ac07eb998cd49be1d5385ade48f713`；本仓库修改保存在 `nomount/hma-oss-nomount-global.patch`，构建产物保留原许可证义务。出于系统稳定性，系统关键包、查询应用自身、默认浏览器与 WebView 提供者不会被强制隐藏。
+AppCloak 没有管理 APK、远程服务或独立配置数据库，只读取 NoMount WebUI 维护的包名列表。系统 UID 不过滤，被隐藏应用自身仍可见；其余普通应用统一经过同一 O(1) 集合查询。策略文件最多每秒检查一次时间戳，列表未变化时不读取文件。
 
 ## 刷入与恢复
 

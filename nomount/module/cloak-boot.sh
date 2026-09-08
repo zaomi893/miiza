@@ -43,4 +43,4 @@ touch "$GH_EXCLUDE" 2>/dev/null
 } | sort -u | awk 'FILENAME==ARGV[1]{ex[$0]=1;next} !($0 in ex)' "$GH_EXCLUDE" - > "$NMDIR/.hidden_apps.new"
 mv -f "$NMDIR/.hidden_apps.new" "$NMDIR/hidden_apps.conf"
 chmod 0600 "$NMDIR/hidden_apps.conf" 2>/dev/null
-[ -f "$MODDIR/hma-sync.sh" ] && sh "$MODDIR/hma-sync.sh" >/dev/null 2>&1
+[ -f "$MODDIR/appcloak-sync.sh" ] && sh "$MODDIR/appcloak-sync.sh" >/dev/null 2>&1

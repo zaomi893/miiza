@@ -856,13 +856,13 @@ jobs:
           source "./_setup_env.sh" 2>/dev/null || true
           export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
 
-          # 在构建内核的同时清理无关运行库。NoMount 的 HMA-OSS 后端随后
+          # 在构建内核的同时清理无关运行库。NoMount 的 AppCloak 后端随后
           # 需要 Android SDK/NDK，因此仅在本次不构建 NoMount 时删除它。
           sudo rm -rf /usr/share/dotnet &
           if [[ "${{ inputs.nomount_enable }}" != "true" ]]; then
             sudo rm -rf /usr/local/lib/android &
           else
-            echo "保留 Android SDK/NDK，供 NoMount HMA-OSS 后端构建使用"
+            echo "保留 Android SDK/NDK，供 NoMount AppCloak 后端构建使用"
           fi
           sudo rm -rf /opt/ghc &
           sudo rm -rf /opt/hostedtoolcache/CodeQL &
@@ -1146,12 +1146,18 @@ jobs:
           echo "Device serial lock: salted SHA-256 runtime check (180-second reboot on mismatch)" >> ./ak3.log
           zip -z ../$AK3_NAME < ./ak3.log
 
-      - name: 为 NoMount HMA-OSS 后端配置 JDK
+      - name: 为 NoMount AppCloak 后端配置构建环境
         if: inputs.nomount_enable
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: 配置 AppCloak Gradle
+        if: inputs.nomount_enable
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '8.14.3'
 
       - name: 验证正确的 NoMount Suite 上游与许可证
         if: inputs.nomount_enable
@@ -1167,29 +1173,21 @@ jobs:
           printf '%s@%s\n' "$NOMOUNT_UPSTREAM_REPO" "$NOMOUNT_UPSTREAM_COMMIT" \
             > "$GITHUB_WORKSPACE/nomount/module/NOMOUNT-UPSTREAM"
 
-      - name: 构建并集成 NoMount HMA-OSS 应用隐藏后端
+      - name: 构建并集成 NoMount AppCloak 应用隐藏后端
         if: inputs.nomount_enable
         run: |
           set -euxo pipefail
-          cd "$GITHUB_WORKSPACE/kernel_workspace"
-          git clone https://github.com/frknkrc44/HMA-OSS.git hma_oss
-          cd hma_oss
-          git checkout d1cfcbce72ac07eb998cd49be1d5385ade48f713
-          git apply "$GITHUB_WORKSPACE/nomount/hma-oss-nomount-global.patch"
           ANDROID_SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
           test -d "$ANDROID_SDK"
-          printf 'sdk.dir=%s\n' "$ANDROID_SDK" > local.properties
-          ./gradlew :app:assembleRelease
-          ./gradlew :zygote:assembleRelease
-          HMA_ZIP="$(find zygote/build/outputs/magisk/release -maxdepth 1 -name '*.zip' -print -quit)"
-          test -f "$HMA_ZIP"
+          printf 'sdk.dir=%s\n' "$ANDROID_SDK" > "$GITHUB_WORKSPACE/nomount/appcloak/local.properties"
+          gradle --no-daemon -p "$GITHUB_WORKSPACE/nomount/appcloak" :app:assembleRelease
+          APP_CLOAK_ZIP="$(find "$GITHUB_WORKSPACE/nomount/appcloak/app/build/outputs/magisk/release" -maxdepth 1 -name '*.zip' -print -quit)"
+          test -f "$APP_CLOAK_ZIP"
           DEST="$GITHUB_WORKSPACE/nomount/module"
-          cp LICENSE.md "$DEST/HMA-OSS-LICENSE.md"
-          unzip -jo "$HMA_ZIP" manager.apk classes.dex -d "$DEST"
+          unzip -jo "$APP_CLOAK_ZIP" classes.dex -d "$DEST"
           mkdir -p "$DEST/zygisk" "$DEST/packages"
-          unzip -jo "$HMA_ZIP" zygisk/arm64-v8a.so -d "$DEST/zygisk"
+          unzip -jo "$APP_CLOAK_ZIP" zygisk/arm64-v8a.so -d "$DEST/zygisk"
           printf 'android\n' > "$DEST/packages/android"
-          test -s "$DEST/manager.apk"
           test -s "$DEST/classes.dex"
           test -s "$DEST/zygisk/arm64-v8a.so"
 
@@ -1311,7 +1309,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
-          - NoMount Suite：v1.6.0（完整路径遮罩、HMA-OSS 全局应用隐藏、Xposed 自动加入两类列表、Scene debugfs 自动遮罩）
+          - NoMount Suite：v1.6.0（完整路径遮罩、自有 AppCloak 全局应用隐藏、Xposed 自动加入两类列表、Scene debugfs 自动遮罩）
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
           - 绑定设备序列号：`${{ inputs.device_serial }}`
           - 设备序列号锁：随机盐 SHA-256（启动后校验；不匹配或缺失时 180 秒后自动重启）

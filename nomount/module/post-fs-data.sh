@@ -5,6 +5,7 @@
 MODDIR="${0%/*}"
 NMDIR=/data/adb/nomount
 mkdir -p "$NMDIR" && chmod 0700 "$NMDIR"
+[ -f "$MODDIR/appcloak-sync.sh" ] && sh "$MODDIR/appcloak-sync.sh" --boot-prepare >/dev/null 2>&1
 ABI=$(getprop ro.product.cpu.abi)
 BIN="$MODDIR/bin/$ABI/nomount"
 
