@@ -34,8 +34,8 @@ fi
 [ -f /data/adb/modules/meta-nomount/cloak-boot.sh ] && \
     (sh /data/adb/modules/meta-nomount/cloak-boot.sh >/dev/null 2>&1 &)
 
-# Publish the global package-visibility list to the integrated HMA backend.
-[ -f "$MODDIR/hma-sync.sh" ] && sh "$MODDIR/hma-sync.sh" >/dev/null 2>&1
+# Publish the global package-visibility list to NoMount's AppCloak backend.
+[ -f "$MODDIR/appcloak-sync.sh" ] && sh "$MODDIR/appcloak-sync.sh" >/dev/null 2>&1
 
 # Scene creates a randomized debugfs mount only after its service/game path is
 # active. A bounded watcher discovers it, applies once, then exits.

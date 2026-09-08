@@ -14,7 +14,6 @@ incorrectly named it as the current upstream.
 Other reviewed sources:
 
 - LKM-PathMask: `Andrea-lyz/LKM-PathMask@98274c85ba41442c35b05ed316b16308551240f9` (`2.7.2`).
-- HMA-OSS application-visibility backend: `frknkrc44/HMA-OSS@d1cfcbce72ac07eb998cd49be1d5385ade48f713` (AGPL-3.0).
 - Original local module baseline: user-supplied `NoMount-Module-v1.3.0.zip`, SHA-256 `2e60374091ae8d8f8b013fb61a851d94a30a0d890c8c9e0e0c70d8bb37e8fea3`.
 
 The current local kernel half is a device-tested Prism v13 derivative with the
@@ -32,5 +31,6 @@ Backported independently from the primary upstream:
   userspace protocol or adding steady-state overhead.
 
 PathMask continues to use compile-time VFS call sites and NoMount's UID policy,
-not permanent syscall kprobes. HMA-OSS is a separate system-service visibility
-layer and is not described as NoMount upstream.
+not permanent syscall kprobes. AppCloak is maintained in this repository as a
+small independent package-visibility component and is not described as
+NoMount upstream.

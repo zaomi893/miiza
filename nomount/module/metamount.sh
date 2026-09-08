@@ -8,6 +8,7 @@ NMDIR=/data/adb/nomount
 # 0700: spoof.conf/blocklist/pathhide.conf are read as root at boot, so anything
 # able to write here gets root. The dir was being created under the boot umask (0777).
 mkdir -p "$NMDIR" && chmod 0700 "$NMDIR"
+[ -f "$MODDIR/appcloak-sync.sh" ] && sh "$MODDIR/appcloak-sync.sh" --boot-prepare >/dev/null 2>&1
 
 # Single-run guard. Was a noclobber file in /dev: world-writable (boot umask),
 # named after the project, and "held" by mere existence -- so anything able to
