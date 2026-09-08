@@ -3,7 +3,6 @@ package io.github.cvhhji.nomount.appcloak;
 import android.os.SystemClock;
 import android.util.Log;
 
-import com.v7878.unsafe.Reflection;
 import com.v7878.unsafe.invoke.EmulatedStackFrame;
 import com.v7878.unsafe.invoke.Transformers;
 import com.v7878.vmtools.Hooks;
@@ -13,7 +12,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.FileReader;
 import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -77,7 +75,7 @@ final class AppCloak {
                 .getDeclaredMethod("getOrCreateSystemServerClassLoader");
         loaderMethod.setAccessible(true);
         ClassLoader loader = (ClassLoader) loaderMethod.invoke(null);
-        Set<Executable> gates = new LinkedHashSet<>();
+        Set<Method> gates = new LinkedHashSet<>();
         String[] candidates = {
                 "com.android.server.pm.AppsFilterImpl",
                 "com.android.server.pm.AppsFilterBase",
@@ -89,7 +87,7 @@ final class AppCloak {
                 publishStatus("install:scan:" + name.substring(name.lastIndexOf('.') + 1));
                 Class<?> type = Class.forName(name, false, loader);
                 while (type != null && type != Object.class) {
-                    Collections.addAll(gates, Reflection.getHiddenExecutables(type));
+                    Collections.addAll(gates, type.getDeclaredMethods());
                     type = type.getSuperclass();
                 }
             } catch (Throwable t) {
@@ -97,9 +95,7 @@ final class AppCloak {
             }
         }
         int count = 0;
-        for (Executable executable : gates) {
-            if (!(executable instanceof Method)) continue;
-            Method method = (Method) executable;
+        for (Method method : gates) {
             if (!"shouldFilterApplication".equals(method.getName())
                     || method.getReturnType() != boolean.class) continue;
             int callerIndex = -1, targetIndex = -1, snapshotIndex = -1;
