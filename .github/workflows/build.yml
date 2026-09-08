@@ -149,7 +149,7 @@ jobs:
       actions: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: 验证 SUSFS / NoMount 互斥选项
         run: |
@@ -1143,7 +1143,7 @@ jobs:
 
       - name: 为 NoMount HMA-OSS 后端配置 JDK
         if: inputs.nomount_enable
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -1171,7 +1171,9 @@ jobs:
           cd hma_oss
           git checkout d1cfcbce72ac07eb998cd49be1d5385ade48f713
           git apply "$GITHUB_WORKSPACE/nomount/hma-oss-nomount-global.patch"
-          : > local.properties
+          ANDROID_SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          test -d "$ANDROID_SDK"
+          printf 'sdk.dir=%s\n' "$ANDROID_SDK" > local.properties
           ./gradlew :app:assembleRelease
           ./gradlew :zygote:assembleRelease
           HMA_ZIP="$(find zygote/build/outputs/magisk/release -maxdepth 1 -name '*.zip' -print -quit)"
