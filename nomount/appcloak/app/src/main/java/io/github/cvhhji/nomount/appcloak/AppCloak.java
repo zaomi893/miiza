@@ -25,6 +25,8 @@ final class AppCloak {
     private static final File POLICY = new File("/data/system/nomount_appcloak/hidden_apps.conf");
     private static final File ACTIVE = new File("/data/system/nomount_appcloak/active");
     private static final File STATUS = new File("/data/system/nomount_appcloak/status");
+    private static final Set<String> EXEMPT_CALLERS =
+            Collections.singleton("com.android.launcher");
     private static volatile Set<String> hidden = Collections.emptySet();
     private static volatile long policyStamp = Long.MIN_VALUE;
     private static volatile long checkedAt;
@@ -146,8 +148,15 @@ final class AppCloak {
             Object targetState = referenceArgument(frame, targetIndex);
             String target = packageName(targetState);
             int callerAppId = callerUid % 100000;
-            if (callerAppId >= 10000
-                    && callerIsHidden(frame, callerUid, snapshotIndex)) {
+            String[] callerPackages = callerAppId >= 10000
+                    ? packagesForUid(frame, callerUid, snapshotIndex) : null;
+            if (containsAny(callerPackages, EXEMPT_CALLERS)) {
+                // Keep launcher icons usable while ordinary package-query
+                // callers continue to see the filtered package set.
+                Transformers.invokeExactNoChecks(original, frame);
+                return;
+            }
+            if (callerAppId >= 10000 && containsHidden(callerPackages)) {
                 // A hidden caller sees the complete package set, including
                 // other members of the hidden group.
                 frame.accessor().setBoolean(EmulatedStackFrame.RETURN_VALUE_IDX, false);
@@ -198,19 +207,30 @@ final class AppCloak {
      * still enumerate every package, while ordinary callers cannot enumerate
      * any member of the hidden group.
      */
-    private static boolean callerIsHidden(EmulatedStackFrame frame, int uid,
+    private static String[] packagesForUid(EmulatedStackFrame frame, int uid,
             int snapshotIndex) {
-        if (snapshotIndex < 0) return false;
+        if (snapshotIndex < 0) return null;
         try {
             Object computer = referenceArgument(frame, snapshotIndex);
-            if (computer == null) return false;
+            if (computer == null) return null;
             Method m = computer.getClass().getMethod("getPackagesForUid", int.class);
             m.setAccessible(true);
-            String[] packages = (String[]) m.invoke(computer, uid);
-            if (packages != null) {
-                for (String pkg : packages) if (isHidden(pkg)) return true;
-            }
+            return (String[]) m.invoke(computer, uid);
         } catch (Throwable ignored) {}
+        return null;
+    }
+
+    private static boolean containsHidden(String[] packages) {
+        if (packages != null) {
+            for (String pkg : packages) if (isHidden(pkg)) return true;
+        }
+        return false;
+    }
+
+    private static boolean containsAny(String[] packages, Set<String> expected) {
+        if (packages != null) {
+            for (String pkg : packages) if (expected.contains(pkg)) return true;
+        }
         return false;
     }
 
