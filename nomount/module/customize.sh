@@ -82,12 +82,25 @@ ui_print "- Spoof add-on enabled: dynamic vbmeta.digest"
 ui_print "  config: $CONF"
 
 # --- Integrated LKM-PathMask path-masking engine ---
-[ -f "$MODPATH/scan.sh" ] && set_perm "$MODPATH/scan.sh" 0 0 0755
 [ -f "$MODPATH/pathhide-apply.sh" ] && set_perm "$MODPATH/pathhide-apply.sh" 0 0 0755
 [ -f "$MODPATH/scene-debugfs-watch.sh" ] && set_perm "$MODPATH/scene-debugfs-watch.sh" 0 0 0755
 [ -f "$MODPATH/appcloak-sync.sh" ] && set_perm "$MODPATH/appcloak-sync.sh" 0 0 0755
 [ -f "$NMDIR/pathhide.conf" ] || echo "# NoMount PathMask rule list (managed by WebUI › Tools › PathMask)" > "$NMDIR/pathhide.conf"
 [ -f "$NMDIR/hidden_apps.conf" ] || echo "# NoMount global hidden packages (managed by WebUI)" > "$NMDIR/hidden_apps.conf"
+# v1.6.6 removes automatic HMA/Xposed imports. Reset the formerly generated
+# target list once, then preserve only explicit WebUI choices on later updates.
+if [ ! -f "$NMDIR/.appcloak_manual_v2" ]; then
+    echo "# NoMount global hidden packages (managed by WebUI)" > "$NMDIR/hidden_apps.conf"
+    echo "# NoMount AppCloak caller scope (managed by WebUI)" > "$NMDIR/scope_apps.conf"
+    rm -f "$NMDIR/xposed_cache" "$NMDIR/hma_blacklist_cache" \
+        "$NMDIR/.global_hide_exclude" 2>/dev/null
+    : > "$NMDIR/.appcloak_manual_v2"
+fi
+[ -f "$NMDIR/scope_apps.conf" ] || echo "# NoMount AppCloak caller scope (managed by WebUI)" > "$NMDIR/scope_apps.conf"
+# v1.6.6 removes automatic HMA/Xposed imports. Old caches and opt-out state
+# must not silently repopulate the user-controlled application list.
+rm -f "$NMDIR/xposed_cache" "$NMDIR/hma_blacklist_cache" \
+    "$NMDIR/.global_hide_exclude" "$NMDIR/.cloak_scan.tmp"
 [ -f "$MODPATH/appcloak-sync.sh" ] && sh "$MODPATH/appcloak-sync.sh" >/dev/null 2>&1
 
 # --- absorb opt-out list -----------------------------------------------------
@@ -137,9 +150,10 @@ fi
 set_perm "$NMDIR/absorb-skip.txt" 0 0 0600
 set_perm "$NMDIR/pathhide.conf" 0 0 0644
 set_perm "$NMDIR/hidden_apps.conf" 0 0 0600
+set_perm "$NMDIR/scope_apps.conf" 0 0 0600
 if [ -e /proc/pathhide ]; then
     ui_print "- PathMask 2.7.2 integration FOUND"
-    ui_print "  Xposed packages import into AppCloak only; Scene debugfs imports into PathMask"
+    ui_print "  AppCloak targets and caller scope are managed only in WebUI"
 else
     ui_print "- PathMask unavailable: /proc/pathhide is missing (matching kernel required)"
 fi
