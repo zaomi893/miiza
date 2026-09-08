@@ -10,7 +10,10 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = namespace
-        minSdk = 31
+        // AppCloak is injected only into the Android 16 system_server. Keeping
+        // the real platform level prevents D8 from rewriting java.lang.Record
+        // references in DexFile to its build-time-only R8 RecordTag marker.
+        minSdk = 36
         targetSdk = 36
         versionCode = 10604
         versionName = "1.6.4"
