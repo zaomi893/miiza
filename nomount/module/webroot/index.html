@@ -838,10 +838,9 @@
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
       <h2 data-i18n="h2_cloak">Path masking</h2><span class="chip" id="phchip">—</span><span class="chev">›</span>
     </div>
-    <p class="note" data-i18n="note_cloak">PathMask is integrated into the NoMount kernel engine. Xposed modules and Scene debugfs are discovered automatically; choose target apps below.</p>
+    <p class="note" data-i18n="note_cloak">PathMask hides only the full file paths shown below. Paths are added manually; only Scene debugfs is discovered automatically.</p>
     <div class="val multiline" id="phSceneStatus" data-i18n="scene_checking">Scene: checking automatic debugfs detection…</div>
     <div class="btns">
-      <button class="act" id="phScan" onclick="scanCloak(this)" data-i18n="btn_scan_xposed">Rescan Xposed modules</button>
       <button class="act" id="phShow" onclick="phShowList(this)" data-i18n="btn_show_list">Show list</button>
       <button class="act danger" id="phOff" onclick="cloakAllOff(this)" data-i18n="btn_turn_off_all">Turn off all</button>
     </div>
@@ -860,8 +859,9 @@
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
       <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
     </div>
-    <p class="note" data-i18n="note_global_hide">Packages selected here are removed from package queries made by ordinary apps through NoMount AppCloak. Xposed modules are added automatically. Core system services and the hidden application itself remain exempt for stability.</p>
+    <p class="note" data-i18n="note_global_hide">Imports HMA blacklists and Xposed modules. Hidden apps can see every app; ordinary apps cannot see hidden apps. Core system services remain exempt.</p>
     <div class="val multiline" id="ghstatus" data-i18n="gh_checking">AppCloak: checking…</div>
+    <div class="btns"><button class="act" id="ghScan" onclick="scanHiddenApps(this)" data-i18n="btn_scan_xposed">Rescan Xposed modules</button></div>
     <div style="display:flex;gap:8px;margin:8px 0 2px">
       <input class="txin" id="ghManual" data-i18n-placeholder="ph_add_hidden_app" placeholder="package name to hide globally" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
       <button class="act" style="flex:none;min-width:0;padding:7px 13px" onclick="addGlobalHide()" data-i18n="btn_hide">Hide</button>
@@ -873,7 +873,7 @@
   <div class="card" id="cardPerUID">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-      <h2 data-i18n="h2_per_uid">Path-mask target apps</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
+      <h2 data-i18n="h2_per_uid">NoMount injection-blocked apps</h2><span class="chip" id="uidchip">—</span><span class="chev">›</span>
     </div>
     <div class="uidbar">
       <div class="pkgwrap">
@@ -992,9 +992,9 @@
       btn_clear_incident: "Clear incident",
       gl_hiding: "Hiding",
       h2_cloak: "Path masking",
-      note_cloak: 'LKM-PathMask 2.7.2 path masking is integrated into the NoMount VFS engine; no separate <code>pathmask.ko</code> is required. Xposed module APK paths and Scene debugfs are discovered automatically.',
+      note_cloak: 'PathMask hides only the complete file paths displayed below. Paths are added manually; only Scene debugfs is discovered automatically.',
       scene_checking: "Scene: checking automatic debugfs detection…",
-      btn_scan_xposed: "Rescan Xposed modules",
+      btn_scan_xposed: "Import hidden apps",
       btn_show_list: "Show list",
       ph_add_path: "add an absolute path",
       btn_add: "Add",
@@ -1002,15 +1002,15 @@
       btn_turn_off_all: "Turn off all",
       ph_search_path: "search full paths",
       h2_global_hide: "Global hidden applications",
-      note_global_hide: "Packages selected here are removed from package queries made by ordinary apps through NoMount AppCloak. Xposed modules are added automatically. Core system services and the hidden application itself remain exempt for stability.",
+      note_global_hide: "Imports existing HMA blacklists and detected Xposed modules. Hidden apps can see themselves and every other app; ordinary apps cannot see any hidden app. Core system services remain exempt for stability.",
       gh_checking: "AppCloak: checking…",
       ph_add_hidden_app: "package name to hide globally",
       ph_search_apps: "search app name or package",
-      h2_per_uid: "Path-mask target apps",
+      h2_per_uid: "NoMount injection-blocked apps",
       ph_uid_picker: "Package name or UID — start typing to pick an app",
       btn_hide: "Hide",
       btn_unhide: "Unhide",
-      note_per_uid: 'Choose which apps should be unable to see masked paths, injected files and su. This keeps NoMount\'s existing package-to-UID block/unblock logic; app name and package name are both shown.',
+      note_per_uid: 'Choose which apps should be unable to see NoMount-injected files and su. This package-to-UID blocklist is independent of global PathMask; app name and package name are both shown.',
       foot_engine: "hookless engine via netlink",
       nav_status: "Status",
       nav_modules: "Modules",
@@ -1081,9 +1081,9 @@
       btn_clear_incident: "清除事件记录",
       gl_hiding: "隐藏",
       h2_cloak: "路径遮罩",
-      note_cloak: '已将 LKM-PathMask 2.7.2 的路径遮罩集成进 NoMount VFS 内核引擎，不需要单独的 <code>pathmask.ko</code>。Xposed 模块 APK 路径与 Scene 随机 debugfs 会自动识别。',
+      note_cloak: '路径遮罩只隐藏并完整显示下面列出的文件路径。路径由你手动添加，唯一自动识别的是 Scene 随机 debugfs。',
       scene_checking: "Scene：正在检查 debugfs 自动识别状态…",
-      btn_scan_xposed: "重新扫描 Xposed 模块",
+      btn_scan_xposed: "导入隐藏应用",
       btn_show_list: "显示列表",
       ph_add_path: "添加绝对路径",
       btn_add: "添加",
@@ -1091,15 +1091,15 @@
       btn_turn_off_all: "一键关闭",
       ph_search_path: "搜索完整路径",
       h2_global_hide: "全局隐藏应用",
-      note_global_hide: "这里选中的包会由 NoMount 自有 AppCloak 从普通应用的包查询结果中移除；Xposed 模块会自动加入。为防止系统异常，核心系统服务与被隐藏应用自身保留可见。",
+      note_global_hide: "自动导入 HMA 现有黑名单和检测到的 Xposed 模块。隐藏组内的应用可以看到自己和所有其他应用；其他普通应用看不到任何隐藏应用。核心系统服务保留豁免。",
       gh_checking: "AppCloak：检查中…",
       ph_add_hidden_app: "输入要全局隐藏的包名",
       ph_search_apps: "搜索应用名或包名",
-      h2_per_uid: "路径遮罩生效应用",
+      h2_per_uid: "NoMount 注入屏蔽应用",
       ph_uid_picker: "包名或 UID — 输入以选择应用",
       btn_hide: "隐藏",
       btn_unhide: "取消隐藏",
-      note_per_uid: '选择哪些应用无法看到被遮罩路径、注入文件和 su。继续使用 NoMount 原有的“包名解析 UID 并屏蔽/解除屏蔽”逻辑，界面同时显示应用名和包名。',
+      note_per_uid: '选择哪些应用无法看到 NoMount 注入文件和 su。该“包名解析 UID”屏蔽名单与全局 PathMask 相互独立，界面同时显示应用名和包名。',
       foot_engine: "基于 netlink 的无钩子引擎",
       nav_status: "状态",
       nav_modules: "模块",
@@ -2067,6 +2067,11 @@
       const e = GH.get(rec.pkg) || { hidden: !GHX.has(rec.pkg), xposed:false };
       e.xposed = true; GH.set(rec.pkg, e);
     });
+    const imported = await exec("cat /data/adb/nomount/hma_blacklist_cache 2>/dev/null");
+    imported.stdout.split("\n").map(function(s){ return s.trim(); }).filter(validPkg).forEach(function(p){
+      const e = GH.get(p) || { hidden: !GHX.has(p), xposed:false };
+      e.imported = true; GH.set(p, e);
+    });
     renderGlobalHide(); await refreshGlobalHideStatus();
   }
   function saveGlobalExclude() {
@@ -2086,13 +2091,13 @@
     if (!items.length) { list.innerHTML = '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "尚未添加全局隐藏应用。" : "No globally hidden applications yet.") + '</div>'; return; }
     list.innerHTML = items.map(function(it){
       const pkg=it[0], e=it[1], app=_pkgByName.get(pkg), label=(app&&app.label)||pkg;
-      return '<div class="swrow"><div class="swi"><div class="lbl">'+esc(label)+'</div><div class="val">'+esc(pkg)+(e.xposed?' · Xposed':'')+'</div></div>'+
+      return '<div class="swrow"><div class="swi"><div class="lbl">'+esc(label)+'</div><div class="val">'+esc(pkg)+(e.xposed?' · Xposed':'')+(e.imported?(currentLang === "zh" ? ' · HMA 黑名单' : ' · HMA blacklist'):'')+'</div></div>'+
         '<label class="switch"><input type="checkbox" data-p="'+encodeURIComponent(pkg)+'" '+(e.hidden?'checked':'')+' onchange="toggleGlobalHide(this)"><span class="sl"></span></label></div>';
     }).join("");
   }
   function toggleGlobalHide(cb) {
     const p=decodeURIComponent(cb.dataset.p), e=GH.get(p); if (!e) return;
-    e.hidden=cb.checked; GH.set(p,e); if (e.xposed) { if (e.hidden) GHX.delete(p); else GHX.add(p); saveGlobalExclude(); }
+    e.hidden=cb.checked; GH.set(p,e); if (e.xposed || e.imported) { if (e.hidden) GHX.delete(p); else GHX.add(p); saveGlobalExclude(); }
     renderGlobalHide();
   }
   function addGlobalHide() {
@@ -2117,6 +2122,8 @@
     const r=await exec("sh /data/adb/modules/meta-nomount/appcloak-sync.sh --status 2>/dev/null");
     const state=(r.stdout||"").trim(), el=document.getElementById("ghstatus"); if (!el) return;
     if (state === "active") el.textContent = currentLang === "zh" ? "AppCloak：system_server 过滤已生效" : "AppCloak: system_server filter active";
+    else if (state.indexOf("failed:") === 0) el.textContent = (currentLang === "zh" ? "AppCloak：加载失败 · " : "AppCloak: load failed · ") + state.slice(7);
+    else if (["entrypoint","waiting-pm","installing"].indexOf(state) !== -1) el.textContent = (currentLang === "zh" ? "AppCloak：正在加载 · " : "AppCloak: loading · ") + state;
     else if (state === "waiting") el.textContent = currentLang === "zh" ? "AppCloak：文件已就绪，等待 Zygisk 加载（请重启）" : "AppCloak: files ready; waiting for Zygisk (reboot)";
     else el.textContent = currentLang === "zh" ? "AppCloak：组件缺失，请重新刷入模块" : "AppCloak: component missing; reinstall the module";
   }
@@ -2143,27 +2150,11 @@
     PH.clear(); EXCLUDE.clear();
     const ok = (await exec("[ -e /proc/pathhide ] && echo y")).stdout.indexOf("y") >= 0;
     document.getElementById("phApply").disabled = !ok;
-    document.getElementById("phScan").disabled = !ok;
     if (!ok) document.getElementById("phchip").textContent = currentLang === "zh" ? "无内核" : "no kernel";
     const r = await exec("cat " + PH_CONF + " 2>/dev/null");
     r.stdout.split("\n").map(function (l) { return l.replace(/\r/g, "").trim(); })
       .filter(function (l) { return l && l[0] !== "#"; })
       .forEach(function (rule) { PH.set(rule, { hidden: true, xposed: false, pkg: "", appLabel: "" }); });
-    const c = await exec("sh /data/adb/modules/meta-nomount/scan.sh --cached 2>/dev/null");
-    let mode = null;
-    c.stdout.split("\n").map(function (s) { return s.trim(); }).forEach(function (l) {
-      if (l === "#XPOSED") { mode = "xposed"; return; }
-      if (!l || mode !== "xposed") return;
-      const rec = phXposedRecord(l);
-      const e = PH.get(rec.path) || { hidden: false, xposed: false };
-      const meta = phAppMeta(rec.pkg);
-      e.xposed = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel;
-      PH.set(rec.path, e);
-      if (validPkg(rec.pkg)) {
-        const ge = GH.get(rec.pkg) || { hidden: !GHX.has(rec.pkg), xposed: false };
-        ge.xposed = true; GH.set(rec.pkg, ge);
-      }
-    });
     const ex = await exec("cat " + PH_EXCLUDE + " 2>/dev/null");
     ex.stdout.split("\n").map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (p) {
       EXCLUDE.add(p);
@@ -2189,38 +2180,18 @@
       : { applied: "detected and applied", found: "detected", "no-package": "Scene is not installed", "not-found": "random mount not found yet", "apply-failed": "detected but apply failed", unknown: "waiting for first detection" };
     el.textContent = (currentLang === "zh" ? "Scene 自动隐藏：" : "Scene auto-hide: ") + (map[status] || status) + (Number(count) ? (currentLang === "zh" ? ` · ${count} 个目标` : ` · ${count} target(s)`) : "");
   }
-  async function scanCloak(btn) {
+  async function scanHiddenApps(btn) {
     const o = btn.textContent; btn.disabled = true; btn.textContent = currentLang === "zh" ? "扫描中…" : "Scanning…";
-    toast(currentLang === "zh" ? "正在扫描 Xposed 模块与隐藏黑名单…" : "Scanning Xposed modules & blacklist…");
-    const r = await exec("sh /data/adb/modules/meta-nomount/scan.sh 2>/dev/null");
-    let mode = null, added = 0;
-    r.stdout.split("\n").map(function (s) { return s.trim(); }).forEach(function (l) {
-      if (l === "#XPOSED") { mode = "xposed"; return; }
-      if (!l || mode !== "xposed") return;
-      const rec = phXposedRecord(l);
-      let e = PH.get(rec.path);
-      if (!e) {
-        const wasExcluded = EXCLUDE.has(rec.path);
-        e = { xposed: false, hidden: !wasExcluded };
-        if (!wasExcluded) added++;
-      }
-      const meta = phAppMeta(rec.pkg);
-      e.xposed = true; e.pkg = meta.pkg; e.appLabel = meta.appLabel;
-      PH.set(rec.path, e);
-      if (validPkg(rec.pkg)) {
-        const ge = GH.get(rec.pkg) || { hidden: !GHX.has(rec.pkg), xposed: false };
-        ge.xposed = true; GH.set(rec.pkg, ge);
-      }
-    });
+    toast(currentLang === "zh" ? "正在导入 Xposed 模块与现有黑名单…" : "Importing Xposed modules and the existing blacklist…");
+    const before = [...GH.values()].filter(function(e){ return e.hidden; }).length;
+    const r = await exec("sh /data/adb/modules/meta-nomount/cloak-boot.sh 2>/dev/null; echo imported");
     btn.disabled = false; btn.textContent = o;
-    if (!phShown) phShowList(document.getElementById("phShow"));
-    renderCloak();
-    const ok = await doApplyCloak();
-    renderGlobalHide();
-    await writeGlobalHide();
+    await loadGlobalHide();
+    const after = [...GH.values()].filter(function(e){ return e.hidden; }).length;
+    const added = Math.max(0, after - before), ok = (r.stdout || "").indexOf("imported") !== -1;
     toast(ok
-      ? (currentLang === "zh" ? ("已加入 " + added + " 项（保留已有开关）") : ("Added " + added + " (kept existing toggles)"))
-      : (currentLang === "zh" ? "扫描完成但应用失败" : "Scanned but apply failed"),
+      ? (currentLang === "zh" ? ("已导入 " + added + " 个隐藏应用；未添加任何文件路径") : ("Imported " + added + " hidden app(s); no file paths were added"))
+      : (currentLang === "zh" ? "扫描完成但隐藏名单同步失败" : "Scanned but failed to sync the hidden-app list"),
       ok ? "ok" : "bad");
   }
   function phShowList(btn) {
@@ -2245,9 +2216,7 @@
   function renderCloak() {
     const q = (document.getElementById("phSearch") || {}).value || "";
     const ql = q.trim().toLowerCase();
-    let items = [...PH.entries()].sort(function (a, b) {
-      return (b[1].xposed ? 1 : 0) - (a[1].xposed ? 1 : 0) || a[0].localeCompare(b[0]);
-    });
+    let items = [...PH.entries()].sort(function (a, b) { return a[0].localeCompare(b[0]); });
     if (ql) items = items.filter(function (x) { return x[0].toLowerCase().indexOf(ql) !== -1; });
     const hid = items.filter(function (x) { return x[1].hidden; }).length;
     const chip = document.getElementById("phchip");
@@ -2255,12 +2224,12 @@
       chip.textContent = items.length ? (hid + " / " + items.length) : "0";
     const list = document.getElementById("phList");
     if (!items.length) {
-      list.innerHTML = '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "无规则 — 扫描或添加包。" : "No rules — scan or add a package.") + '</div>';
+      list.innerHTML = '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "没有文件路径；可手动添加，Scene 路径发现后会自动显示。" : "No file paths; add one manually, or wait for a detected Scene path.") + '</div>';
       return;
     }
     list.innerHTML = items.map(function (it) {
       const rule = it[0], e = it[1];
-      const title = e.xposed ? 'Xposed APK' : (e.scene ? 'Scene debugfs' : (currentLang === "zh" ? "自定义路径" : "Custom path"));
+      const title = e.scene ? 'Scene debugfs' : (currentLang === "zh" ? "文件路径" : "File path");
       return '<div class="swrow"><div class="swi"><div class="lbl">' + esc(title) + '</div><div class="val" style="white-space:normal;overflow-wrap:anywhere">' + esc(rule) + '</div></div>' +
         '<label class="switch"><input type="checkbox" data-r="' + encodeURIComponent(rule) + '" ' +
         (e.hidden ? 'checked' : '') + (e.scene ? ' disabled' : '') + ' onchange="phToggle(this)"><span class="sl"></span></label></div>';
@@ -2295,8 +2264,8 @@
       ok ? "ok" : "bad");
   }
   async function cloakAllOff(btn) {
-    PH.forEach(function (e) { e.hidden = false; });
-    PH.forEach(function (e, k) { EXCLUDE.add(k); });
+    PH.forEach(function (e) { if (!e.scene) e.hidden = false; });
+    PH.forEach(function (e, k) { if (!e.scene) EXCLUDE.add(k); });
     saveExclude();
     renderCloak();
     const o = btn.textContent; btn.disabled = true; btn.textContent = currentLang === "zh" ? "关闭中…" : "Turning off…";
