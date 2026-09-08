@@ -834,6 +834,22 @@
   </div>
   <div class="group-label" id="groupPathMask" data-i18n="gl_hiding">Hiding</div>
   <!-- PathMask is built into NoMount's VFS engine; no separate .ko is needed. -->
+  <div class="card" id="cardGlobalHide">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
+      <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
+    </div>
+    <p class="note" data-i18n="note_global_hide">Choose hidden targets and the caller applications affected by that list. System apps are unchecked by default.</p>
+    <div class="val multiline" id="ghstatus" data-i18n="gh_checking">AppCloak: checking…</div>
+    <div class="btns"><button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button></div>
+    <div class="subhead" data-i18n="h3_hide_targets">Hidden targets</div>
+    <div style="margin:8px 0 2px"><input class="txin" id="ghSearch" data-i18n-placeholder="ph_search_apps" placeholder="search app name or package" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
+    <div class="list" id="ghList"></div>
+    <div class="subhead" data-i18n="h3_hide_scope">Effective applications</div>
+    <p class="note" data-i18n="note_hide_scope">Only checked caller applications cannot see the hidden targets.</p>
+    <div style="margin:8px 0 2px"><input class="txin" id="gsSearch" data-i18n-placeholder="ph_search_scope" placeholder="search effective applications" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
+    <div class="list" id="gsList"></div>
+  </div>
   <div class="card" id="cardCloak">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
@@ -854,22 +870,6 @@
     </div>
     <div class="list" id="phList" style="display:none"></div>
     <div class="btns"><button class="act primary" id="phApply" onclick="applyCloak(this)" data-i18n="btn_apply_save">Apply & save</button></div>
-  </div>
-  <div class="card" id="cardGlobalHide">
-    <div class="card-h clp" onclick="toggleCard(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
-      <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
-    </div>
-    <p class="note" data-i18n="note_global_hide">Choose hidden targets and the caller applications affected by that list. System apps are unchecked by default.</p>
-    <div class="val multiline" id="ghstatus" data-i18n="gh_checking">AppCloak: checking…</div>
-    <div class="btns"><button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button></div>
-    <div class="subhead" data-i18n="h3_hide_targets">Hidden targets</div>
-    <div style="margin:8px 0 2px"><input class="txin" id="ghSearch" data-i18n-placeholder="ph_search_apps" placeholder="search app name or package" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
-    <div class="list" id="ghList"></div>
-    <div class="subhead" data-i18n="h3_hide_scope">Effective applications</div>
-    <p class="note" data-i18n="note_hide_scope">Only checked caller applications cannot see the hidden targets.</p>
-    <div style="margin:8px 0 2px"><input class="txin" id="gsSearch" data-i18n-placeholder="ph_search_scope" placeholder="search effective applications" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
-    <div class="list" id="gsList"></div>
   </div>
   </section>
   <div class="foot">NoMount Suite · <span data-i18n="foot_engine">hookless engine via netlink</span> <code>nm</code><br/><span id="footver"></span></div>
