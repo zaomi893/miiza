@@ -139,7 +139,7 @@ set_perm "$NMDIR/pathhide.conf" 0 0 0644
 set_perm "$NMDIR/hidden_apps.conf" 0 0 0600
 if [ -e /proc/pathhide ]; then
     ui_print "- PathMask 2.7.2 integration FOUND"
-    ui_print "  Xposed modules and Scene debugfs will be detected automatically"
+    ui_print "  Xposed packages import into AppCloak only; Scene debugfs imports into PathMask"
 else
     ui_print "- PathMask unavailable: /proc/pathhide is missing (matching kernel required)"
 fi
