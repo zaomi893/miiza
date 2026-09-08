@@ -1,7 +1,9 @@
 id=meta-nomount
 name=NoMount Suite
-version=v1.5.1
-versionCode=10501
+version=v1.6.0
+versionCode=10600
 author=zaomi
-description=NoMount Suite — mountless VFS injection with separate app targeting and LKM-PathMask path masking, plus automatic Xposed/Scene path discovery. Root/su independent (sucompat). 🫥
+description=NoMount Suite — mountless VFS injection, path-only LKM-PathMask, and integrated HMA-OSS global app visibility filtering with automatic Xposed discovery. Root/su independent (sucompat). 🫥
 metamodule=1
+entrypoint=org.frknkrc44.hma_oss.zygote.ZygoteEntry
+attachNativeLibs=false

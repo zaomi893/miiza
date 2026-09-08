@@ -1,12 +1,36 @@
 # NoMount / PathMask synchronization notes
 
-- NoMount reviewed revision: `maxsteeel/nomount@2d3863b036d69fd587585ee0cdde2560d983beb8` (2026-09-04).
-- LKM-PathMask reviewed revision: `Andrea-lyz/LKM-PathMask@98274c85ba41442c35b05ed316b16308551240f9` (`2.7.2`).
-- Local module baseline: user-supplied `NoMount-Module-v1.3.0.zip`, SHA-256 `2e60374091ae8d8f8b013fb61a851d94a30a0d890c8c9e0e0c70d8bb37e8fea3`.
+Primary NoMount upstream:
 
-The upstream NoMount v2 control transport is intentionally not copied: it is a
-breaking userspace/kernel protocol change and would invalidate the already
-deployed Suite client.  The low-risk directory-iteration UID caching is ported
-instead.  PathMask's behavior is implemented through compile-time VFS call
-sites and the existing NoMount UID set, avoiding its optional syscall kprobes
-and their permanent open/stat/access overhead.
+- Repository: `Bouteillepleine/NoMount-Suite`
+- Reviewed revision: `2b8891614399692dec443d27bffbc179cfeb6f6b`
+- Upstream state at that revision: Suite `v1.3.170`, Prism engine `v30`
+- License: GPL-3.0
+
+`maxsteeel/nomount` is the historical project from which NoMount Suite was
+derived; it is not the upstream used for this integration. The previous note
+incorrectly named it as the current upstream.
+
+Other reviewed sources:
+
+- LKM-PathMask: `Andrea-lyz/LKM-PathMask@98274c85ba41442c35b05ed316b16308551240f9` (`2.7.2`).
+- HMA-OSS application-visibility backend: `frknkrc44/HMA-OSS@d1cfcbce72ac07eb998cd49be1d5385ade48f713` (AGPL-3.0).
+- Original local module baseline: user-supplied `NoMount-Module-v1.3.0.zip`, SHA-256 `2e60374091ae8d8f8b013fb61a851d94a30a0d890c8c9e0e0c70d8bb37e8fea3`.
+
+The current local kernel half is a device-tested Prism v13 derivative with the
+PathMask fast path integrated directly. Upstream v30 is not relabelled as
+already synchronized: it changes both the engine and userspace and must be
+ported as a pair, followed by a real OP15 boot/detection test. Low-risk fixes
+may be backported independently, but the version shown by the kernel remains
+truthful until that port is completed.
+
+Backported independently from the primary upstream:
+
+- `286c2ac19411492823674218c945217b08382c63`: make synthesized directories
+  answer `SEEK_DATA` and `SEEK_HOLE` like their backing EROFS directories. This
+  closes an unprivileged two-`lseek` detection oracle without changing the
+  userspace protocol or adding steady-state overhead.
+
+PathMask continues to use compile-time VFS call sites and NoMount's UID policy,
+not permanent syscall kprobes. HMA-OSS is a separate system-service visibility
+layer and is not described as NoMount upstream.

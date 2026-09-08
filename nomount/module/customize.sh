@@ -3,6 +3,13 @@
 ui_print "- Installing NoMount metamodule"
 ui_print "- version $(grep_prop version "$MODPATH/module.prop")"
 
+# Two system_server HMA engines must never hook PackageManager together.
+if [ -d /data/adb/modules/hma_oss_zygisk ] && \
+   [ ! -f /data/adb/modules/hma_oss_zygisk/disable ] && \
+   [ ! -f /data/adb/modules/hma_oss_zygisk/remove ]; then
+    abort "- Disable/remove the standalone HMA-OSS Zygisk module first; NoMount v1.6.0 already includes its own isolated HMA backend."
+fi
+
 # --- integrity check: verify bundled files against their sha256 manifest ---
 # Catches a corrupted download or a tampered zip before we run a root binary.
 SUMS="$MODPATH/nomount.sha256sums"
@@ -85,7 +92,9 @@ ui_print "  config: $CONF"
 [ -f "$MODPATH/scan.sh" ] && set_perm "$MODPATH/scan.sh" 0 0 0755
 [ -f "$MODPATH/pathhide-apply.sh" ] && set_perm "$MODPATH/pathhide-apply.sh" 0 0 0755
 [ -f "$MODPATH/scene-debugfs-watch.sh" ] && set_perm "$MODPATH/scene-debugfs-watch.sh" 0 0 0755
+[ -f "$MODPATH/hma-sync.sh" ] && set_perm "$MODPATH/hma-sync.sh" 0 0 0755
 [ -f "$NMDIR/pathhide.conf" ] || echo "# NoMount PathMask rule list (managed by WebUI › Tools › PathMask)" > "$NMDIR/pathhide.conf"
+[ -f "$NMDIR/hidden_apps.conf" ] || echo "# NoMount global hidden packages (managed by WebUI)" > "$NMDIR/hidden_apps.conf"
 
 # --- absorb opt-out list -----------------------------------------------------
 # `nomount absorb` converts other modules' bind mounts into injections. Safe for
@@ -133,11 +142,20 @@ if [ ! -f "$NMDIR/absorb-skip.txt" ]; then
 fi
 set_perm "$NMDIR/absorb-skip.txt" 0 0 0600
 set_perm "$NMDIR/pathhide.conf" 0 0 0644
+set_perm "$NMDIR/hidden_apps.conf" 0 0 0600
 if [ -e /proc/pathhide ]; then
     ui_print "- PathMask 2.7.2 integration FOUND"
     ui_print "  Xposed modules and Scene debugfs will be detected automatically"
 else
     ui_print "- PathMask unavailable: /proc/pathhide is missing (matching kernel required)"
+fi
+
+# The integrated backend uses a separate application id so it cannot overwrite
+# or inherit the standalone HMA manager's signature/configuration.
+if [ -s "$MODPATH/manager.apk" ]; then
+    ui_print "- Installing NoMount HMA-OSS manager for user 0"
+    pm install --user 0 -r "$MODPATH/manager.apk" >/dev/null 2>&1 || \
+        ui_print "! Manager APK install failed; backend can still run after reboot"
 fi
 
 rm $MODPATH/nomount.sha256sums
