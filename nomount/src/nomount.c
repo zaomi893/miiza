@@ -4330,6 +4330,9 @@ static int nm_pathhide_show(struct seq_file *m, void *v)
 			   "global" : "deny");
 		for (i = 0; i < table->count; i++)
 			seq_printf(m, "%s\n", table->rules[i].path);
+	} else {
+		/* An empty table still defaults the next rule to global scope. */
+		seq_puts(m, "@global\n");
 	}
 	rcu_read_unlock();
 	return 0;

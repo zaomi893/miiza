@@ -30,6 +30,7 @@ final class AppCloak {
     private static volatile Set<String> hidden = Collections.emptySet();
     private static volatile long policyStamp = Long.MIN_VALUE;
     private static volatile long checkedAt;
+    private static volatile String phase = "init";
 
     private AppCloak() {}
 
@@ -45,7 +46,12 @@ final class AppCloak {
                 publishStatus("active");
                 Log.i(TAG, "package visibility filter installed");
             } catch (Throwable t) {
-                publishStatus("failed:" + t.getClass().getSimpleName());
+                String where = t.getStackTrace().length == 0 ? "unknown"
+                        : t.getStackTrace()[0].getClassName() + "_"
+                        + t.getStackTrace()[0].getMethodName() + "_"
+                        + t.getStackTrace()[0].getLineNumber();
+                publishStatus("failed:" + phase + ":" + t.getClass().getSimpleName()
+                        + ":" + String.valueOf(t.getMessage()) + ":" + where);
                 Log.e(TAG, "filter install failed", t);
             }
         }, "NoMount-AppCloak");
@@ -66,6 +72,7 @@ final class AppCloak {
     }
 
     private static void install() throws Throwable {
+        publishStatus("install:loader");
         Method loaderMethod = Class.forName("com.android.internal.os.ZygoteInit")
                 .getDeclaredMethod("getOrCreateSystemServerClassLoader");
         loaderMethod.setAccessible(true);
@@ -79,12 +86,15 @@ final class AppCloak {
         };
         for (String name : candidates) {
             try {
-                Class<?> type = Class.forName(name, true, loader);
+                publishStatus("install:scan:" + name.substring(name.lastIndexOf('.') + 1));
+                Class<?> type = Class.forName(name, false, loader);
                 while (type != null && type != Object.class) {
                     Collections.addAll(gates, Reflection.getHiddenExecutables(type));
                     type = type.getSuperclass();
                 }
-            } catch (ClassNotFoundException ignored) {}
+            } catch (Throwable t) {
+                Log.w(TAG, "skipping AppsFilter candidate " + name, t);
+            }
         }
         int count = 0;
         for (Executable executable : gates) {
@@ -105,6 +115,7 @@ final class AppCloak {
             final int caller = callerIndex;
             final int target = targetIndex;
             final int snapshot = snapshotIndex;
+            publishStatus("install:hook:" + method.getDeclaringClass().getSimpleName());
             Hooks.hook(method, Hooks.EntryPointType.DIRECT,
                     (MethodHandle original, EmulatedStackFrame frame) ->
                             dispatch(original, frame, caller, target, snapshot),
@@ -125,6 +136,7 @@ final class AppCloak {
     }
 
     private static void publishStatus(String value) {
+        phase = value;
         try (FileWriter out = new FileWriter(STATUS, false)) {
             out.write(value.replaceAll("[^A-Za-z0-9:_-]", "_"));
             out.write('\n');
