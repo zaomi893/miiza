@@ -695,6 +695,7 @@ jobs:
             grep -q 'nomount_spoof_mmap_metadata' fs/proc/task_mmu.c || { echo "错误: task_mmu.c 缺少 mmap 欺骗 hook"; exit 1; }
             sed -i '/^CONFIG_NOMOUNT=/d' arch/arm64/configs/gki_defconfig
             echo "CONFIG_NOMOUNT=y" >> arch/arm64/configs/gki_defconfig
+            scripts/config --file arch/arm64/configs/gki_defconfig -e KPROBES
             echo "NoMount (hookless) 集成完成!"
           else
             echo "错误: NoMount hookless 补丁应用失败"
@@ -992,7 +993,7 @@ jobs:
         with:
           gradle-version: '8.14.3'
 
-      - name: 构建并打包 NoMount Suite v1.6.7
+      - name: 构建并打包 NoMount Suite v1.6.8
         if: inputs.nomount_enable
         run: |
           set -euo pipefail
@@ -1010,14 +1011,14 @@ jobs:
           cd "$DEST"
           find . -type f ! -name nomount.sha256sums ! -path './META-INF/*' -print0 | sort -z | xargs -0 sha256sum > nomount.sha256sums
           sha256sum -c nomount.sha256sums
-          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.6.7.zip" . -x '*.git*'
+          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.6.8.zip" . -x '*.git*'
 
       - name: 上传 NoMount Suite 模块
         if: inputs.nomount_enable
         uses: actions/upload-artifact@v7
         with:
-          name: NoMount-Suite-v1.6.7
-          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.6.7.zip
+          name: NoMount-Suite-v1.6.8
+          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.6.8.zip
           archive: false
 
 
@@ -1047,7 +1048,7 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/download-artifact@v8
         with:
-          name: NoMount-Suite-v1.6.7.zip
+          name: NoMount-Suite-v1.6.8.zip
           path: ./release_zips
           skip-decompress: true
 
@@ -1108,7 +1109,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
-          - NoMount Suite版本：v1.6.7
+          - NoMount Suite版本：v1.6.8
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
           - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)

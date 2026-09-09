@@ -12,7 +12,7 @@ env:
   # PLK110 16.0.9.400 (CN01) is included in this official synchronized revision.
   HMBIRD_SOURCE_COMMIT: '5ab2a689ff87d7d28c511f1762cf41c1b90d965a'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
-  NOMOUNT_UPSTREAM_COMMIT: '2b8891614399692dec443d27bffbc179cfeb6f6b'
+  NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
   CCACHE_KEY: ccache-ecsv4-6.12.23
 
 on:
@@ -733,6 +733,7 @@ jobs:
           grep -q 'nomount_pathhide_hide_dirent' fs/readdir.c
           sed -i '/^CONFIG_NOMOUNT=/d' arch/arm64/configs/gki_defconfig
           echo "CONFIG_NOMOUNT=y" >> arch/arm64/configs/gki_defconfig
+          scripts/config --file arch/arm64/configs/gki_defconfig -e KPROBES
           echo "NoMount (hookless) 集成完成!"
       - name: 添加制作名称
         run: |
@@ -1186,7 +1187,7 @@ jobs:
           cd nomount_upstream
           git checkout "$NOMOUNT_UPSTREAM_COMMIT"
           test "$(git rev-parse HEAD)" = "$NOMOUNT_UPSTREAM_COMMIT"
-          grep -q '^version=v1.3.170$' module/module.prop
+          grep -q '^version=v1.3.176$' module/module.prop
 
       - name: 构建并集成 NoMount AppCloak 应用隐藏后端
         if: inputs.nomount_enable
@@ -1216,7 +1217,7 @@ jobs:
           find . -type f ! -name nomount.sha256sums ! -path './META-INF/*' -print0 \
             | sort -z | xargs -0 sha256sum > nomount.sha256sums
           sha256sum -c nomount.sha256sums
-          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.6.7.zip" . \
+          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.6.8.zip" . \
             -x '*.git*'
 
       - name: 上传 Ccache 调试日志
@@ -1236,8 +1237,8 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/upload-artifact@v7
         with:
-          name: NoMount-Suite-v1.6.7
-          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.6.7.zip
+          name: NoMount-Suite-v1.6.8
+          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.6.8.zip
           archive: false
 
       - name: 上传匹配 GKI 的风驰驱动测试工件
@@ -1266,7 +1267,7 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/download-artifact@v8
         with:
-          name: NoMount-Suite-v1.6.7.zip
+          name: NoMount-Suite-v1.6.8.zip
           path: ./release_zips
           skip-decompress: true
 
@@ -1326,7 +1327,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount支持：${{ github.event.inputs.nomount_enable }}
-          - NoMount Suite：v1.6.7（PathMask 固定全局；AppCloak 隐藏目标和生效应用均由 WebUI 勾选）
+          - NoMount Suite：v1.6.8（PathMask 固定全局；AppCloak 隐藏目标和生效应用均由 WebUI 勾选）
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
           - 绑定设备序列号：`${{ inputs.device_serial }}`
           - 设备序列号锁：随机盐 SHA-256（启动后校验；不匹配或缺失时 180 秒后自动重启）

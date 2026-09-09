@@ -26,6 +26,10 @@ else
     echo "nomount: boot_completed never set - leaving guard counter armed" > /dev/kmsg 2>/dev/null
 fi
 
+# Runtime Scene paths are boot-specific random mount points. Never publish a
+# stale path from the previous boot while waiting for the current one.
+: > "$NMDIR/scene_debugfs_paths"
+
 # --- Cloak / PathMask: publish saved rules without rescanning packages. ---
 [ -f "$MODDIR/pathhide-apply.sh" ] && sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1
 
@@ -36,7 +40,8 @@ fi
 [ -f "$MODDIR/appcloak-sync.sh" ] && sh "$MODDIR/appcloak-sync.sh" >/dev/null 2>&1
 
 # Scene creates a randomized debugfs mount only after its service/game path is
-# active. A bounded watcher discovers it, applies once, then exits.
+# active. The watcher starts fast, then backs off and remains available for a
+# late game launch instead of expiring after ten minutes.
 [ -f "$MODDIR/scene-debugfs-watch.sh" ] && \
     (sh "$MODDIR/scene-debugfs-watch.sh" >/dev/null 2>&1 &)
 
@@ -104,12 +109,12 @@ fi
 # block list on disk (package names / UIDs) is the durable record. Now that boot
 # is complete, packages.list is populated and app UIDs are stable, so resolve the
 # list and re-block each app. Runs only when the guard hasn't tripped.
-if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ] && [ -s "$NMDIR/blocklist" ]; then
+if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ] && [ -s "$NMDIR/uidhide" ]; then
     _bl=$("$BIN" uid apply 2>/dev/null)
     echo "nomount: block list re-applied ($_bl)" > /dev/kmsg 2>/dev/null
 fi
 
-# --- runtime health canary (writes health.txt; complements plan-time doctor) ---
+# --- runtime health audit (writes health.txt; complements the plan check) ---
 # Runs the per-UID self-consistency probe that the d_drop regression would have
 # failed on the first boot: does a normal app see the same injected files as root?
 # The probe can transiently disagree right after boot, before every app UID has
@@ -120,29 +125,28 @@ fi
 if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ]; then
     _try=0
     while [ "$_try" -lt 6 ]; do
-        "$BIN" selfcheck --write >/dev/null 2>&1
+        "$BIN" check --device --write >/dev/null 2>&1
         _cons=$(sed -n 's/^consistency=//p' "$NMDIR/health.txt" 2>/dev/null)
-        if [ "$_cons" = "ok" ] || [ "$_cons" = "unchecked" ] || [ -z "$_cons" ]; then
-            break
-        fi
+        case "$_cons" in ok|unchecked*|'') break ;; esac
         _try=$((_try + 1))
         sleep 15
     done
     _hv=$(sed -n 's/^verdict=//p' "$NMDIR/health.txt" 2>/dev/null)
-    echo "nomount: selfcheck verdict=${_hv:-unknown} consistency=${_cons:-unknown} (settle tries=$_try)" > /dev/kmsg 2>/dev/null
+    echo "nomount: device check verdict=${_hv:-unknown} consistency=${_cons:-unknown} (settle tries=$_try)" > /dev/kmsg 2>/dev/null
 fi
 
 if command -v ksud >/dev/null 2>&1 && [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ]; then
     _rules=$("$NM_BIN" list 2>/dev/null | wc -l)
     _rro=$("$NM_BIN" list 2>/dev/null | grep -c '/overlay/[^ ]*\.apk')
     _mnt=$(grep -c '/data/adb/modules' /proc/self/mountinfo 2>/dev/null || echo 0)
-    _doc=$(timeout 30 "$BIN" doctor 2>/dev/null | sed -n 's/^summary: \([0-9]*\) errors, \([0-9]*\) warnings.*$/\1 \2/p')
+    _doc=$(timeout 30 "$BIN" check --plan 2>/dev/null | sed -n 's/^summary: \([0-9]*\) failed,.* \([0-9]*\) warnings.*$/\1 \2/p')
     _err=$(echo "$_doc" | awk '{print $1+0}')
     _wrn=$(echo "$_doc" | awk '{print $2+0}')
     # runtime consistency canary trumps plan-time doctor for card health: a
     # per-UID inconsistency is a live regression, not a plan hazard.
     _cons=$(sed -n 's/^consistency=//p' "$NMDIR/health.txt" 2>/dev/null)
-    if [ -n "$_cons" ] && [ "$_cons" != "ok" ] && [ "$_cons" != "unchecked" ]; then
+    case "$_cons" in ok|unchecked*|'') _cons_bad=0 ;; *) _cons_bad=1 ;; esac
+    if [ "$_cons_bad" = 1 ]; then
         _health="⚠️ per-UID inconsistency — see WebUI › Tools"
     elif [ "${_err:-0}" -gt 0 ]; then
         _health="⚠️ $_err error(s) — see WebUI › Tools"

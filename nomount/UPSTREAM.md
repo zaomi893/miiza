@@ -3,8 +3,8 @@
 Primary NoMount upstream:
 
 - Repository: `Bouteillepleine/NoMount-Suite`
-- Reviewed revision: `2b8891614399692dec443d27bffbc179cfeb6f6b`
-- Upstream state at that revision: Suite `v1.3.170`, Prism engine `v30`
+- Reviewed revision: `36a462132102e49ed868c88cceb390aadd39f3d5`
+- Upstream state at that revision: Suite `v1.3.176`, Prism engine `v32`
 - License: GPL-3.0
 
 `maxsteeel/nomount` is the historical project from which NoMount Suite was
@@ -17,7 +17,7 @@ Other reviewed sources:
 - Original local module baseline: user-supplied `NoMount-Module-v1.3.0.zip`, SHA-256 `2e60374091ae8d8f8b013fb61a851d94a30a0d890c8c9e0e0c70d8bb37e8fea3`.
 
 The current local kernel half is a device-tested Prism v13 derivative with the
-PathMask fast path integrated directly. Upstream v30 is not relabelled as
+PathMask fast path integrated directly. Upstream v32 is not relabelled as
 already synchronized: it changes both the engine and userspace and must be
 ported as a pair, followed by a real OP15 boot/detection test. Low-risk fixes
 may be backported independently, but the version shown by the kernel remains
@@ -30,7 +30,8 @@ Backported independently from the primary upstream:
   closes an unprivileged two-`lseek` detection oracle without changing the
   userspace protocol or adding steady-state overhead.
 
-PathMask continues to use compile-time VFS call sites and NoMount's UID policy,
-not permanent syscall kprobes. AppCloak is maintained in this repository as a
-small independent package-visibility component and is not described as
-NoMount upstream.
+PathMask uses compile-time VFS call sites plus the six arm64 path-metadata
+fallback probes and `getdents64` filtering used by LKM-PathMask 2.7.2. The
+probes exist only while at least one PathMask rule is active, and deliberately
+omit legacy `faccessat` to avoid its measurable timing cost. AppCloak remains
+a small independent package-visibility component maintained in this repository.

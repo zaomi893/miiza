@@ -97,8 +97,8 @@ diff --git a/fs/stat.c b/fs/stat.c
  	struct mnt_idmap *idmap;
  	struct inode *inode = d_backing_inode(path->dentry);
 +#ifdef CONFIG_NOMOUNT
-+	{ extern bool nomount_pathhide_hide_inode(const struct inode *);
-+	  if (nomount_pathhide_hide_inode(inode))
++	{ extern bool nomount_pathhide_hide_path(const struct path *);
++	  if (nomount_pathhide_hide_path(path))
 +		return -ENOENT; }
 +#endif
  
