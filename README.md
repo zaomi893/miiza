@@ -61,12 +61,12 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 同一仓库现在还提供三条独立构建入口：
 
 - `fastbuild_6.12.38.yml`：沿用 Ace6T 源码的 6.12.38 构建。
-- `fastbuild_6.12.38_oneplus_15t.yml`：一加 15T `PLZ110_16.0.5.701(CN01)` 专用 6.12.38 构建。common GKI 固定到原厂 `be6292a1543d`，版本号固定为 `android16-5-gbe6292a1543d-ab14525421-4k`，工具链使用原厂对应的 Clang `r536225` / Rust 1.82，并按原厂 `config.gz` 固定 `CONFIG_LTO_NONE=y`，同时生成风驰研究工件。
+- `fastbuild_6.12.38_oneplus_15t.yml`：一加 15T 专用 6.12.38 构建。因精确复刻 `PLZ110_16.0.5.701(CN01)` 的 `be6292a1543d` 仍在真机卡第一屏，现改用上游 OnePlus-ReSukiSu_NMS 已正式发布 OP15T 包的 common 快照 `844001fb8721`、版本号 `android16-5-g844001fb8721-ab14552068-4k`、Clang `r547379` / Rust 1.82，并继续固定 `CONFIG_LTO_NONE=y`。
 - `fastbuild_6.12.58.yml`：6.12.58 构建。
 
 三者均复用 6.12.23 已稳定使用的序列号锁、ReSukiSU 分支选择、LZ4/Zstd、LZ4KD、zarm、Unicode 修复、BBR/Brutal、Droidspaces、网络增强、ADIOS、Re-Kernel、基带保护、NoMount v1.6.8、AppCloak、PathMask 和刷机包命名规则，并分别保留开启/关闭选项。所有工作流现在默认关闭 SUSFS 和 NoMount，且两者同时开启会立即拒绝构建。15T 的 ADIOS 与基带保护也暂时默认关闭，用最小变量先验证启动；在完成真机验证前仍只标记为研究构建，不宣称风驰已可用。
 
-此前 15T 构建固定到了 `14ba6a5`，其基线实际是 `PLZ110_16.0.8.300(CN01)` 的 `150cab8`，与测试机 16.0.5.701 的 vendor 模块/KMI 代际不一致，是卡第一屏的首要嫌疑。现在改为原厂 `be6292a1543d`，再以仓库补丁移植 TCP Brutal、ADIOS 和 Re-Kernel 源码，不再用较新 OTA 源码冒充旧系统的 GKI。
+15T 已先后排除误用 `16.0.8.300` 源码和单纯伪装原厂版本字符串两条路线。新的兼容性构建直接对齐上游已发布 AK3 的源码与编译器身份；TCP Brutal、ADIOS、Re-Kernel 的源码只在对应选项实际开启时加入，避免关闭功能后仍改变源码树。首次真机测试应关闭 SUSFS、NoMount、LZ4/Zstd、LZ4KD、Unicode、BBR、Droidspaces、网络增强、ADIOS、Re-Kernel 和基带保护，只保留 ReSukiSU 与序列号锁验证启动。
 
 ### OnePlus 15T 风驰资料采集
 
