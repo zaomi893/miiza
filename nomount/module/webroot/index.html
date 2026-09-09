@@ -875,6 +875,10 @@
     </div>
     <p class="note" data-i18n="note_cloak">PathMask is always global and hides only the full file paths shown below. Paths are added manually; only Scene debugfs is discovered automatically.</p>
     <div class="val multiline" id="phSceneStatus" data-i18n="scene_checking">Scene: checking automatic debugfs detection…</div>
+    <div class="swrow">
+      <div class="swi"><div class="lbl">Scene debugfs</div><div class="val" id="phScenePath">—</div></div>
+      <label class="switch"><input type="checkbox" id="phSceneSwitch" disabled><span class="sl"></span></label>
+    </div>
     <div class="btns">
       <button class="act" id="phShow" onclick="phShowList(this)" data-i18n="btn_show_list">Show list</button>
       <button class="act danger" id="phOff" onclick="cloakAllOff(this)" data-i18n="btn_turn_off_all">Turn off all</button>
@@ -1971,7 +1975,7 @@
   async function loadGlobalHide() {
     await loadPkgList(); GH.clear(); GS.clear(); GHX.clear();
     _pkgs.forEach(function(app){ GH.set(app.name, { hidden:false, app:app }); });
-    await exec("sh /data/adb/modules/meta-nomount/scan.sh >/dev/null 2>&1");
+    await exec("sh /data/adb/modules/meta-nomount/scan.sh --apply >/dev/null 2>&1");
     const excluded = await exec("cat " + GH_EXCLUDE + " 2>/dev/null");
     excluded.stdout.split("\n").map(function(s){ return s.trim(); }).filter(validPkg).forEach(function(p){ GHX.add(p); });
     const saved = await exec("cat " + GH_CONF + " 2>/dev/null");
@@ -1980,17 +1984,15 @@
         const app=_pkgByName.get(p) || {name:p,label:p,uid:"",system:false};
         GH.set(p, { hidden:true, app:app });
       });
-    function markAuto(pkg, source) {
+    function markAuto(pkg) {
       if (!validPkg(pkg)) return;
       const app=_pkgByName.get(pkg) || {name:pkg,label:pkg,uid:"",system:false};
       const e=GH.get(pkg) || {hidden:false,app:app};
-      e[source]=true; e.auto=true; e.hidden=!GHX.has(pkg);
+      e.auto=true; e.hidden=!GHX.has(pkg);
       GH.set(pkg,e);
     }
-    const xp = await exec("cat /data/adb/nomount/xposed_cache 2>/dev/null");
-    xp.stdout.split("\n").forEach(function(line){ markAuto((line.split("\t")[0] || "").trim(), "xposed"); });
-    const hma = await exec("cat /data/adb/nomount/hma_blacklist_cache 2>/dev/null");
-    hma.stdout.split("\n").map(function(s){return s.trim();}).forEach(function(p){markAuto(p,"hma");});
+    const auto = await exec("cat /data/adb/nomount/auto_hide_cache 2>/dev/null");
+    auto.stdout.split("\n").map(function(s){return s.trim();}).forEach(markAuto);
     const scope = await exec("cat " + GS_CONF + " 2>/dev/null");
     scope.stdout.split("\n").map(function(s){ return s.trim(); }).filter(validPkg).forEach(function(p){
       if (_pkgByName.has(p)) GS.add(p);
@@ -2011,8 +2013,7 @@
     list.innerHTML = !items.length ? '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "没有匹配的应用。" : "No matching applications.") + '</div>' : items.map(function(it){
       const pkg=it[0], e=it[1], app=e.app||_pkgByName.get(pkg), label=(app&&app.label)||pkg;
       let tag=app&&app.system ? ' · '+(currentLang === "zh" ? '系统' : 'system') : '';
-      if (e.xposed) tag += ' · Xposed';
-      if (e.hma) tag += currentLang === "zh" ? ' · HMA 黑名单' : ' · HMA blacklist';
+      if (e.auto) tag += currentLang === "zh" ? ' · 自动隐藏' : ' · auto hidden';
       return '<div class="swrow"><div class="swi"><div class="lbl">'+esc(label)+'</div><div class="val">'+esc(pkg)+tag+'</div></div>'+
         '<label class="switch"><input type="checkbox" data-p="'+encodeURIComponent(pkg)+'" '+(e.hidden?'checked':'')+' onchange="toggleGlobalHide(this)"><span class="sl"></span></label></div>';
     }).join("");
@@ -2100,24 +2101,24 @@
       const e = PH.get(p);
       if (e) { e.hidden = false; PH.set(p, e); }
     });
-    const scene = await exec("cat /data/adb/nomount/scene_debugfs_paths 2>/dev/null");
-    scene.stdout.split("\n").map(function (s) { return phClean(s); }).filter(function (s) { return s[0] === "/"; }).forEach(function (path) {
-      const meta = phAppMeta("com.omarea.vtools");
-      PH.set(path, { hidden: true, xposed: false, scene: true, pkg: meta.pkg, appLabel: meta.appLabel || "Scene" });
-    });
     await refreshScenePathMaskStatus();
     renderCloak();
   }
   async function refreshScenePathMaskStatus() {
-    const r = await exec("cat /data/adb/nomount/scene_debugfs_state 2>/dev/null; printf '\\npaths='; grep -c . /data/adb/nomount/scene_debugfs_paths 2>/dev/null || echo 0");
+    const r = await exec("cat /data/adb/nomount/scene_debugfs_state 2>/dev/null; printf '\\npaths='; grep -c . /data/adb/nomount/scene_debugfs_paths 2>/dev/null || echo 0; printf '\\npath='; head -n1 /data/adb/nomount/scene_debugfs_paths 2>/dev/null");
     const raw = r.stdout || "";
     const status = ((raw.match(/^status=(.+)$/m) || [])[1] || "unknown").trim();
     const count = ((raw.match(/^paths=(\d+)$/m) || [])[1] || "0");
+    const path = ((raw.match(/^path=(.*)$/m) || [])[1] || "").trim();
     const el = document.getElementById("phSceneStatus");
     const map = currentLang === "zh"
       ? { applied: "已识别并应用", found: "已识别", "no-package": "未安装 Scene", "not-found": "尚未发现随机挂载", "apply-failed": "已识别但应用失败", unknown: "等待首次检测" }
       : { applied: "detected and applied", found: "detected", "no-package": "Scene is not installed", "not-found": "random mount not found yet", "apply-failed": "detected but apply failed", unknown: "waiting for first detection" };
     el.textContent = (currentLang === "zh" ? "Scene 自动隐藏：" : "Scene auto-hide: ") + (map[status] || status) + (Number(count) ? (currentLang === "zh" ? ` · ${count} 个目标` : ` · ${count} target(s)`) : "");
+    const value = document.getElementById("phScenePath"), sw = document.getElementById("phSceneSwitch");
+    const active = status === "applied" && path[0] === "/";
+    if (value) value.textContent = active ? path : (currentLang === "zh" ? "尚未发现，未启用" : "Not detected; disabled");
+    if (sw) sw.checked = active;
   }
   function phShowList(btn) {
     phShown = !phShown;
@@ -2154,11 +2155,11 @@
     }
     list.innerHTML = items.map(function (it) {
       const rule = it[0], e = it[1];
-      const title = e.scene ? 'Scene debugfs' : (currentLang === "zh" ? "文件路径" : "File path");
-      const del = e.scene ? '' : '<button class="act danger" style="flex:none;min-width:0;padding:6px 10px" data-r="' + encodeURIComponent(rule) + '" onclick="phDelete(this)">' + (currentLang === "zh" ? '删除' : 'Delete') + '</button>';
+      const title = currentLang === "zh" ? "文件路径" : "File path";
+      const del = '<button class="act danger" style="flex:none;min-width:0;padding:6px 10px" data-r="' + encodeURIComponent(rule) + '" onclick="phDelete(this)">' + (currentLang === "zh" ? '删除' : 'Delete') + '</button>';
       return '<div class="swrow"><div class="swi"><div class="lbl">' + esc(title) + '</div><div class="val" style="white-space:normal;overflow-wrap:anywhere">' + esc(rule) + '</div></div>' + del +
         '<label class="switch"><input type="checkbox" data-r="' + encodeURIComponent(rule) + '" ' +
-        (e.hidden ? 'checked' : '') + (e.scene ? ' disabled' : '') + ' onchange="phToggle(this)"><span class="sl"></span></label></div>';
+        (e.hidden ? 'checked' : '') + ' onchange="phToggle(this)"><span class="sl"></span></label></div>';
     }).join("");
   }
   function phToggle(cb) {

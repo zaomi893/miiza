@@ -6,10 +6,8 @@
 # removed from blocklist or a same-named module (notably Scene) is never served.
 
 NMDIR=/data/adb/nomount
-MARK="$NMDIR/.state_migrated_v168"
 BL="$NMDIR/blocklist"
 
-[ -e "$MARK" ] && exit 0
 mkdir -p "$NMDIR" || exit 1
 chmod 0700 "$NMDIR" 2>/dev/null
 
@@ -30,5 +28,7 @@ if [ -s "$BL" ]; then
     chmod 0600 "$BL" 2>/dev/null
 fi
 
-: > "$MARK"
-chmod 0600 "$MARK" 2>/dev/null
+# Remove superseded one-shot markers and the old per-source HMA display cache.
+# auto_hide_cache is the source-neutral automatic selection list.
+rm -f "$NMDIR/.state_migrated_v168" "$NMDIR/.appcloak_manual_v2" \
+      "$NMDIR/.pathmask_no_auto_apk_v1" "$NMDIR/hma_blacklist_cache" 2>/dev/null

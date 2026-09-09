@@ -1,16 +1,8 @@
 diff --git a/init/main.c b/init/main.c
-index c12ac39..3b05a6d 100644
+index c12ac39..e9a9696 100644
 --- a/init/main.c
 +++ b/init/main.c
-@@ -18,6 +18,7 @@
- #include <linux/proc_fs.h>
- #include <linux/binfmts.h>
- #include <linux/kernel.h>
-+#include <linux/reboot.h>
- #include <linux/syscalls.h>
- #include <linux/stackprotector.h>
- #include <linux/string.h>
-@@ -103,6 +104,8 @@
+@@ -103,6 +103,8 @@
  #include <linux/randomize_kstack.h>
  #include <linux/pidfs.h>
  #include <linux/ptdump.h>
@@ -19,13 +11,12 @@ index c12ac39..3b05a6d 100644
  #include <net/net_namespace.h>
  
  #include <asm/io.h>
-@@ -117,6 +120,75 @@
+@@ -117,6 +119,55 @@
  
  static int kernel_init(void *);
  
 +#define OPLUS_SERIAL_SALT_SIZE 32
 +#define OPLUS_SERIAL_MAX_SIZE 64
-+#define OPLUS_SERIAL_REBOOT_DELAY_SECONDS 180
 +
 +/* Per-build values. The workflow replaces both placeholders before compile. */
 +static const u8 oplus_serial_salt[OPLUS_SERIAL_SALT_SIZE] = {
@@ -64,38 +55,19 @@ index c12ac39..3b05a6d 100644
 +	memzero_explicit(digest, sizeof(digest));
 +}
 +
-+static int oplus_serial_lock_reboot_thread(void *unused)
++static void __init __noreturn oplus_serial_lock_fail_closed(void)
 +{
-+	ssleep(OPLUS_SERIAL_REBOOT_DELAY_SECONDS);
-+	if (oplus_device_serial_verified())
-+		return 0;
-+	pr_emerg("device serial lock: refusing to run on this device\n");
-+	emergency_restart();
-+	return 0;
++	pr_emerg("device serial lock: refusing to start Android init\n");
++	for (;;) {
++		set_current_state(TASK_UNINTERRUPTIBLE);
++		schedule();
++	}
 +}
-+
-+static int __init oplus_serial_lock_start(void)
-+{
-+	struct task_struct *task;
-+
-+	if (oplus_device_serial_verified())
-+		return 0;
-+
-+	pr_emerg("device serial lock: mismatch; emergency restart in %u seconds\n",
-+		 OPLUS_SERIAL_REBOOT_DELAY_SECONDS);
-+	task = kthread_run(oplus_serial_lock_reboot_thread, NULL,
-+			   "serial_lock_reboot");
-+	if (IS_ERR(task))
-+		pr_emerg("device serial lock: failed to start restart thread: %ld\n",
-+			 PTR_ERR(task));
-+	return 0;
-+}
-+late_initcall(oplus_serial_lock_start);
 +
  /*
   * Debug helper: via this flag we know that we are in 'early bootup code'
   * where only the boot processor is running with IRQ disabled.  This means
-@@ -415,8 +487,10 @@ static void __init setup_boot_config(void)
+@@ -415,8 +466,10 @@ static void __init setup_boot_config(void)
  {
  	static char tmp_cmdline[COMMAND_LINE_SIZE] __initdata;
  	const char *msg, *data;
@@ -106,7 +78,7 @@ index c12ac39..3b05a6d 100644
  	char *err;
  
  	/* Cut out the bootconfig data even if we have no bootconfig option */
-@@ -465,6 +539,13 @@ static void __init setup_boot_config(void)
+@@ -465,6 +518,13 @@ static void __init setup_boot_config(void)
  		extra_command_line = xbc_make_cmdline("kernel");
  		/* Also, "init." keys are init arguments */
  		extra_init_args = xbc_make_cmdline("init");
@@ -120,3 +92,13 @@ index c12ac39..3b05a6d 100644
  	}
  	return;
  }
+@@ -1496,6 +1556,9 @@ static int __ref kernel_init(void *unused)
+ 	 */
+ 	wait_for_completion(&kthreadd_done);
+ 
++	if (!oplus_device_serial_verified())
++		oplus_serial_lock_fail_closed();
++
+ 	kernel_init_freeable();
+ 	/* need to finish all async __init code before freeing the memory */
+ 	async_synchronize_full();

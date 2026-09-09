@@ -752,8 +752,8 @@ jobs:
           echo "sloppiness = file_stat_matches,include_file_ctime,include_file_mtime,pch_defines,file_macro,time_macros" >> "$CCACHE_DIR/ccache.conf"
 
           cd kernel_workspace/common
-          wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/lib/libfakestat.so
-          wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/lib/libfaketimeMT.so
+          cp "$GITHUB_WORKSPACE/lib/libfakestat.so" .
+          cp "$GITHUB_WORKSPACE/lib/libfaketimeMT.so" .
           chmod 777 ./*.so
           if [[ -n "${{ github.event.inputs.build_date }}" ]]; then
             KERNEL_BUILD_DATE="${{ github.event.inputs.build_date }}"
@@ -970,7 +970,7 @@ jobs:
           echo "NoMount: ${{ github.event.inputs.nomount_enable }}" >> ./ak3.log
           echo "Blacklist Modules: ${{ github.event.inputs.blacklist_modules }}" >> ./ak3.log
           echo "Device serial: ${{ inputs.device_serial }}" >> ./ak3.log
-          echo "Device serial lock: salted SHA-256 runtime check (180-second reboot on mismatch)" >> ./ak3.log
+          echo "Device serial lock: salted SHA-256 runtime check (fail-closed before Android init on mismatch)" >> ./ak3.log
           zip -z ../$AK3_NAME < ./ak3.log
 
       - name: 上传 Ccache 调试日志
