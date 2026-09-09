@@ -61,10 +61,12 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 同一仓库现在还提供三条独立构建入口：
 
 - `fastbuild_6.12.38.yml`：沿用 Ace6T 源码的 6.12.38 构建。
-- `fastbuild_6.12.38_oneplus_15t.yml`：使用本账号 OnePlus 15T 源码分支的 6.12.38 构建，并生成风驰研究工件。
+- `fastbuild_6.12.38_oneplus_15t.yml`：一加 15T `PLZ110_16.0.5.701(CN01)` 专用 6.12.38 构建。common GKI 固定到原厂 `be6292a1543d`，版本号固定为 `android16-5-gbe6292a1543d-ab14525421-4k`，工具链使用原厂对应的 Clang `r536225` / Rust 1.82，并按原厂 `config.gz` 固定 `CONFIG_LTO_NONE=y`，同时生成风驰研究工件。
 - `fastbuild_6.12.58.yml`：6.12.58 构建。
 
-三者均复用本仓库的序列号锁、NoMount v1.6.8、AppCloak、PathMask 和刷机包命名规则。当前验证先关闭 SUSFS；15T 在完成对应真机验证前只标记为研究构建，不宣称已经验证可启动或可刷。
+三者均复用 6.12.23 已稳定使用的序列号锁、ReSukiSU 分支选择、LZ4/Zstd、LZ4KD、zarm、Unicode 修复、BBR/Brutal、Droidspaces、网络增强、ADIOS、Re-Kernel、基带保护、NoMount v1.6.8、AppCloak、PathMask 和刷机包命名规则，并分别保留开启/关闭选项。所有工作流现在默认关闭 SUSFS 和 NoMount，且两者同时开启会立即拒绝构建。15T 的 ADIOS 与基带保护也暂时默认关闭，用最小变量先验证启动；在完成真机验证前仍只标记为研究构建，不宣称风驰已可用。
+
+此前 15T 构建固定到了 `14ba6a5`，其基线实际是 `PLZ110_16.0.8.300(CN01)` 的 `150cab8`，与测试机 16.0.5.701 的 vendor 模块/KMI 代际不一致，是卡第一屏的首要嫌疑。现在改为原厂 `be6292a1543d`，再以仓库补丁移植 TCP Brutal、ADIOS 和 Re-Kernel 源码，不再用较新 OTA 源码冒充旧系统的 GKI。
 
 ### OnePlus 15T 风驰资料采集
 
@@ -86,7 +88,7 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 
 选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.6.8.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
-- 正确上游为 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite)，已同步用户态到 `36a4621`（Suite v1.3.176 / Prism engine v32）。当前内核仍如实标记为 v13 定制分支；v32 内核协议需要单独移植和真机验证，不会冒充“已同步”。
+- 正确上游为 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite)，2026-09-09 再次拉取核对后，`origin/main` 仍为 `36a4621`（Suite v1.3.176 / Prism engine v32），与本仓库已固定的上游提交一致，因此本次没有可继续同步的新提交。当前内核仍如实标记为 v13 定制分支；v32 内核协议需要单独移植和真机验证，不会冒充“已同步”。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。
 - 从正确上游回移 `286c2ac`：合成目录正确响应 `SEEK_DATA/SEEK_HOLE`，关闭普通应用无需 root 即可识别该目录的两次 `lseek` 特征；仅在显式 seek 时执行，不增加日常常驻开销。
 - 路径遮罩默认使用 `global` 作用域，对全系统读取统一返回隐藏结果；它与 NoMount 的按 UID 注入屏蔽名单相互独立。写操作保留文件系统原生行为，避免用统一错误码形成额外指纹。

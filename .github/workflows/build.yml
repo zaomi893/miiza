@@ -43,7 +43,7 @@ on:
         description: '是否开启SUSFS（与 NoMount 互斥，只能二选一）'
         required: true
         type: boolean
-        default: 'true'
+        default: 'false'
       nomount_enable:
         description: '是否集成 NoMount（与 SUSFS 互斥；启用前必须取消 SUSFS）'
         required: true
