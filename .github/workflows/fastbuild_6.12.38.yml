@@ -1,5 +1,5 @@
 name: 6.12.38 Ace6T 欧加真OKI内核快速构建
-run-name: OnePlus GKI · ${{ inputs.build_request_id || 'manual' }}
+run-name: 6.12.38 Ace6T · ${{ inputs.device_serial || '手动构建' }}
 
 env:
   TZ: Asia/Shanghai
@@ -139,6 +139,7 @@ on:
 
 jobs:
   build:
+    name: 构建内核 · ${{ inputs.build_request_id || 'manual' }}
     runs-on: ubuntu-latest
     outputs:
       ksuver: ${{ steps.ksu_version.outputs.ksuver }}
