@@ -202,6 +202,13 @@ jobs:
           unzip -q build-tools.zip &&
           rm -rf build-tools.zip &
 
+          echo "正在克隆一加15T官方 kernel-build-tools..." &&
+          mkdir -p kernel-build-tools &&
+          git -C kernel-build-tools init -q &&
+          git -C kernel-build-tools remote add origin https://git.codelinaro.org/clo/la/kernel/prebuilts/build-tools.git &&
+          git -C kernel-build-tools fetch -q --depth=1 origin 4ba19a61c7a0d63603e0d1c84eb2b610bff706a4 &&
+          git -C kernel-build-tools checkout -q --detach FETCH_HEAD &
+
           wait
           test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT"
           if [[ "${{ inputs.adios_enable }}" == "true" || \
@@ -757,6 +764,8 @@ jobs:
           export PATH="$WORKDIR/kernel_workspace/build-tools/bin:$PATH"
           export PATH="$WORKDIR/kernel_workspace/rust/bin:$PATH"
           export CLANG_DIR="$WORKDIR/kernel_workspace/clang19/bin"
+          export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
+          test -x "$PAHOLE"
           CLANG_VERSION="$($CLANG_DIR/clang --version | head -n 1)"
           LLD_VERSION="$($CLANG_DIR/ld.lld --version | head -n 1)"
           RUSTC_VERSION="$(rustc -V 2>/dev/null | head -n1)"
@@ -766,7 +775,7 @@ jobs:
           echo "LLD版本: $LLD_VERSION"
           echo "Rustc版本: $RUSTC_VERSION"
           echo "Bindgen版本: $BINDGEN_VERSION"
-          pahole_version=$(pahole --version 2>/dev/null | head -n1); [ -z "$pahole_version" ] && echo "pahole版本：未安装" || echo "pahole版本：$pahole_version"
+          pahole_version=$($PAHOLE --version 2>/dev/null | head -n1); [ -z "$pahole_version" ] && echo "pahole版本：不可用" || echo "pahole版本：$pahole_version"
 
           export CCACHE_LOGFILE="${{ github.workspace }}/kernel_workspace/ccache.log"
           export CCACHE_COMPILERCHECK="none"
