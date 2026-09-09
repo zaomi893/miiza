@@ -907,8 +907,12 @@ jobs:
 
           # dwarves 1.25 cannot encode more than 4096 per-CPU variables.
           # Omit only BTF variable records while preserving type/function BTF.
-          printf '\npahole-flags-y += --skip_encoding_btf_vars\n' >> scripts/Makefile.btf
-          grep -q -- '--skip_encoding_btf_vars' scripts/Makefile.btf
+          sed -i '/^export PAHOLE_FLAGS :=/i pahole-flags-y += --skip_encoding_btf_vars' scripts/Makefile.btf
+          awk '
+            /--skip_encoding_btf_vars/ { flag_line=NR }
+            /^export PAHOLE_FLAGS :=/ { export_line=NR }
+            END { exit !(flag_line && export_line && flag_line < export_line) }
+          ' scripts/Makefile.btf
 
           export CC="$(pwd)/cc-wrapper" && export LD="$(pwd)/ld-wrapper" &&
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="llvm-objcopy" O=out Image
