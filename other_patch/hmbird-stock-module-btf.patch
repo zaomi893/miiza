@@ -56,7 +56,7 @@ index f6efc62..4c28a69 100644
 +};
 +
 +/* The workflow replaces this marker with a little-endian payload length. */
-+static const u8 oplus_hmbird_gki_btf_size_slot[] = "HMBIRD_LEN_SLOT";
++static const volatile u8 oplus_hmbird_gki_btf_size_slot[] = "HMBIRD_LEN_SLOT";
 +
 +static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_SIZE] = {
 +#include "oplus_hmbird_btf_ids.inc"
