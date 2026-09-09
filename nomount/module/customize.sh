@@ -88,14 +88,6 @@ ui_print "  config: $CONF"
 [ -f "$MODPATH/migrate-state.sh" ] && set_perm "$MODPATH/migrate-state.sh" 0 0 0755
 [ -f "$NMDIR/pathhide.conf" ] || echo "# NoMount PathMask rule list (managed by WebUI › Tools › PathMask)" > "$NMDIR/pathhide.conf"
 [ -f "$NMDIR/hidden_apps.conf" ] || echo "# NoMount global hidden packages (managed by WebUI)" > "$NMDIR/hidden_apps.conf"
-# One-time reset from the short-lived manual-only UI, then preserve choices.
-if [ ! -f "$NMDIR/.appcloak_manual_v2" ]; then
-    echo "# NoMount global hidden packages (managed by WebUI)" > "$NMDIR/hidden_apps.conf"
-    echo "# NoMount AppCloak caller scope (managed by WebUI)" > "$NMDIR/scope_apps.conf"
-    rm -f "$NMDIR/xposed_cache" "$NMDIR/hma_blacklist_cache" \
-        "$NMDIR/.global_hide_exclude" 2>/dev/null
-    : > "$NMDIR/.appcloak_manual_v2"
-fi
 [ -f "$NMDIR/scope_apps.conf" ] || echo "# NoMount AppCloak caller scope (managed by WebUI)" > "$NMDIR/scope_apps.conf"
 # Xposed modules and HMA blacklist entries are auto-selected in WebUI. An
 # internal opt-out file remembers items the user explicitly unchecked; there

@@ -4095,7 +4095,8 @@ static bool nm_pathhide_match_user_filename(struct pt_regs *regs)
 static int nm_pathhide_syscall_entry(struct kretprobe_instance *ri,
 				      struct pt_regs *regs)
 {
-	struct nm_pathhide_syscall_data *data = ri->data;
+	struct nm_pathhide_syscall_data *data =
+		(struct nm_pathhide_syscall_data *)ri->data;
 
 	data->matched = nm_pathhide_match_user_filename(regs);
 	data->close_result = false;
@@ -4105,7 +4106,8 @@ static int nm_pathhide_syscall_entry(struct kretprobe_instance *ri,
 static int nm_pathhide_open_entry(struct kretprobe_instance *ri,
 				   struct pt_regs *regs)
 {
-	struct nm_pathhide_syscall_data *data = ri->data;
+	struct nm_pathhide_syscall_data *data =
+		(struct nm_pathhide_syscall_data *)ri->data;
 
 	data->matched = nm_pathhide_match_user_filename(regs);
 	data->close_result = data->matched;
@@ -4115,7 +4117,8 @@ static int nm_pathhide_open_entry(struct kretprobe_instance *ri,
 static int nm_pathhide_syscall_exit(struct kretprobe_instance *ri,
 				     struct pt_regs *regs)
 {
-	struct nm_pathhide_syscall_data *data = ri->data;
+	struct nm_pathhide_syscall_data *data =
+		(struct nm_pathhide_syscall_data *)ri->data;
 	long ret = (long)regs->regs[0];
 
 	if (!data->matched)
@@ -4150,7 +4153,8 @@ struct nm_pathhide_getdents_data {
 static int nm_pathhide_getdents_entry(struct kretprobe_instance *ri,
 				      struct pt_regs *regs)
 {
-	struct nm_pathhide_getdents_data *data = ri->data;
+	struct nm_pathhide_getdents_data *data =
+		(struct nm_pathhide_getdents_data *)ri->data;
 	struct pt_regs *user_regs = (struct pt_regs *)regs->regs[0];
 	unsigned int count;
 
@@ -4173,7 +4177,8 @@ static int nm_pathhide_getdents_entry(struct kretprobe_instance *ri,
 static int nm_pathhide_getdents_exit(struct kretprobe_instance *ri,
 				     struct pt_regs *regs)
 {
-	struct nm_pathhide_getdents_data *data = ri->data;
+	struct nm_pathhide_getdents_data *data =
+		(struct nm_pathhide_getdents_data *)ri->data;
 	long ret = (long)regs->regs[0], pos = 0, new_len = ret;
 	struct linux_dirent64 *cur, *prev = NULL;
 	const size_t min_len = offsetof(struct linux_dirent64, d_name) + 1;

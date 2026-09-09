@@ -7,13 +7,16 @@ INDEX="$NMDIR/xposed_packages"
 HMA_CACHE="$NMDIR/hma_blacklist_cache"
 mkdir -p "$NMDIR" && chmod 0700 "$NMDIR"
 
-pm list packages -f 2>/dev/null | sort > "$NMDIR/.xposed_packages.new"
+{
+    echo '# scan-v2'
+    pm list packages -f 2>/dev/null | sort
+} > "$NMDIR/.xposed_packages.new"
 if ! cmp -s "$NMDIR/.xposed_packages.new" "$INDEX" 2>/dev/null; then
     J=$(( $(nproc 2>/dev/null || echo 4) * 2 ))
     [ "$J" -gt 24 ] && J=24
     [ "$J" -lt 4 ] && J=4
-    xargs -P "$J" -n1 sh -c '
-        apk="${1%=*}"; pkg="${1##*=}"
+    sed '1d' "$NMDIR/.xposed_packages.new" | xargs -P "$J" -n1 sh -c '
+        apk="${1%=*}"; apk="${apk#package:}"; pkg="${1##*=}"
         [ -f "$apk" ] || exit 0
         if timeout 4 unzip -l "$apk" 2>/dev/null | grep -qaE "assets/xposed_init|META-INF/xposed/"; then
             printf "%s\t%s\n" "$pkg" "$apk"; exit 0
@@ -21,7 +24,7 @@ if ! cmp -s "$NMDIR/.xposed_packages.new" "$INDEX" 2>/dev/null; then
         timeout 4 unzip -p "$apk" AndroidManifest.xml 2>/dev/null | tr -d "\000" | \
             grep -qaE "xposedmodule|xposedminversion|xposeddescription|XposedProvider|libxposed" && \
             printf "%s\t%s\n" "$pkg" "$apk"
-    ' _ < "$NMDIR/.xposed_packages.new" | sort -u > "$CACHE"
+    ' _ | sort -u > "$CACHE"
     mv -f "$NMDIR/.xposed_packages.new" "$INDEX"
 else
     rm -f "$NMDIR/.xposed_packages.new"
@@ -61,5 +64,6 @@ if [ "$1" = "--apply" ]; then
     mv -f "$NMDIR/.hidden_apps.new" "$HIDDEN"
     mv -f "$NEW_AUTO" "$OLD_AUTO"
     chmod 0600 "$HIDDEN" "$OLD_AUTO" 2>/dev/null
+    rm -f "$HMA_CACHE"
     [ -f "${0%/*}/appcloak-sync.sh" ] && sh "${0%/*}/appcloak-sync.sh" >/dev/null 2>&1
 fi
