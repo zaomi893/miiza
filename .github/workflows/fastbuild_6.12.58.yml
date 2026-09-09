@@ -923,7 +923,7 @@ jobs:
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
           install -m 0644 "$GITHUB_WORKSPACE/serial_lock/build-token" ./serial_lock/build-token
-          [[ -s ./serial_lock/install.sh && -s ./serial_lock/post-fs-data.sh && $(wc -c < ./serial_lock/build-token) -eq 65 ]] || { echo "AK3 序列号锁资源或构建令牌无效"; exit 1; }
+          [[ -s ./serial_lock/install.sh && -s ./serial_lock/post-fs-data.sh && ! -e ./serial_lock/module.prop && $(wc -c < ./serial_lock/build-token) -eq 65 ]] || { echo "AK3 序列号锁资源、非模块化约束或构建令牌无效"; exit 1; }
           cp ../common/out/arch/arm64/boot/Image ./Image
           if [[ ! -f ./Image ]]; then
             echo "未找到内核镜像文件，构建可能出错"
