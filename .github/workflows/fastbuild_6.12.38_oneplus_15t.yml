@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: '3B15A800Y5D00000'
+      serial_lock_enable:
+        description: '启用序列号内核锁（15T 启动对照测试时可关闭）'
+        required: true
+        type: boolean
+        default: true
       self_config:
         description: '自用配置'
         required: true
@@ -235,6 +240,7 @@ jobs:
           done
 
       - name: 写入设备序列号锁
+        if: ${{ inputs.serial_lock_enable == true }}
         env:
           DEVICE_SERIAL: ${{ inputs.device_serial }}
         run: |
@@ -365,6 +371,7 @@ jobs:
             else
               echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%@ZAOMI"' >> ./common/arch/arm64/configs/gki_defconfig
             fi
+            echo 'CONFIG_KSU_TOOLKIT_SUPPORT=y' >> ./common/arch/arm64/configs/gki_defconfig
             cd ./KernelSU
             # 生成自定义版本号（基于提交计数）, 失败时使用 114514
             KSU_VERSION=$(expr $(git rev-list --count main) + 30700 2>/dev/null || echo 114514)
@@ -1015,7 +1022,10 @@ jobs:
         id: create_zip
         run: |
           cd kernel_workspace
-          if [[ "${{ inputs.self_config }}" == "true" ]]; then
+          if [[ "${{ inputs.serial_lock_enable }}" != "true" ]]; then
+            git clone --depth=1 --branch suite https://github.com/Bouteillepleine/AnyKernel3 ak3_workspace
+            AK3_PREFIX="ak3-upstream-baseline"
+          elif [[ "${{ inputs.self_config }}" == "true" ]]; then
             git clone --depth=1 https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AK3 ak3_workspace
             AK3_PREFIX="AnyKernel3"
           else
@@ -1024,8 +1034,10 @@ jobs:
           fi
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
-          install -m 0644 "$GITHUB_WORKSPACE/serial_lock/build-token" ./serial_lock/build-token
-          [[ -s ./serial_lock/install.sh && -s ./serial_lock/post-fs-data.sh && ! -e ./serial_lock/module.prop && $(wc -c < ./serial_lock/build-token) -eq 65 ]] || { echo "AK3 序列号锁资源、非模块化约束或构建令牌无效"; exit 1; }
+          if [[ "${{ inputs.serial_lock_enable }}" == "true" ]]; then
+            install -m 0644 "$GITHUB_WORKSPACE/serial_lock/build-token" ./serial_lock/build-token
+            [[ -s ./serial_lock/install.sh && -s ./serial_lock/post-fs-data.sh && ! -e ./serial_lock/module.prop && $(wc -c < ./serial_lock/build-token) -eq 65 ]] || { echo "AK3 序列号锁资源、非模块化约束或构建令牌无效"; exit 1; }
+          fi
           cp ../common/out/arch/arm64/boot/Image ./Image
           if [[ ! -f ./Image ]]; then
             echo "未找到内核镜像文件，构建可能出错"
@@ -1091,7 +1103,11 @@ jobs:
           echo "NoMount: ${{ inputs.nomount_enable }}" >> ./ak3.log
           echo "Blacklist Modules: ${{ inputs.blacklist_modules }}" >> ./ak3.log
           echo "Device serial: ${{ inputs.device_serial }}" >> ./ak3.log
-          echo "Device serial lock: staged init_boot marker; first mismatch reboots at 180s after verified write, next mismatch fails before Android init; matching serial ignores marker" >> ./ak3.log
+          if [[ "${{ inputs.serial_lock_enable }}" == "true" ]]; then
+            echo "Device serial lock: enabled; staged init_boot marker; first mismatch reboots at 180s after verified write, next mismatch fails before Android init; matching serial ignores marker" >> ./ak3.log
+          else
+            echo "Device serial lock: disabled for upstream boot compatibility test" >> ./ak3.log
+          fi
           zip -z ../$AK3_NAME < ./ak3.log
 
       - name: 上传 Ccache 调试日志
