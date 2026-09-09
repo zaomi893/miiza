@@ -1056,12 +1056,25 @@ jobs:
                   raise SystemExit(
                       f"bad payload size for {marker!r}: {len(payload)} (capacity {capacity})"
                   )
-              offset = image.find(marker)
-              if offset < 0 or image.find(marker, offset + 1) >= 0:
-                  raise SystemExit(f"metadata slot marker is missing or ambiguous: {marker!r}")
-              slot = image[offset:offset + capacity]
-              if slot[:len(marker)] != marker or any(slot[len(marker):]):
-                  raise SystemExit(f"metadata slot is not pristine: {marker!r}")
+              positions = []
+              start = 0
+              while True:
+                  found = image.find(marker, start)
+                  if found < 0:
+                      break
+                  positions.append(found)
+                  start = found + 1
+              candidates = [
+                  found for found in positions
+                  if len(image) - found >= capacity
+                  and not any(image[found + len(marker):found + capacity])
+              ]
+              if len(candidates) != 1:
+                  raise SystemExit(
+                      f"metadata slot resolution failed for {marker!r}: "
+                      f"raw matches={len(positions)}, pristine matches={len(candidates)}"
+                  )
+              offset = candidates[0]
               image[offset:offset + capacity] = payload + bytes(capacity - len(payload))
               patched_offsets[marker] = offset
               print(f"patched {marker.decode()} at Image offset {offset:#x}")
