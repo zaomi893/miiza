@@ -11,7 +11,7 @@ index f6efc62..4c28a69 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,123 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,136 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -27,7 +27,7 @@ index f6efc62..4c28a69 100644
 + * come from the signed stock module in vendor_dlkm.
 + */
 +#define OPLUS_HMBIRD_STOCK_BTF_SIZE	26340U
-+#define OPLUS_HMBIRD_GKI_BTF_SIZE	26298U
++#define OPLUS_HMBIRD_GKI_BTF_CAPACITY	32768U
 +#define OPLUS_HMBIRD_BTF_IDS_SIZE	320U
 +#define OPLUS_HMBIRD_BTF_ID_COUNT	39U
 +
@@ -51,9 +51,12 @@ index f6efc62..4c28a69 100644
 +#include "oplus_legacy_btf_denylist.inc"
 +};
 +
-+static const u8 oplus_hmbird_gki_btf[OPLUS_HMBIRD_GKI_BTF_SIZE] = {
++static const u8 oplus_hmbird_gki_btf[OPLUS_HMBIRD_GKI_BTF_CAPACITY] = {
 +#include "oplus_hmbird_btf.inc"
 +};
++
++/* The workflow replaces this marker with a little-endian payload length. */
++static const u8 oplus_hmbird_gki_btf_size_slot[] = "HMBIRD_LEN_SLOT";
 +
 +static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_SIZE] = {
 +#include "oplus_hmbird_btf_ids.inc"
@@ -84,6 +87,7 @@ index f6efc62..4c28a69 100644
 +static void oplus_hmbird_fix_stock_btf(struct module *mod,
 +				       const struct load_info *info)
 +{
++	unsigned int btf_size;
 +	unsigned int ids_size;
 +	void *ids;
 +
@@ -121,8 +125,17 @@ index f6efc62..4c28a69 100644
 +		return;
 +	}
 +
++	btf_size = (unsigned int)oplus_hmbird_gki_btf_size_slot[0] |
++		((unsigned int)oplus_hmbird_gki_btf_size_slot[1] << 8) |
++		((unsigned int)oplus_hmbird_gki_btf_size_slot[2] << 16) |
++		((unsigned int)oplus_hmbird_gki_btf_size_slot[3] << 24);
++	if (!btf_size || btf_size > OPLUS_HMBIRD_GKI_BTF_CAPACITY) {
++		pr_err("%s: embedded matching BTF size is invalid\n", mod->name);
++		return;
++	}
++
 +	mod->btf_data = (void *)oplus_hmbird_gki_btf;
-+	mod->btf_data_size = sizeof(oplus_hmbird_gki_btf);
++	mod->btf_data_size = btf_size;
 +	memcpy(ids, oplus_hmbird_gki_btf_ids,
 +	       sizeof(oplus_hmbird_gki_btf_ids));
 +	pr_info("%s: using embedded matching GKI BTF metadata\n", mod->name);

@@ -1,5 +1,5 @@
 name: 6.12.23 欧加真OKI内核快速构建
-run-name: OnePlus GKI · ${{ inputs.build_request_id || 'manual' }}
+run-name: 6.12.23 · ${{ inputs.device_serial || '手动构建' }}
 
 env:
   TZ: Asia/Shanghai
@@ -146,6 +146,7 @@ on:
 
 jobs:
   build:
+    name: 构建内核 · ${{ inputs.build_request_id || 'manual' }}
     runs-on: ubuntu-latest
     outputs:
       ksuver: ${{ steps.ksu_version.outputs.ksuver }}
@@ -1029,7 +1030,9 @@ jobs:
           # these two sections before BTF validation and module init.
           llvm-objcopy --dump-section .BTF=hmbird.gki.btf "$HMBIRD_KO"
           llvm-objcopy --dump-section .BTF_ids=hmbird.gki.btf_ids "$HMBIRD_KO"
-          test "$(stat -c%s hmbird.gki.btf)" -eq 26298
+          BTF_SIZE=$(stat -c%s hmbird.gki.btf)
+          test "$BTF_SIZE" -gt 0
+          test "$BTF_SIZE" -le 32768
           test "$(stat -c%s hmbird.gki.btf_ids)" -eq 320
           # The first-pass kernel contains two fixed-size, uniquely marked
           # metadata slots. Replace them in the raw Image without relinking;
@@ -1044,21 +1047,46 @@ jobs:
           image_path = Path(sys.argv[1])
           image = bytearray(image_path.read_bytes())
           slots = (
-              (b"HMBIRD_BTF_SLOT", Path(sys.argv[2]).read_bytes(), 26298),
-              (b"HMBIRD_IDS_SLOT", Path(sys.argv[3]).read_bytes(), 320),
+              (b"HMBIRD_BTF_SLOT", Path(sys.argv[2]).read_bytes(), 32768, False),
+              (b"HMBIRD_IDS_SLOT", Path(sys.argv[3]).read_bytes(), 320, True),
           )
-          for marker, payload, expected_size in slots:
-              if len(payload) != expected_size:
-                  raise SystemExit(f"bad payload size for {marker!r}: {len(payload)}")
+          patched_offsets = {}
+          for marker, payload, capacity, exact in slots:
+              if not payload or len(payload) > capacity or (exact and len(payload) != capacity):
+                  raise SystemExit(
+                      f"bad payload size for {marker!r}: {len(payload)} (capacity {capacity})"
+                  )
               offset = image.find(marker)
               if offset < 0 or image.find(marker, offset + 1) >= 0:
                   raise SystemExit(f"metadata slot marker is missing or ambiguous: {marker!r}")
-              slot = image[offset:offset + expected_size]
+              slot = image[offset:offset + capacity]
               if slot[:len(marker)] != marker or any(slot[len(marker):]):
                   raise SystemExit(f"metadata slot is not pristine: {marker!r}")
-              image[offset:offset + expected_size] = payload
+              image[offset:offset + capacity] = payload + bytes(capacity - len(payload))
+              patched_offsets[marker] = offset
               print(f"patched {marker.decode()} at Image offset {offset:#x}")
+
+          size_marker = b"HMBIRD_LEN_SLOT"
+          size_offset = image.find(size_marker)
+          if size_offset < 0 or image.find(size_marker, size_offset + 1) >= 0:
+              raise SystemExit("BTF size slot marker is missing or ambiguous")
+          size_record = len(slots[0][1]).to_bytes(4, "little") + b"BTFSIZEV001"
+          if len(size_record) != len(size_marker):
+              raise SystemExit("internal BTF size record length mismatch")
+          image[size_offset:size_offset + len(size_marker)] = size_record
+          print(f"patched BTF payload length {len(slots[0][1])} at Image offset {size_offset:#x}")
           image_path.write_bytes(image)
+
+          verify = image_path.read_bytes()
+          btf_offset = patched_offsets[b"HMBIRD_BTF_SLOT"]
+          btf_payload = slots[0][1]
+          if verify[btf_offset:btf_offset + len(btf_payload)] != btf_payload:
+              raise SystemExit("BTF injection readback failed")
+          ids_offset = patched_offsets[b"HMBIRD_IDS_SLOT"]
+          if verify[ids_offset:ids_offset + len(slots[-1][1])] != slots[-1][1]:
+              raise SystemExit("BTF IDs injection readback failed")
+          if int.from_bytes(verify[size_offset:size_offset + 4], "little") != len(slots[0][1]):
+              raise SystemExit("BTF size injection readback failed")
           PY
           test "$(stat -c%s "$IMAGE")" -eq "$IMAGE_SIZE_BEFORE"
           grep -aFq 'using embedded matching GKI BTF metadata' "$IMAGE"
