@@ -1057,6 +1057,7 @@ jobs:
 
   release:
     needs: build
+    if: ${{ inputs.device_serial == '3B15A800Y5D00000' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
