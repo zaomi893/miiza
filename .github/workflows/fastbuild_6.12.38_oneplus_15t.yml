@@ -1031,7 +1031,9 @@ jobs:
             > hmbird_15t_research/README.txt
 
       - name: 保存新的 ccache 缓存
-        if: inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true'
+        # Diagnostic builds must retain completed compiler work even when a
+        # later identity, module, or packaging check fails.
+        if: ${{ always() && (inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true') }}
         uses: actions/cache/save@v5
         with:
           path: ${{ env.CCACHE_DIR }}
