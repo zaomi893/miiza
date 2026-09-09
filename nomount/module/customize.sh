@@ -85,10 +85,10 @@ ui_print "  config: $CONF"
 [ -f "$MODPATH/pathhide-apply.sh" ] && set_perm "$MODPATH/pathhide-apply.sh" 0 0 0755
 [ -f "$MODPATH/scene-debugfs-watch.sh" ] && set_perm "$MODPATH/scene-debugfs-watch.sh" 0 0 0755
 [ -f "$MODPATH/appcloak-sync.sh" ] && set_perm "$MODPATH/appcloak-sync.sh" 0 0 0755
+[ -f "$MODPATH/migrate-state.sh" ] && set_perm "$MODPATH/migrate-state.sh" 0 0 0755
 [ -f "$NMDIR/pathhide.conf" ] || echo "# NoMount PathMask rule list (managed by WebUI › Tools › PathMask)" > "$NMDIR/pathhide.conf"
 [ -f "$NMDIR/hidden_apps.conf" ] || echo "# NoMount global hidden packages (managed by WebUI)" > "$NMDIR/hidden_apps.conf"
-# v1.6.6 removes automatic HMA/Xposed imports. Reset the formerly generated
-# target list once, then preserve only explicit WebUI choices on later updates.
+# One-time reset from the short-lived manual-only UI, then preserve choices.
 if [ ! -f "$NMDIR/.appcloak_manual_v2" ]; then
     echo "# NoMount global hidden packages (managed by WebUI)" > "$NMDIR/hidden_apps.conf"
     echo "# NoMount AppCloak caller scope (managed by WebUI)" > "$NMDIR/scope_apps.conf"
@@ -152,6 +152,7 @@ set_perm "$NMDIR/absorb-skip.txt" 0 0 0600
 set_perm "$NMDIR/pathhide.conf" 0 0 0644
 set_perm "$NMDIR/hidden_apps.conf" 0 0 0600
 set_perm "$NMDIR/scope_apps.conf" 0 0 0600
+[ -f "$MODPATH/migrate-state.sh" ] && sh "$MODPATH/migrate-state.sh" >/dev/null 2>&1
 if [ -e /proc/pathhide ]; then
     ui_print "- PathMask 2.7.2 integration FOUND"
     ui_print "  AppCloak targets/scope use WebUI; Xposed/HMA targets auto-select"

@@ -62,7 +62,7 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 - `fastbuild_6.12.38_oneplus_15t.yml`：使用本账号 OnePlus 15T 源码分支的 6.12.38 构建，并生成风驰研究工件。
 - `fastbuild_6.12.58.yml`：6.12.58 构建。
 
-三者均复用本仓库的序列号锁、NoMount v1.6.7、AppCloak、PathMask 和刷机包命名规则。当前验证先关闭 SUSFS；15T 在取得对应真机的原厂内核与风驰运行资料前只标记为研究构建，不宣称已经验证可启动或可刷。
+三者均复用本仓库的序列号锁、NoMount v1.6.8、AppCloak、PathMask 和刷机包命名规则。当前验证先关闭 SUSFS；15T 在完成对应真机验证前只标记为研究构建，不宣称已经验证可启动或可刷。
 
 ### OnePlus 15T 风驰资料采集
 
@@ -82,16 +82,16 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 
 ## NoMount Suite 与 PathMask
 
-选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.6.7.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
+选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.6.8.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
-- 正确上游为 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite)，已审阅到 `2b8891614399692dec443d27bffbc179cfeb6f6b`（Suite v1.3.170 / Prism engine v30）。当前内核仍如实标记为已在本机验证的 v13 定制分支；v30 涉及内核与用户态成对升级，在 PathMask 移植和 OP15 实机验证完成前不会冒充“已同步”。
+- 正确上游为 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite)，已同步用户态到 `36a4621`（Suite v1.3.176 / Prism engine v32）。当前内核仍如实标记为 v13 定制分支；v32 内核协议需要单独移植和真机验证，不会冒充“已同步”。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。
 - 从正确上游回移 `286c2ac`：合成目录正确响应 `SEEK_DATA/SEEK_HOLE`，关闭普通应用无需 root 即可识别该目录的两次 `lseek` 特征；仅在显式 seek 时执行，不增加日常常驻开销。
 - 路径遮罩默认使用 `global` 作用域，对全系统读取统一返回隐藏结果；它与 NoMount 的按 UID 注入屏蔽名单相互独立。写操作保留文件系统原生行为，避免用统一错误码形成额外指纹。
 - 借鉴 LKM-PathMask `2.7.2` 的目标身份与 Scene 发现设计，内核直接覆盖 inode 权限、stat、getdents、proc maps/fd，不加载常驻 syscall kprobe。官方 Scene（`com.omarea.vtools`）存在时，模块最多观察十分钟，只接受 `/dev` 下、SELinux 标签为 `u:object_r:debugfs:s0` 的 debugfs 挂载；发现或超时后进程退出。
 - 应用隐藏会缓存识别 Xposed 模块并读取 HMA 黑名单，默认勾选为隐藏目标；这些包名不会加入 PathMask。PathMask 只保存用户手动输入的完整文件路径和 Scene 自动发现的 debugfs 路径。
 
-v1.6.7 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两张独立列表，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 仍固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs）。
+v1.6.8 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
 
 AppCloak 的隐藏组内应用仍可以看到自己和所有其他应用；系统 UID 不过滤，未勾选的调用应用也不过滤。策略文件最多每秒检查一次时间戳，列表未变化时不读取文件。
 

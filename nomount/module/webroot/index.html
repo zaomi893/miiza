@@ -412,7 +412,8 @@
   #tab-tools.on { display: flex; flex-direction: column; }
   #groupPathMask { order: -12; }
   #cardGlobalHide { order: -11; }
-  #cardCloak { order: -10; }
+  #cardGlobalScope { order: -10; }
+  #cardCloak { order: -9; }
   @keyframes tabin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .navwrap {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
@@ -839,18 +840,33 @@
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
       <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
     </div>
-    <p class="note" data-i18n="note_global_hide">Choose hidden targets and the caller applications affected by that list. Detected Xposed modules and HMA blacklist entries are selected automatically.</p>
+    <p class="note" data-i18n="note_global_hide">Choose applications to hide. Detected Xposed modules and HMA blacklist entries are selected automatically.</p>
     <div class="val multiline" id="ghstatus" data-i18n="gh_checking">AppCloak: checking…</div>
-    <div class="btns"><button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button></div>
-    <div class="subhead" data-i18n="h3_hide_targets">Hidden targets</div>
-    <div style="margin:8px 0 2px"><input class="txin" id="ghSearch" data-i18n-placeholder="ph_search_apps" placeholder="search app name or package" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
-    <div class="swrow"><div class="swi"><div class="lbl" data-i18n="app_show_system">Show system applications</div></div><label class="switch"><input type="checkbox" id="ghShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label></div>
-    <div class="list" id="ghList"></div>
-    <div class="subhead" data-i18n="h3_hide_scope">Effective applications</div>
+    <div class="btns">
+      <button class="act" id="ghShow" onclick="toggleAppList('hide',this)" data-i18n="btn_show_list">Show list</button>
+      <button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button>
+    </div>
+    <div id="ghListWrap" style="display:none">
+      <div style="margin:8px 0 2px"><input class="txin" id="ghSearch" data-i18n-placeholder="ph_search_apps" placeholder="search app name or package" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
+      <div class="swrow"><div class="swi"><div class="lbl" data-i18n="app_show_system">Show system applications</div></div><label class="switch"><input type="checkbox" id="ghShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label></div>
+      <div class="list" id="ghList"></div>
+    </div>
+  </div>
+  <div class="card" id="cardGlobalScope">
+    <div class="card-h clp" onclick="toggleCard(this)">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v2"/></svg>
+      <h2 data-i18n="h3_hide_scope">Effective applications</h2><span class="chip" id="gschip">—</span><span class="chev">›</span>
+    </div>
     <p class="note" data-i18n="note_hide_scope">Only checked caller applications cannot see the hidden targets.</p>
-    <div style="margin:8px 0 2px"><input class="txin" id="gsSearch" data-i18n-placeholder="ph_search_scope" placeholder="search effective applications" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
-    <div class="swrow"><div class="swi"><div class="lbl" data-i18n="app_show_system">Show system applications</div></div><label class="switch"><input type="checkbox" id="gsShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label></div>
-    <div class="list" id="gsList"></div>
+    <div class="btns">
+      <button class="act" id="gsShow" onclick="toggleAppList('scope',this)" data-i18n="btn_show_list">Show list</button>
+      <button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button>
+    </div>
+    <div id="gsListWrap" style="display:none">
+      <div style="margin:8px 0 2px"><input class="txin" id="gsSearch" data-i18n-placeholder="ph_search_scope" placeholder="search effective applications" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
+      <div class="swrow"><div class="swi"><div class="lbl" data-i18n="app_show_system">Show system applications</div></div><label class="switch"><input type="checkbox" id="gsShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label></div>
+      <div class="list" id="gsList"></div>
+    </div>
   </div>
   <div class="card" id="cardCloak">
     <div class="card-h clp" onclick="toggleCard(this)">
@@ -985,7 +1001,7 @@
       btn_turn_off_all: "Turn off all",
       ph_search_path: "search full paths",
       h2_global_hide: "Global hidden applications",
-      note_global_hide: "Choose hidden targets and the caller applications affected by that list. Detected Xposed modules and HMA blacklist entries are selected automatically.",
+      note_global_hide: "Choose applications to hide. Detected Xposed modules and HMA blacklist entries are selected automatically.",
       gh_checking: "AppCloak: checking…",
       ph_search_apps: "search app name or package",
       h3_hide_targets: "Hidden targets",
@@ -1073,7 +1089,7 @@
       btn_turn_off_all: "一键关闭",
       ph_search_path: "搜索完整路径",
       h2_global_hide: "全局隐藏应用",
-      note_global_hide: "选择要隐藏的目标应用，以及哪些调用应用受该列表影响。检测到的 Xposed 模块和 HMA 黑名单条目会自动勾选。",
+      note_global_hide: "选择要隐藏的应用。检测到的 Xposed 模块和 HMA 黑名单条目会自动勾选。",
       gh_checking: "AppCloak：检查中…",
       ph_search_apps: "搜索应用名或包名",
       h3_hide_targets: "隐藏目标",
@@ -1133,6 +1149,16 @@
       try { if (typeof refreshScenePathMaskStatus === "function") refreshScenePathMaskStatus(); } catch (e) {}
       try { if (typeof refreshStatus === "function") refreshStatus(); } catch (e) {}
       try { if (typeof refreshStealth === "function") refreshStealth(); } catch (e) {}
+      try { if (typeof renderGlobalHide === "function") renderGlobalHide(); } catch (e) {}
+      try { if (typeof refreshGlobalHideStatus === "function") refreshGlobalHideStatus(); } catch (e) {}
+      try { if (typeof refreshRuleSummary === "function") refreshRuleSummary(); } catch (e) {}
+      try { if (typeof filterRules === "function" && rulesShown) filterRules(); } catch (e) {}
+      try { if (typeof refreshModules === "function") refreshModules(); } catch (e) {}
+      try {
+        const hb = document.getElementById("ghShow"), sb = document.getElementById("gsShow");
+        if (hb) hb.textContent = ghShown ? (currentLang === "zh" ? "隐藏列表" : "Hide list") : (currentLang === "zh" ? "显示列表" : "Show list");
+        if (sb) sb.textContent = gsShown ? (currentLang === "zh" ? "隐藏列表" : "Hide list") : (currentLang === "zh" ? "显示列表" : "Show list");
+      } catch (e) {}
     }, 0);
   }
 
@@ -1419,10 +1445,10 @@
     const out = $("doctorout");
     out.style.display = "";
     out.textContent = currentLang === "zh" ? "运行中…" : "Running…";
-    const r = await nm("doctor");
+    const r = await nm("check --plan");
     const txt = ((r.stdout || "") + (r.stderr || "")).trim() || "(no output)";
     out.textContent = txt;
-    const m = txt.match(/summary:\s*(\d+)\s*errors?,\s*(\d+)\s*warnings?/i);
+    const m = txt.match(/summary:\s*(\d+)\s*failed,.*?\s(\d+)\s*warnings?/i);
     const chip = $("dchip");
     const nb = $("nb-tools");
     if (m) {
@@ -1443,12 +1469,12 @@
   function _healthShow(txt) { const o = $("healthout"); o.style.display = ""; o.textContent = txt.trim() || "(no output)"; }
   async function runSelfcheck(btn) {
     const t = btn.textContent; btn.disabled = true; btn.textContent = "…";
-    const r = await nm("selfcheck");
+    const r = await nm("check --device --write");
     const txt = ((r.stdout || "") + (r.stderr || ""));
     _healthShow(txt);
-    const v = (txt.match(/verdict=(.+)/) || [])[1] || "";
+    const v = (txt.match(/verdict[:=]\s*(.+)/) || [])[1] || "";
     const chip = $("hchip");
-    const bad = /INCONSISTENCY|DOWN|TRIPPED/.test(v);
+    const bad = /FAILED|INCONSISTENCY|DOWN|TRIPPED/i.test(v);
     chip.textContent = bad ? (currentLang === "zh" ? "需注意" : "attention") : (currentLang === "zh" ? "健康" : "healthy");
     chip.className = "chip " + (bad ? "bad" : "ok");
     btn.disabled = false; btn.textContent = t;
@@ -1909,7 +1935,7 @@
     document.querySelectorAll("#tab-tools .card[id]").forEach(card => {
       let v = null;
       try { v = localStorage.getItem(CARD_STATE_PREFIX + card.id); } catch (e) {}
-      const defaultOpen = card.id === "cardGlobalHide" || card.id === "cardCloak";
+      const defaultOpen = card.id === "cardGlobalHide" || card.id === "cardGlobalScope" || card.id === "cardCloak";
       const collapsed = v == null ? !defaultOpen : v !== "0";
       card.classList.toggle("collapsed", collapsed);
       const h = card.querySelector(".card-h");
@@ -1922,8 +1948,8 @@
     const engineVersion = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "");
     const suiteVersion = (await exec("sed -n 's/^version=//p' /data/adb/modules/meta-nomount/module.prop 2>/dev/null | head -n1")).stdout.trim();
     $("ver").textContent = suiteVersion || engineVersion || "v?";
-    $("footver").textContent = (suiteVersion ? ("Suite " + suiteVersion) : "") +
-      (engineVersion ? ((suiteVersion ? " · " : "") + (currentLang === "zh" ? "引擎 " : "engine ") + engineVersion) : "");
+    const protocol = currentLang === "zh" ? "内核协议 v13" : "kernel protocol v13";
+    $("footver").textContent = suiteVersion ? ("Suite " + suiteVersion + " · " + protocol) : protocol;
     await Promise.all([
       refreshStatus(), refreshDevice(), refreshStealth(), refreshGuard(),
       refreshModules(), refreshOverlays(), refreshVfs(), refreshRuleSummary(),
@@ -1940,6 +1966,7 @@
   const GS_CONF = "/data/adb/nomount/scope_apps.conf";
   const GH_EXCLUDE = "/data/adb/nomount/.global_hide_exclude";
   let GH = new Map(); let GS = new Set(); let GHX = new Set();
+  let ghShown = false; let gsShown = false;
   function validPkg(s) { return /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(s || ""); }
   async function loadGlobalHide() {
     await loadPkgList(); GH.clear(); GS.clear(); GHX.clear();
@@ -1979,6 +2006,7 @@
     }).sort(function(a,b){ return ((a[1].app&&a[1].app.label)||a[0]).localeCompare((b[1].app&&b[1].app.label)||b[0]); });
     const active = [...GH.values()].filter(function(e){ return e.hidden; }).length;
     const chip = document.getElementById("ghchip"); if (chip) chip.textContent = active + " / " + GH.size;
+    const scopeChip = document.getElementById("gschip"); if (scopeChip) scopeChip.textContent = GS.size + " / " + _pkgs.length;
     const list = document.getElementById("ghList"); if (!list) return;
     list.innerHTML = !items.length ? '<div class="note" style="padding:8px 2px">' + (currentLang === "zh" ? "没有匹配的应用。" : "No matching applications.") + '</div>' : items.map(function(it){
       const pkg=it[0], e=it[1], app=e.app||_pkgByName.get(pkg), label=(app&&app.label)||pkg;
@@ -1997,6 +2025,16 @@
       return '<div class="swrow"><div class="swi"><div class="lbl">'+esc(app.label||app.name)+'</div><div class="val">'+esc(app.name)+tag+'</div></div>'+
         '<label class="switch"><input type="checkbox" data-p="'+encodeURIComponent(app.name)+'" '+(GS.has(app.name)?'checked':'')+' onchange="toggleGlobalScope(this)"><span class="sl"></span></label></div>';
     }).join("");
+  }
+  function toggleAppList(which, btn) {
+    const hide = which === "hide";
+    if (hide) ghShown = !ghShown; else gsShown = !gsShown;
+    const shown = hide ? ghShown : gsShown;
+    const wrap = document.getElementById(hide ? "ghListWrap" : "gsListWrap");
+    if (wrap) wrap.style.display = shown ? "" : "none";
+    btn.textContent = shown
+      ? (currentLang === "zh" ? "隐藏列表" : "Hide list")
+      : (currentLang === "zh" ? "显示列表" : "Show list");
   }
   function toggleGlobalHide(cb) {
     const p=decodeURIComponent(cb.dataset.p), e=GH.get(p); if (!e) return;
@@ -2026,7 +2064,7 @@
   async function refreshGlobalHideStatus() {
     const r=await exec("sh /data/adb/modules/meta-nomount/appcloak-sync.sh --status 2>/dev/null");
     const state=(r.stdout||"").trim(), el=document.getElementById("ghstatus"); if (!el) return;
-    if (state === "active") el.textContent = currentLang === "zh" ? "AppCloak：system_server 过滤已生效" : "AppCloak: system_server filter active";
+    if (state === "active") el.textContent = currentLang === "zh" ? "AppCloak：应用可见性过滤已生效" : "AppCloak: application visibility filter active";
     else if (state.indexOf("failed:") === 0) el.textContent = (currentLang === "zh" ? "AppCloak：加载失败 · " : "AppCloak: load failed · ") + state.slice(7);
     else if (["entrypoint","waiting-pm","installing"].indexOf(state) !== -1) el.textContent = (currentLang === "zh" ? "AppCloak：正在加载 · " : "AppCloak: loading · ") + state;
     else if (state === "waiting") el.textContent = currentLang === "zh" ? "AppCloak：文件已就绪，等待 Zygisk 加载（请重启）" : "AppCloak: files ready; waiting for Zygisk (reboot)";
@@ -2048,6 +2086,7 @@
   async function loadCloak() {
     await loadPkgList();
     PH.clear(); EXCLUDE.clear();
+    await exec("sh /data/adb/modules/meta-nomount/scene-debugfs-watch.sh --once >/dev/null 2>&1");
     const ok = (await exec("[ -e /proc/pathhide ] && echo y")).stdout.indexOf("y") >= 0;
     document.getElementById("phApply").disabled = !ok;
     if (!ok) document.getElementById("phchip").textContent = currentLang === "zh" ? "无内核" : "no kernel";
@@ -2116,7 +2155,8 @@
     list.innerHTML = items.map(function (it) {
       const rule = it[0], e = it[1];
       const title = e.scene ? 'Scene debugfs' : (currentLang === "zh" ? "文件路径" : "File path");
-      return '<div class="swrow"><div class="swi"><div class="lbl">' + esc(title) + '</div><div class="val" style="white-space:normal;overflow-wrap:anywhere">' + esc(rule) + '</div></div>' +
+      const del = e.scene ? '' : '<button class="act danger" style="flex:none;min-width:0;padding:6px 10px" data-r="' + encodeURIComponent(rule) + '" onclick="phDelete(this)">' + (currentLang === "zh" ? '删除' : 'Delete') + '</button>';
+      return '<div class="swrow"><div class="swi"><div class="lbl">' + esc(title) + '</div><div class="val" style="white-space:normal;overflow-wrap:anywhere">' + esc(rule) + '</div></div>' + del +
         '<label class="switch"><input type="checkbox" data-r="' + encodeURIComponent(rule) + '" ' +
         (e.hidden ? 'checked' : '') + (e.scene ? ' disabled' : '') + ' onchange="phToggle(this)"><span class="sl"></span></label></div>';
     }).join("");
@@ -2128,6 +2168,13 @@
       if (cb.checked) EXCLUDE.delete(k); else EXCLUDE.add(k);
       saveExclude();
     } renderCloak();
+  }
+  async function phDelete(btn) {
+    const k = decodeURIComponent(btn.dataset.r || "");
+    const e = PH.get(k); if (!e || e.scene) return;
+    PH.delete(k); EXCLUDE.delete(k); saveExclude(); renderCloak();
+    await doApplyCloak();
+    toast(currentLang === "zh" ? "路径已删除并实时应用" : "Path deleted and applied", "ok");
   }
   async function doApplyCloak() {
     const rules = [...PH.entries()].filter(function (x) { return x[1].hidden && !x[1].scene; })

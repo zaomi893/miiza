@@ -16,6 +16,10 @@
 #include <linux/dcache.h>
 #include <linux/uaccess.h>
 #include <linux/limits.h>
+#include <linux/kprobes.h>
+#include <linux/fdtable.h>
+#include <linux/dirent.h>
+#include <asm/ptrace.h>
 #include "nomount.h"
 
 /* Android packs (user_id, appid) into a uid: uid = user_id*NM_PER_USER_RANGE + appid.
@@ -4038,6 +4042,231 @@ static DEFINE_MUTEX(nm_pathhide_mutex);
 static DEFINE_STATIC_KEY_FALSE(nm_pathhide_active);
 static struct nm_pathhide_table __rcu *nm_pathhide_rules;
 static struct proc_dir_entry *nm_pathhide_pde;
+bool nomount_pathhide_match_path(const char *path);
+static bool nm_pathhide_scope_matches(const struct nm_pathhide_table *table);
+
+#if defined(CONFIG_KPROBES) && defined(CONFIG_ARM64)
+struct nm_pathhide_syscall_data {
+	bool matched;
+	bool close_result;
+};
+
+static bool nm_pathhide_syscalls_registered;
+static bool nm_pathhide_getdents_registered;
+
+static bool nm_pathhide_match_ino(u64 ino)
+{
+	const struct nm_pathhide_table *table;
+	bool hide = false;
+	int i;
+
+	if (!ino || !static_branch_unlikely(&nm_pathhide_active))
+		return false;
+	rcu_read_lock();
+	table = rcu_dereference(nm_pathhide_rules);
+	if (table && nm_pathhide_scope_matches(table)) {
+		for (i = 0; i < table->count; i++) {
+			if (table->rules[i].inode_valid && table->rules[i].ino == ino) {
+				hide = true;
+				break;
+			}
+		}
+	}
+	rcu_read_unlock();
+	return hide;
+}
+
+static bool nm_pathhide_match_user_filename(struct pt_regs *regs)
+{
+	struct pt_regs *user_regs = (struct pt_regs *)regs->regs[0];
+	char path[NM_PATHHIDE_MAX_PATH_LEN];
+	long len;
+
+	if (!user_regs)
+		return false;
+	len = strncpy_from_user(path,
+				(const char __user *)user_regs->regs[1], sizeof(path));
+	if (len <= 0)
+		return false;
+	path[sizeof(path) - 1] = '\0';
+	return path[0] == '/' && nomount_pathhide_match_path(path);
+}
+
+static int nm_pathhide_syscall_entry(struct kretprobe_instance *ri,
+				      struct pt_regs *regs)
+{
+	struct nm_pathhide_syscall_data *data = ri->data;
+
+	data->matched = nm_pathhide_match_user_filename(regs);
+	data->close_result = false;
+	return 0;
+}
+
+static int nm_pathhide_open_entry(struct kretprobe_instance *ri,
+				   struct pt_regs *regs)
+{
+	struct nm_pathhide_syscall_data *data = ri->data;
+
+	data->matched = nm_pathhide_match_user_filename(regs);
+	data->close_result = data->matched;
+	return 0;
+}
+
+static int nm_pathhide_syscall_exit(struct kretprobe_instance *ri,
+				     struct pt_regs *regs)
+{
+	struct nm_pathhide_syscall_data *data = ri->data;
+	long ret = (long)regs->regs[0];
+
+	if (!data->matched)
+		return 0;
+	if (data->close_result && ret >= 0)
+		close_fd((unsigned int)ret);
+	regs_set_return_value(regs, -ENOENT);
+	return 0;
+}
+
+static struct nm_pathhide_syscall_probe {
+	const char *symbol;
+	int (*entry)(struct kretprobe_instance *, struct pt_regs *);
+	struct kretprobe probe;
+	bool registered;
+} nm_pathhide_syscall_probes[] = {
+	{ .symbol = "__arm64_sys_newfstatat", .entry = nm_pathhide_syscall_entry },
+	{ .symbol = "__arm64_sys_statx", .entry = nm_pathhide_syscall_entry },
+	{ .symbol = "__arm64_sys_faccessat2", .entry = nm_pathhide_syscall_entry },
+	{ .symbol = "__arm64_sys_readlinkat", .entry = nm_pathhide_syscall_entry },
+	{ .symbol = "__arm64_sys_openat", .entry = nm_pathhide_open_entry },
+	{ .symbol = "__arm64_sys_openat2", .entry = nm_pathhide_open_entry },
+};
+
+#define NM_PATHHIDE_GETDENTS_LIMIT 65536u
+struct nm_pathhide_getdents_data {
+	struct linux_dirent64 __user *dirent;
+	void *buf;
+	size_t buf_len;
+};
+
+static int nm_pathhide_getdents_entry(struct kretprobe_instance *ri,
+				      struct pt_regs *regs)
+{
+	struct nm_pathhide_getdents_data *data = ri->data;
+	struct pt_regs *user_regs = (struct pt_regs *)regs->regs[0];
+	unsigned int count;
+
+	data->dirent = NULL;
+	data->buf = NULL;
+	data->buf_len = 0;
+	if (!user_regs || !static_branch_unlikely(&nm_pathhide_active))
+		return 0;
+	count = min_t(unsigned int, (unsigned int)user_regs->regs[2],
+		      NM_PATHHIDE_GETDENTS_LIMIT);
+	if (!count)
+		return 0;
+	data->dirent = (struct linux_dirent64 __user *)user_regs->regs[1];
+	data->buf = kmalloc(count, GFP_KERNEL);
+	if (data->buf)
+		data->buf_len = count;
+	return 0;
+}
+
+static int nm_pathhide_getdents_exit(struct kretprobe_instance *ri,
+				     struct pt_regs *regs)
+{
+	struct nm_pathhide_getdents_data *data = ri->data;
+	long ret = (long)regs->regs[0], pos = 0, new_len = ret;
+	struct linux_dirent64 *cur, *prev = NULL;
+	const size_t min_len = offsetof(struct linux_dirent64, d_name) + 1;
+	bool changed = false;
+
+	if (ret <= 0 || !data->dirent || !data->buf ||
+	    (size_t)ret > data->buf_len ||
+	    copy_from_user(data->buf, data->dirent, ret))
+		goto out;
+	while (pos + (long)offsetof(struct linux_dirent64, d_name) < new_len) {
+		unsigned short reclen;
+
+		cur = (struct linux_dirent64 *)((char *)data->buf + pos);
+		reclen = cur->d_reclen;
+		if (reclen < min_len || reclen > new_len - pos)
+			break;
+		if (nm_pathhide_match_ino(cur->d_ino)) {
+			changed = true;
+			if (prev && (unsigned int)prev->d_reclen + reclen <= 65535u) {
+				prev->d_reclen += reclen;
+				pos += reclen;
+				continue;
+			}
+			new_len -= reclen;
+			if (new_len > pos)
+				memmove(cur, (char *)cur + reclen, new_len - pos);
+			continue;
+		}
+		prev = cur;
+		pos += reclen;
+	}
+	if (changed && !copy_to_user(data->dirent, data->buf, new_len))
+		regs_set_return_value(regs, new_len);
+out:
+	kfree(data->buf);
+	data->buf = NULL;
+	return 0;
+}
+
+static struct kretprobe nm_pathhide_getdents_probe = {
+	.kp.symbol_name = "__arm64_sys_getdents64",
+	.entry_handler = nm_pathhide_getdents_entry,
+	.handler = nm_pathhide_getdents_exit,
+	.data_size = sizeof(struct nm_pathhide_getdents_data),
+	.maxactive = 40,
+};
+
+static void nm_pathhide_register_syscall_hooks(void)
+{
+	unsigned int i;
+
+	if (nm_pathhide_syscalls_registered)
+		return;
+	for (i = 0; i < ARRAY_SIZE(nm_pathhide_syscall_probes); i++) {
+		struct nm_pathhide_syscall_probe *p = &nm_pathhide_syscall_probes[i];
+
+		p->probe.kp.symbol_name = p->symbol;
+		p->probe.entry_handler = p->entry;
+		p->probe.handler = nm_pathhide_syscall_exit;
+		p->probe.data_size = sizeof(struct nm_pathhide_syscall_data);
+		p->probe.maxactive = 40;
+		if (!register_kretprobe(&p->probe))
+			p->registered = true;
+	}
+	if (!register_kretprobe(&nm_pathhide_getdents_probe))
+		nm_pathhide_getdents_registered = true;
+	nm_pathhide_syscalls_registered = true;
+}
+
+static void nm_pathhide_unregister_syscall_hooks(void)
+{
+	unsigned int i;
+
+	if (!nm_pathhide_syscalls_registered)
+		return;
+	for (i = 0; i < ARRAY_SIZE(nm_pathhide_syscall_probes); i++) {
+		struct nm_pathhide_syscall_probe *p = &nm_pathhide_syscall_probes[i];
+
+		if (p->registered) {
+			unregister_kretprobe(&p->probe);
+			p->registered = false;
+		}
+	}
+	if (nm_pathhide_getdents_registered) {
+		unregister_kretprobe(&nm_pathhide_getdents_probe);
+		nm_pathhide_getdents_registered = false;
+	}
+	nm_pathhide_syscalls_registered = false;
+}
+#else
+static inline void nm_pathhide_register_syscall_hooks(void) { }
+static inline void nm_pathhide_unregister_syscall_hooks(void) { }
+#endif
 
 static struct nm_pathhide_table *nm_pathhide_alloc(unsigned int count)
 {
@@ -4245,9 +4474,10 @@ static int nm_pathhide_add(const char *path)
 							      new->rules[i].ino);
 	}
 	rcu_assign_pointer(nm_pathhide_rules, new);
-	if (!old)
+	if (!old) {
 		static_branch_enable(&nm_pathhide_active);
-	else
+		nm_pathhide_register_syscall_hooks();
+	} else
 		kvfree_rcu(old, rcu);
 out:
 	mutex_unlock(&nm_pathhide_mutex);
@@ -4286,8 +4516,10 @@ static int nm_pathhide_remove(const char *path)
 		}
 	}
 	rcu_assign_pointer(nm_pathhide_rules, new);
-	if (!new)
+	if (!new) {
 		static_branch_disable(&nm_pathhide_active);
+		nm_pathhide_unregister_syscall_hooks();
+	}
 	kvfree_rcu(old, rcu);
 out:
 	mutex_unlock(&nm_pathhide_mutex);
@@ -4348,6 +4580,7 @@ static ssize_t nm_pathhide_write(struct file *file, const char __user *ubuf,
 {
 	char *buf;
 	int ret;
+	size_t write_len = len;
 
 	if (len <= 0)
 		return 0;
@@ -4374,7 +4607,10 @@ static ssize_t nm_pathhide_write(struct file *file, const char __user *ubuf,
 	else
 		ret = -EINVAL;
 	kfree(buf);
-	return ret ? ret : (ssize_t)len;
+	/* proc writes must report the caller's original byte count. Returning the
+	 * newline-trimmed length is a short write, so shells report EIO even though
+	 * the rule was already changed. */
+	return ret ? ret : (ssize_t)write_len;
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
@@ -4422,6 +4658,7 @@ static void nomount_pathhide_exit(void)
 	RCU_INIT_POINTER(nm_pathhide_rules, NULL);
 	if (table)
 		static_branch_disable(&nm_pathhide_active);
+	nm_pathhide_unregister_syscall_hooks();
 	mutex_unlock(&nm_pathhide_mutex);
 	synchronize_rcu();
 	kvfree(table);
