@@ -1,5 +1,5 @@
 name: 6.12.38 一加15T OKI内核构建（NMS 可启动基线）
-run-name: OnePlus GKI · ${{ inputs.build_request_id || 'manual' }}
+run-name: 6.12.38 一加15T · ${{ inputs.device_serial || '手动构建' }}
 
 env:
   TZ: Asia/Shanghai
@@ -147,6 +147,7 @@ on:
 
 jobs:
   build:
+    name: 构建内核 · ${{ inputs.build_request_id || 'manual' }}
     runs-on: ubuntu-latest
     outputs:
       ksuver: ${{ steps.ksu_version.outputs.ksuver }}
@@ -860,6 +861,7 @@ jobs:
           export LIBCLANG_PATH="$WORKDIR/kernel_workspace/clang19/lib"
           # 3. 配置KCFLAGS
           KCFLAGS+=" -no-canonical-prefixes"
+          KCFLAGS+=" -mcpu=oryon-1"
           KCFLAGS+=" -O2"
           KCFLAGS+=" -pipe"
           KCFLAGS+=" -Wno-error"
@@ -888,7 +890,29 @@ jobs:
           fi
           sudo rm -rf /opt/ghc &
           sudo rm -rf /opt/hostedtoolcache/CodeQL &
-          make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out gki_defconfig &&
+          make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out gki_defconfig
+
+          # Match the released 15T build configuration: no LTO and no
+          # module-only KUnit test payloads. These options otherwise add a
+          # large number of per-CPU BTF variables that are not part of the
+          # shipping phone kernel.
+          scripts/config --file out/.config -e LTO_NONE
+          for symbol in \
+            REGMAP_KUNIT INPUT_KUNIT_TEST SND_SOC_TOPOLOGY_KUNIT_TEST \
+            SND_SOC_UTILS_KUNIT_TEST HID_KUNIT_TEST RTC_LIB_KUNIT_TEST \
+            CLK_KUNIT_TEST CLK_GATE_KUNIT_TEST IIO_FORMAT_KUNIT_TEST \
+            EXT4_KUNIT_TESTS FAT_KUNIT_TEST; do
+            scripts/config --file out/.config -d "$symbol"
+          done
+          make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out olddefconfig
+          grep -q '^CONFIG_LTO_NONE=y$' out/.config
+
+          # dwarves 1.25 cannot encode more than 4096 per-CPU variables.
+          # Only omit BTF VAR/DATASEC records; keep type/function BTF needed
+          # by sched_ext and the HMBIRD module compatibility checks.
+          printf '\npahole-flags-y += --skip_encoding_btf_vars\n' >> scripts/Makefile.btf
+          grep -q -- '--skip_encoding_btf_vars' scripts/Makefile.btf
+
           export CC="$(pwd)/cc-wrapper" && export LD="$(pwd)/ld-wrapper" &&
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="llvm-objcopy" O=out Image
 

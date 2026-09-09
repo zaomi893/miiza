@@ -50,7 +50,7 @@
 
 在 GitHub Actions 手动运行 `6.12.23 欧加真OKI内核快速构建`，必须填写 `device_serial`。允许 6–64 位字母、数字、点、下划线、冒号和连字符。
 
-每次构建生成独立的 32 字节随机盐和一次性启动标记令牌，将 `SHA-256(随机盐 || 序列号)` 写入 Image，不保存明文序列号。AK3 中的 `serial_lock/` 只是刷机资源目录；其中 `build-token` 是 64 位十六进制的本次构建随机令牌，不是序列号。刷入时 AK3 不读取、创建、删除或改写 `init_boot` 标记，只创建 `/data/adb/service.d/service_log.sh` 一次性脚本，临时运行资源放在 `/data/local/tmp/serial_lock_stage`，不创建 KernelSU/Magisk 模块或 `module.prop`。启动时由内核直接校验序列号：匹配时不安排重启并向一次性脚本报告 `verified`；不匹配时由内核自行启动固定 180 秒重启。`service_log` 是唯一允许改写标记的组件：匹配且已有标记时删除标记，没有标记则完全不写 `init_boot`；不匹配时写入本次构建标记，已有旧标记也覆盖。无论结果如何，退出时都会删除自身和整个临时目录。标记成功时才启用下一次启动的早期拒绝。风驰 BTF 兼容入口仍要求序列号已经验证。
+每次构建生成独立的 32 字节随机盐和一次性启动标记令牌，将 `SHA-256(随机盐 || 序列号)` 写入 Image，不保存明文序列号。AK3 中的 `serial_lock/` 只是刷机资源目录；其中 `build-token` 是 64 位十六进制的本次构建随机令牌，不是序列号。刷入时 AK3 不读取、创建、删除或改写 `init_boot` 标记，只创建 `/data/adb/service.d/service_log.sh` 一次性脚本，临时运行资源放在 `/data/local/tmp/serial_lock_stage`，不创建 KernelSU/Magisk 模块或 `module.prop`。启动时由内核直接校验序列号：匹配时不安排重启并向一次性脚本报告 `verified`；不匹配时由内核自行启动固定 180 秒重启。`service_log` 是唯一允许改写标记的组件：匹配时删除 `serial_lock/.mismatch`，并兼容清理由 ReSukiSU 旧刷写流程留下的 `stock_image.sha1`；两者都不存在时完全不写 `init_boot`。不匹配时只写入本次构建的 `serial_lock/.mismatch`，绝不创建 `stock_image.sha1`，已有标记也覆盖。无论结果如何，退出时都会删除自身和整个临时目录。标记成功时才启用下一次启动的早期拒绝。风驰 BTF 兼容入口仍要求序列号已经验证。
 
 这是高风险的实验性防误刷机制。刷机环境必须能写入 `/data/adb` 和 `/data/local/tmp`，否则 AK3 会在刷 boot 前中止；`service_log` 运行时还必须能读写当前槽 `init_boot`。序列号不匹配时，内核本身保证本次启动在 180 秒后重启。只有标记成功写入并回读一致时，下一次启动才进入早期拒绝。
 
