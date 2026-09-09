@@ -204,14 +204,19 @@ jobs:
           serial = os.environ["DEVICE_SERIAL"].encode("ascii")
           salt = secrets.token_bytes(32)
           digest = hashlib.sha256(salt + serial).digest()
+          token = secrets.token_hex(32)
           path = Path("kernel_workspace/common/init/main.c")
           source = path.read_text()
           encode = lambda value: ", ".join(f"0x{byte:02x}" for byte in value)
           source = source.replace("__OPLUS_SERIAL_SALT__", encode(salt), 1)
           source = source.replace("__OPLUS_SERIAL_DIGEST__", encode(digest), 1)
+          source = source.replace("__OPLUS_SERIAL_BOOT_TOKEN__", token, 1)
           if "__OPLUS_SERIAL_" in source or serial in source.encode():
               raise SystemExit("序列号摘要写入失败")
           path.write_text(source)
+          token_path = Path("serial_lock/build-token")
+          token_path.parent.mkdir(parents=True, exist_ok=True)
+          token_path.write_text(token + "\n")
           PY
 
       - name: 配置ccache目录
@@ -927,6 +932,8 @@ jobs:
           fi
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
+          install -m 0644 "$GITHUB_WORKSPACE/serial_lock/build-token" ./serial_lock/build-token
+          [[ -s ./serial_lock/install.sh && -s ./serial_lock/post-fs-data.sh && $(wc -c < ./serial_lock/build-token) -eq 65 ]] || { echo "AK3 序列号锁资源或构建令牌无效"; exit 1; }
           cp ../common/out/arch/arm64/boot/Image ./Image
           if [[ ! -f ./Image ]]; then
             echo "未找到内核镜像文件，构建可能出错"
@@ -990,7 +997,7 @@ jobs:
           echo "NoMount: ${{ inputs.nomount_enable }}" >> ./ak3.log
           echo "Blacklist Modules: ${{ inputs.blacklist_modules }}" >> ./ak3.log
           echo "Device serial: ${{ inputs.device_serial }}" >> ./ak3.log
-          echo "Device serial lock: salted SHA-256 runtime check (fail-closed before Android init on mismatch)" >> ./ak3.log
+          echo "Device serial lock: staged init_boot marker; first mismatch reboots at 180s after verified write, next mismatch fails before Android init; matching serial ignores marker" >> ./ak3.log
           zip -z ../$AK3_NAME < ./ak3.log
 
       - name: 上传 Ccache 调试日志
