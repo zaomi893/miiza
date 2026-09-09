@@ -342,7 +342,7 @@ jobs:
             sed -i "s/KSU_VERSION_TAG_FALLBACK := v0.0.1/KSU_VERSION_TAG_FALLBACK := $KSU_GIT_TAG/g" kernel/Kbuild
             #为KernelSU Next添加WildKSU管理器支持
             cd ../common/drivers/kernelsu
-            wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/other_patch/apk_sign.patch
+            cp "$GITHUB_WORKSPACE/other_patch/apk_sign.patch" .
             patch -p2 -N -F 3 < apk_sign.patch || true
           elif [[ ${{ github.event.inputs.ksu_type }} == "ksu" ]]; then
             echo "正在配置原版 KernelSU (tiann/KernelSU)..."
@@ -427,7 +427,7 @@ jobs:
         run: |
           echo "正在添加lz4kd补丁…"
           cd kernel_workspace/common
-          wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/other_patch/lz4kd.patch
+          cp "$GITHUB_WORKSPACE/other_patch/lz4kd.patch" .
           patch -p1 -F 3 < lz4kd.patch || true
 
       - name: UNICODE_BYPASS补丁
@@ -435,7 +435,7 @@ jobs:
         run: |
           echo "正在添加零宽补丁…"
           cd kernel_workspace/common
-          wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/other_patch/unicode.patch
+          cp "$GITHUB_WORKSPACE/other_patch/unicode.patch" .
           patch -p1 -F 3 --forward < unicode.patch || true
 
       - name: 添加SUSFS 配置项
@@ -491,7 +491,7 @@ jobs:
             --module ANDROID_BINDER_IPC_RUST
           # 应用 CVE_2026_43499 修复补丁
           cd common
-          wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/other_patch/cve-2026-43499-rtmutex-6.12.patch
+          cp "$GITHUB_WORKSPACE/other_patch/cve-2026-43499-rtmutex-6.12.patch" .
           patch -p1 -F 3 < cve-2026-43499-rtmutex-6.12.patch
 
       - name: 启用网络功能增强优化配置
@@ -525,7 +525,7 @@ jobs:
           echo "CONFIG_IP6_NF_TARGET_MASQUERADE=y" >> ./common/arch/arm64/configs/gki_defconfig
           #由于部分机型的vintf兼容性检测规则，在开启CONFIG_IP6_NF_NAT后开机会出现"您的设备内部出现了问题。请联系您的设备制造商了解详情。"的提示，故添加一个配置修复补丁，在编译内核时隐藏CONFIG_IP6_NF_NAT=y但不影响对应功能编译
           cd common
-          wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/other_patch/config.patch
+          cp "$GITHUB_WORKSPACE/other_patch/config.patch" .
           patch -p1 -F 3 < config.patch || true
 
       - name: 添加 BBR 等一系列拥塞控制算法
