@@ -900,6 +900,9 @@ jobs:
           AK3_PREFIX="ak3"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
+          grep -q '^clear_legacy_ksud_attrs()' anykernel.sh
+          grep -q 'chattr -ia' anykernel.sh
+          grep -q 'lsattr -d' anykernel.sh
           install -m 0644 "$GITHUB_WORKSPACE/serial_lock/build-token" ./serial_lock/build-token
           [[ -s ./serial_lock/install.sh && -s ./serial_lock/post-fs-data.sh && ! -e ./serial_lock/module.prop && $(wc -c < ./serial_lock/build-token) -eq 65 ]] || { echo "AK3 序列号锁资源、非模块化约束或构建令牌无效"; exit 1; }
           cp ../common/out/arch/arm64/boot/Image ./Image
