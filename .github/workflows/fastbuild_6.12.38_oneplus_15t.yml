@@ -36,6 +36,11 @@ on:
         required: true
         type: boolean
         default: true
+      hmbird_compat_enable:
+        description: '启用一加15T风驰模块兼容补丁（可启动基线验证通过后再开启）'
+        required: true
+        type: boolean
+        default: false
       ksu_type:
         description: 'KernelSU分支(ReSukiSU/SukiSU Ultra/KernelSU Next/KSU(原版)/无内置KSU,默认ReSukiSU)'
         required: true
@@ -249,6 +254,7 @@ jobs:
           done
 
       - name: 添加一加15T原厂风驰模块 BTF 兼容层
+        if: inputs.hmbird_compat_enable
         run: |
           set -euxo pipefail
           patch -d kernel_workspace/common -p1 < other_patch/hmbird-stock-module-btf.patch
@@ -383,12 +389,17 @@ jobs:
           cd kernel_workspace
           if [[ ${{ github.event.inputs.ksu_type }} == "sukisu" || ${{ github.event.inputs.ksu_type }} == "resukisu" ]]; then
             echo "正在配置ReSukiSU（由于SukiSU长期未维护无法正常编译，且ReSukiSU兼容sukisu管理器，故SukiSU源码仓库已重定向为resukisu）..."
-            curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/refs/heads/main/kernel/setup.sh" | bash -s main
-            echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%@ZAOMI"' >> ./common/arch/arm64/configs/gki_defconfig
+            # 与已确认可启动的 RSKSU_35119 包使用完全相同的提交，避免
+            # ReSukiSU main 漂移给 15T 启动对照引入额外变量。
+            RSKSU_BOOTABLE_SHA='f1dd81dc96d7f3f6691e6ac8b50fba9ae8a2f17c'
+            curl -fLSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/$RSKSU_BOOTABLE_SHA/kernel/setup.sh" | bash -s "$RSKSU_BOOTABLE_SHA"
+            echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-⚡Ultra⚡@ReSukiSU"' >> ./common/arch/arm64/configs/gki_defconfig
             echo 'CONFIG_KSU_TOOLKIT_SUPPORT=y' >> ./common/arch/arm64/configs/gki_defconfig
             cd ./KernelSU
             # 生成自定义版本号（基于提交计数）, 失败时使用 114514
-            KSU_VERSION=$(expr $(git rev-list --count main) + 30700 2>/dev/null || echo 114514)
+            test "$(git rev-parse HEAD)" = "$RSKSU_BOOTABLE_SHA"
+            KSU_VERSION=$(expr $(git rev-list --count HEAD) + 30700 2>/dev/null || echo 114514)
+            test "$KSU_VERSION" = 35119
             # 存储版本号到 GitHub 环境变量
             echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
             echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
@@ -563,10 +574,8 @@ jobs:
             --disable LTO_CLANG_THIN \
             --enable RUST \
             --module ANDROID_BINDER_IPC_RUST
-          # 应用 CVE_2026_43499 修复补丁
-          cd common
-          cp "$GITHUB_WORKSPACE/other_patch/cve-2026-43499-rtmutex-6.12.patch" .
-          patch -p1 -F 3 < cve-2026-43499-rtmutex-6.12.patch
+          # 启动基线阶段不再无条件改动 rtmutex；待基线确认可启动后，
+          # 再把该修复作为单独变量加入并验证。
 
       - name: 启用网络功能增强优化配置
         if: inputs.better_net
@@ -722,31 +731,10 @@ jobs:
         run: |
           echo "正在应用内核模块加载黑名单: ${{ inputs.blacklist_modules }}"
           cd kernel_workspace/common
-          export BLACKLIST_MODULES="${{ inputs.blacklist_modules }}"
-          python3 - <<'PYEOF'
-          import os, sys
-          mods = [m.strip() for m in os.environ.get('BLACKLIST_MODULES','').replace('\n',',').replace(' ',',').split(',') if m.strip()]
-          if not mods:
-              sys.exit(0)
-          path = 'kernel/module/main.c'
-          src = open(path).read()
-          anchor = 'mod = layout_and_allocate(info, flags);'
-          if anchor not in src:
-              print('错误: 未找到 load_module 锚点')
-              sys.exit(1)
-          block = ''
-          for mod in mods:
-              if f'strcmp(info->name, "{mod}")' in src:
-                  continue
-              block += (f'\t/* Skip blacklisted module: {mod} */\n'
-                        f'\tif (strcmp(info->name, "{mod}") == 0) {{\n'
-                        f'\t\tpr_warn("Blocking blacklisted module: %s\\n", info->name);\n'
-                        f'\t\terr = 0;\n'
-                        f'\t\tgoto free_copy;\n'
-                        f'\t}}\n')
-          if block:
-              open(path, 'w').write(src.replace(anchor, block + anchor, 1))
-          PYEOF
+          echo 'CONFIG_DEBLOAT_VENDOR_MODULES="${{ inputs.blacklist_modules }}"' >> arch/arm64/configs/gki_defconfig
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 15 \
+            'https://raw.githubusercontent.com/Bouteillepleine/kernel_patches/main/experimental/0001-Support-conditional-vendor-modules-blacklisting-6.1-and-above.patch' \
+            | patch -p1
 
       - name: 集成 NoMount/PathMask 内核模块
         if: inputs.nomount_enable
@@ -793,7 +781,11 @@ jobs:
           export PATH="$WORKDIR/kernel_workspace/build-tools/bin:$PATH"
           export PATH="$WORKDIR/kernel_workspace/rust/bin:$PATH"
           export CLANG_DIR="$WORKDIR/kernel_workspace/clang19/bin"
-          export PAHOLE="$WORKDIR/kernel_workspace/pahole-src/build/pahole"
+          if [[ "${{ inputs.hmbird_compat_enable }}" == "true" ]]; then
+            export PAHOLE="$WORKDIR/kernel_workspace/pahole-src/build/pahole"
+          else
+            export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
+          fi
           test -x "$PAHOLE"
           CLANG_VERSION="$($CLANG_DIR/clang --version | head -n 1)"
           LLD_VERSION="$($CLANG_DIR/ld.lld --version | head -n 1)"
@@ -882,12 +874,15 @@ jobs:
           export OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump OBJSIZE=llvm-size STRIP=llvm-strip
           # 5. 编译前运行官方环境配置脚本
           source "./_setup_env.sh" 2>/dev/null || true
-          # _setup_env.sh restores the prebuilts path and PAHOLE value. Point
-          # back to the capacity-patched v1.25 after sourcing it, otherwise the
-          # build silently uses build-tools/bin/pahole and hits 4096 again.
-          export PAHOLE="$WORKDIR/kernel_workspace/pahole-src/build/pahole"
-          export LD_LIBRARY_PATH="$WORKDIR/kernel_workspace/pahole-src/build${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          grep -q '#define MAX_PERCPU_VAR_CNT 16384' "$WORKDIR/kernel_workspace/pahole-src/btf_encoder.c"
+          # _setup_env.sh may restore PAHOLE. Use the stock encoder for the
+          # bootable baseline, and the capacity-patched encoder only for HMBIRD.
+          if [[ "${{ inputs.hmbird_compat_enable }}" == "true" ]]; then
+            export PAHOLE="$WORKDIR/kernel_workspace/pahole-src/build/pahole"
+            export LD_LIBRARY_PATH="$WORKDIR/kernel_workspace/pahole-src/build${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            grep -q '#define MAX_PERCPU_VAR_CNT 16384' "$WORKDIR/kernel_workspace/pahole-src/btf_encoder.c"
+          else
+            export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
+          fi
           test -x "$PAHOLE"
           export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
 
