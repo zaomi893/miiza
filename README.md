@@ -60,7 +60,7 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 
 同一仓库现在还提供三条独立构建入口：
 
-- `fastbuild_6.12.38_ace6t.yml`：沿用 Ace6T 源码的 6.12.38 构建。
+- `fastbuild_6.12.38_oneplus_ace6t.yml`：沿用 Ace6T 源码的 6.12.38 构建。
 - `fastbuild_6.12.38_oneplus_15t.yml`：一加 15T 专用 6.12.38 构建。因精确复刻 `PLZ110_16.0.5.701(CN01)` 的 `be6292a1543d` 仍在真机卡第一屏，现改用上游 OnePlus-ReSukiSu_NMS 已正式发布 OP15T 包的 common 快照 `844001fb8721`、版本号 `android16-5-g844001fb8721-ab14552068-4k`、Clang `r547379` / Rust 1.82，并继续固定 `CONFIG_LTO_NONE=y`。
 - `fastbuild_6.12.58.yml`：6.12.58 构建。
 
