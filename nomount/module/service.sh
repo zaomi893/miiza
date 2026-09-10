@@ -60,10 +60,10 @@ fi
 # ksud were broken this service wouldn't run — so we only re-assert the split here.)
 KSUD=/data/adb/ksud
 SUSFS_BIN=/data/adb/ksu/bin/ksu_susfs
+[ -f "$KSUD" ] && chattr -i "$KSUD" 2>/dev/null
 if [ -f "$KSUD" ] && [ -f "$SUSFS_BIN" ] \
    && [ "$(stat -c %s "$KSUD" 2>/dev/null)" -gt 1000000 ] \
    && [ "$(stat -c %i "$KSUD" 2>/dev/null)" = "$(stat -c %i "$SUSFS_BIN" 2>/dev/null)" ]; then
-    chattr -i "$KSUD" 2>/dev/null
     if cp "$KSUD" "$SUSFS_BIN.nm_new" 2>/dev/null; then
         chmod 0755 "$SUSFS_BIN.nm_new" 2>/dev/null
         chcon u:object_r:adb_data_file:s0 "$SUSFS_BIN.nm_new" 2>/dev/null
@@ -72,9 +72,6 @@ if [ -f "$KSUD" ] && [ -f "$SUSFS_BIN" ] \
     else
         rm -f "$SUSFS_BIN.nm_new" 2>/dev/null
     fi
-    # Restore ksud's immutable flag: it was cleared above only so the copy could
-    # be read, and leaving it off permanently removes protection we did not add.
-    chattr +i "$KSUD" 2>/dev/null
 fi
 
 # --- refresh the manager card with the settled state ---

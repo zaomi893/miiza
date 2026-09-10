@@ -37,14 +37,16 @@ chmod 0755 "$BIN" "$NM_BIN" 2>/dev/null
 # until reflash (a reboot in that state can bootloop). Boot re-creates the hardlink
 # every time, so we de-link ksu_susfs into its OWN independent copy once per boot:
 # after this, action.sh's cp only hits the copy and the ksud daemon inode is untouched.
-# No chattr +i, so legitimate susfs updates still work. Only acts on a genuine (>1MB)
-# multicall that actually shares ksud's inode; a clobbered/small ksud is left alone.
+# Never change ksud's inode flags: reading an immutable source is allowed, and forcing
+# +i here persists across kernel switches and blocks ReSukiSU from updating userspace.
+# Clear the flag once to repair installations affected by NoMount Suite <= 1.6.8.
+# Only the de-link below is limited to a genuine (>1MB) multicall sharing the inode.
 KSUD=/data/adb/ksud
 SUSFS_BIN=/data/adb/ksu/bin/ksu_susfs
+[ -f "$KSUD" ] && chattr -i "$KSUD" 2>/dev/null
 if [ -f "$KSUD" ] && [ -f "$SUSFS_BIN" ] \
    && [ "$(stat -c %i "$KSUD" 2>/dev/null)" = "$(stat -c %i "$SUSFS_BIN" 2>/dev/null)" ] \
    && [ "$(stat -c %s "$KSUD" 2>/dev/null)" -gt 1000000 ]; then
-    chattr -i "$KSUD" 2>/dev/null
     if cp "$KSUD" "$SUSFS_BIN.nm_new" 2>/dev/null; then
         chmod 0755 "$SUSFS_BIN.nm_new" 2>/dev/null
         chcon u:object_r:adb_data_file:s0 "$SUSFS_BIN.nm_new" 2>/dev/null
@@ -53,9 +55,6 @@ if [ -f "$KSUD" ] && [ -f "$SUSFS_BIN" ] \
     else
         rm -f "$SUSFS_BIN.nm_new" 2>/dev/null
     fi
-    # Restore ksud's immutable flag: it was cleared above only so the copy could
-    # be read, and leaving it off permanently removes protection we did not add.
-    chattr +i "$KSUD" 2>/dev/null
 fi
 
 # --- spoof add-on (dynamic vbmeta.digest) ---
