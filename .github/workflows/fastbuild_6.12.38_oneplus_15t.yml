@@ -1084,16 +1084,8 @@ jobs:
         id: create_zip
         run: |
           cd kernel_workspace
-          if [[ "${{ inputs.serial_lock_enable }}" != "true" ]]; then
-            git clone --depth=1 --branch suite https://github.com/Bouteillepleine/AnyKernel3 ak3_workspace
-            AK3_PREFIX="ak3-upstream-baseline"
-          elif [[ "${{ inputs.self_config }}" == "true" ]]; then
-            git clone --depth=1 https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AK3 ak3_workspace
-            AK3_PREFIX="AnyKernel3"
-          else
-            git clone --depth=1 https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AnyKernel3 ak3_workspace
-            AK3_PREFIX="ak3"
-          fi
+          git clone --depth=1 --branch master https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AK3 ak3_workspace
+          AK3_PREFIX="AK3_OP15T"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
           if [[ "${{ inputs.serial_lock_enable }}" == "true" ]]; then
