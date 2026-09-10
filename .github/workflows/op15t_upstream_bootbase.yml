@@ -17,6 +17,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Tell the pinned upstream source-sync action this is a bounded single
+      # device build, so cache misses fall back to the manifest's real remotes.
+      OP_TOTAL_DEVICES: '1'
     steps:
       - name: 检出本仓库
         uses: actions/checkout@v6
