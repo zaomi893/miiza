@@ -30,31 +30,6 @@ export NM_BIN="$MODDIR/bin/$ABI/nm"
 # don't preserve +x. Without it on nm the whole pass aborts before it can inject.
 chmod 0755 "$BIN" "$NM_BIN" 2>/dev/null
 
-# --- ksud multicall guard (susfs4ksu action-button clobber protection) ---
-# On this build ksud/ksu_susfs/resetprop are ONE hardlinked multicall binary. The
-# SUSFS module's action button runs `cp -f <standalone> /data/adb/ksu/bin/ksu_susfs`,
-# which follows the hardlink and overwrites the whole ksud daemon -> breaks su/ksud
-# until reflash (a reboot in that state can bootloop). Boot re-creates the hardlink
-# every time, so we de-link ksu_susfs into its OWN independent copy once per boot:
-# after this, action.sh's cp only hits the copy and the ksud daemon inode is untouched.
-# Never change ksud's inode flags: reading an immutable source is allowed, and forcing
-# +i here persists across kernel switches and blocks ReSukiSU from updating userspace.
-# Only the de-link below is limited to a genuine (>1MB) multicall sharing the inode.
-KSUD=/data/adb/ksud
-SUSFS_BIN=/data/adb/ksu/bin/ksu_susfs
-if [ -f "$KSUD" ] && [ -f "$SUSFS_BIN" ] \
-   && [ "$(stat -c %i "$KSUD" 2>/dev/null)" = "$(stat -c %i "$SUSFS_BIN" 2>/dev/null)" ] \
-   && [ "$(stat -c %s "$KSUD" 2>/dev/null)" -gt 1000000 ]; then
-    if cp "$KSUD" "$SUSFS_BIN.nm_new" 2>/dev/null; then
-        chmod 0755 "$SUSFS_BIN.nm_new" 2>/dev/null
-        chcon u:object_r:adb_data_file:s0 "$SUSFS_BIN.nm_new" 2>/dev/null
-        mv -f "$SUSFS_BIN.nm_new" "$SUSFS_BIN" 2>/dev/null \
-            && echo "nomount: de-linked ksu_susfs from ksud multicall (susfs-action guard)" > /dev/kmsg 2>/dev/null
-    else
-        rm -f "$SUSFS_BIN.nm_new" 2>/dev/null
-    fi
-fi
-
 # --- spoof add-on (dynamic vbmeta.digest) ---
 # Runs in this post-fs-data stage so the property is in place before
 # zygote/system_server come up. Best-effort: it never aborts the boot, and

@@ -51,28 +51,6 @@ fi
 [ -f /data/adb/modules/meta-nomount/spoof.sh ] && \
     sh /data/adb/modules/meta-nomount/spoof.sh shell-tmp >/dev/null 2>&1
 
-# --- ksud de-link re-assertion (self-heal of the susfs-action guard) ---
-# metamount.sh de-links ksu_susfs from the ksud multicall at mount time; re-assert it
-# here post-boot as a belt-and-suspenders against any timing race (e.g. ksud finishing
-# its install stage after our mount pass). If ksud & ksu_susfs still share an inode,
-# split ksu_susfs into its own independent copy so the susfs action button can never
-# reach the ksud daemon. (A clobbered ksud can't be healed from a module service — if
-# ksud were broken this service wouldn't run — so we only re-assert the split here.)
-KSUD=/data/adb/ksud
-SUSFS_BIN=/data/adb/ksu/bin/ksu_susfs
-if [ -f "$KSUD" ] && [ -f "$SUSFS_BIN" ] \
-   && [ "$(stat -c %s "$KSUD" 2>/dev/null)" -gt 1000000 ] \
-   && [ "$(stat -c %i "$KSUD" 2>/dev/null)" = "$(stat -c %i "$SUSFS_BIN" 2>/dev/null)" ]; then
-    if cp "$KSUD" "$SUSFS_BIN.nm_new" 2>/dev/null; then
-        chmod 0755 "$SUSFS_BIN.nm_new" 2>/dev/null
-        chcon u:object_r:adb_data_file:s0 "$SUSFS_BIN.nm_new" 2>/dev/null
-        mv -f "$SUSFS_BIN.nm_new" "$SUSFS_BIN" 2>/dev/null \
-            && echo "nomount: re-asserted ksud de-link (service)" > /dev/kmsg 2>/dev/null
-    else
-        rm -f "$SUSFS_BIN.nm_new" 2>/dev/null
-    fi
-fi
-
 # --- refresh the manager card with the settled state ---
 # metamount.sh tags the card in post-fs-data, when the mount table is not final and
 # health cannot be judged yet. Now that boot is complete both are knowable, so restate
