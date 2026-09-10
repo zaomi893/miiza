@@ -50,6 +50,18 @@ jobs:
           echo "After cleanup:"
           df -h /
 
+      - name: 安装上游复合动作所需依赖
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang lld flex bison libelf-dev libssl-dev \
+            libncurses-dev zlib1g-dev liblz4-tool libxml2-utils rsync \
+            unzip dwarves file python3 ccache jq bc dos2unix kmod \
+            libdw-dev elfutils pigz
+          sudo apt-get clean
+
       - name: 使用已验证可启动版本的上游完整构建链
         id: upstream
         uses: Bouteillepleine/OnePlus-ReSukiSu_NMS/.github/actions/build-kernel@d112c8fa90d11ba4bc5da504a1f10cd9594a9e11
