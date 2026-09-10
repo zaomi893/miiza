@@ -1,0 +1,55 @@
+name: 一加15T 已验证Image与自有AK3交叉测试
+run-name: 15T known-good Image + cvhhji AK3 · ${{ inputs.device_serial }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_serial:
+        description: '测试设备序列号（仅用于文件名；本交叉测试不启用序列号锁）'
+        required: true
+        type: string
+        default: '3B1633003EB00000'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载已确认能启动的上游15T包
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 \
+            'https://github.com/Bouteillepleine/OnePlus-ReSukiSu_NMS/releases/download/nm1.32.0-r1/AK3_OP15T_A16_android16-6.12.38_RSKSU_35119.zip' \
+            -o upstream.zip
+          unzip -j upstream.zip Image -d upstream-image
+          echo '40354c116f898ddde101e3c824d0864463e7845ae51200d92dfa9d894e7dc3fd  upstream-image/Image' \
+            | sha256sum -c -
+
+      - name: 使用最新版 cvhhji AnyKernel3 打包
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch master https://github.com/cvhhji/AnyKernel3.git own-ak3
+          rm -rf own-ak3/.git own-ak3/serial_lock
+          cp upstream-image/Image own-ak3/Image
+          grep -q '^clear_legacy_ksud_attrs()' own-ak3/anykernel.sh
+          grep -q 'chattr -ia' own-ak3/anykernel.sh
+          test "$(sha256sum own-ak3/Image | awk '{print $1}')" = \
+            '40354c116f898ddde101e3c824d0864463e7845ae51200d92dfa9d894e7dc3fd'
+          SERIAL=$(printf '%s' '${{ inputs.device_serial }}' | tr -cd 'A-Za-z0-9._:-')
+          ZIP="ak3_OP15T_KNOWN_GOOD_IMAGE_ReSukiSU_35119_6.12_SN-${SERIAL}.zip"
+          (cd own-ak3 && zip -r9 "$GITHUB_WORKSPACE/$ZIP" . -x '*.git*')
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: 上传唯一测试包
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package.outputs.zip }}
+          path: ${{ steps.package.outputs.zip }}
+          archive: false
+          compression-level: 0
+          retention-days: 14
