@@ -22,6 +22,20 @@ jobs:
       # Tell the pinned upstream source-sync action this is a bounded single
       # device build, so cache misses fall back to the manifest's real remotes.
       OP_TOTAL_DEVICES: '1'
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 12G
+      CCACHE_COMPILERCHECK: content
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_IGNOREOPTIONS: '--sysroot*'
+      CCACHE_COMPRESSION: 'true'
+      CCACHE_COMPRESSION_LEVEL: '3'
+      CCACHE_DIRECT: 'true'
+      CCACHE_FILE_CLONE: 'true'
+      CCACHE_NOINODECACHE: 'true'
+      CCACHE_IS_KERNEL_COMPILING: 'true'
+      CCACHE_UMASK: '002'
+      CCACHE_SLOPPINESS: 'file_macro,time_macros,pch_defines,system_headers,locale'
     steps:
       - name: 检出本仓库
         uses: actions/checkout@v6
