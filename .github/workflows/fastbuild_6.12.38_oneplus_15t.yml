@@ -946,6 +946,7 @@ jobs:
           echo "PASS: Image 使用 OP15T 6.12.38 / r547379 基线"
 
       - name: 构建一加15T风驰研究工件
+        if: inputs.hmbird_compat_enable
         run: |
           set -euxo pipefail
           cd kernel_workspace
