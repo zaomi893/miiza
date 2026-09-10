@@ -185,7 +185,7 @@ jobs:
           sudo apt purge man-db &&
           sudo rm -rf /var/lib/man-db/auto-update &&
           sudo apt-get -o Acquire::http::Timeout=30 -o Acquire::Retries=2 update &&
-          sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev libdw-dev &
+          sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev libdw-dev cmake zlib1g-dev &
           #旧版完整指令：（由于经过验证大部分指令已内置于GitHub Action环境中，故进行精简）
           #sudo apt-get install -y --no-install-recommends curl bison flex make binutils git perl gcc python3 python-is-python3 bc libssl-dev libelf-dev libdw-dev zip unzip ccache
 
@@ -223,6 +223,19 @@ jobs:
 
           wait
           test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT"
+
+          # The pinned v1.25 pahole has a fixed 4096-entry per-CPU variable
+          # array. Our optional features cross that boundary. Build the same
+          # release with only the capacity raised so BTF variables and type-ID
+          # ordering are preserved (unlike --skip_encoding_btf_vars).
+          echo "正在构建扩容后的 pahole v1.25..."
+          git clone --depth=1 --branch v1.25 --recurse-submodules \
+            https://git.kernel.org/pub/scm/devel/pahole/pahole.git pahole-src
+          sed -i 's/#define MAX_PERCPU_VAR_CNT 4096/#define MAX_PERCPU_VAR_CNT 16384/' \
+            pahole-src/btf_encoder.c
+          cmake -S pahole-src -B pahole-src/build -D__LIB=lib -DCMAKE_BUILD_TYPE=Release
+          cmake --build pahole-src/build --parallel "$(nproc --all)"
+          test "$(pahole-src/build/pahole --version)" = "v1.25"
           if [[ "${{ inputs.adios_enable }}" == "true" || \
                 "${{ inputs.rekernel_enable }}" == "true" || \
                 "${{ inputs.bbr_enable }}" != "false" ]]; then
@@ -781,13 +794,14 @@ jobs:
       - name: 构建内核
         id: build_kernel
         run: |
+          set -euo pipefail
           WORKDIR="$(pwd)"
           export PATH="/usr/lib/ccache:$PATH"
           export PATH="$WORKDIR/kernel_workspace/clang19/bin:$PATH"
           export PATH="$WORKDIR/kernel_workspace/build-tools/bin:$PATH"
           export PATH="$WORKDIR/kernel_workspace/rust/bin:$PATH"
           export CLANG_DIR="$WORKDIR/kernel_workspace/clang19/bin"
-          export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
+          export PAHOLE="$WORKDIR/kernel_workspace/pahole-src/build/pahole"
           test -x "$PAHOLE"
           CLANG_VERSION="$($CLANG_DIR/clang --version | head -n 1)"
           LLD_VERSION="$($CLANG_DIR/ld.lld --version | head -n 1)"
