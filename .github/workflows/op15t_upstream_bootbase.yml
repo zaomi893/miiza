@@ -1,0 +1,87 @@
+name: 6.12.38 一加15T 上游可启动基线复现
+run-name: 15T upstream bootbase · ${{ inputs.device_serial }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_serial:
+        description: '仅用于测试包文件名；此基线不启用序列号锁'
+        required: true
+        type: string
+        default: '3B1633003EB00000'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出本仓库
+        uses: actions/checkout@v6
+
+      - name: 使用已验证可启动版本的上游完整构建链
+        id: upstream
+        uses: Bouteillepleine/OnePlus-ReSukiSu_NMS/.github/actions/build-kernel@d112c8fa90d11ba4bc5da504a1f10cd9594a9e11
+        with:
+          op_config_json: '{"model":"OP15T","soc":"canoe","branch":"wild/sm8850","manifest":"oneplus_15t_w.xml","android_version":"android16","kernel_version":"6.12","os_version":"A16","lto":"none","zyc_compiler":"","c_compiler":"kernel_platform/prebuilts/clang/host/linux-x86/clang-r547379/bin","rust_compiler":"kernel_platform/prebuilts/rust/linux-x86/1.82.0/bin","bindgen":"","rust_build":true,"disk_cleanup":true,"hmbird":false,"NMS":true,"opt":false,"ds":false,"bbg":false,"bbr":true,"bbr3":true,"ttl":true,"ip_set":true,"unicode":true,"ntsync":false,"blacklist_modules":"oplus_secure_guard_new","uname":"5-g844001fb8721-ab14552068-4k"}'
+          ksu_type: RSKSU
+          ksu_branch_or_hash: f1dd81dc96d7f3f6691e6ac8b50fba9ae8a2f17c
+          build_timestamp: 'Fri Dec 5 02:05:55 UTC 2025'
+          optimize_level: O2
+          clean: false
+          debug: false
+          enable_adios: false
+          nomount_ref: main
+          patches_ref: main
+          github_token: ${{ secrets.GH_TOKEN }}
+
+      - name: 验证与昨晚可启动包完全相同的 Image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="$GITHUB_WORKSPACE/OP15T/kernel_platform/common/out/arch/arm64/boot/Image"
+          test -s "$IMAGE"
+          EXPECTED=40354c116f898ddde101e3c824d0864463e7845ae51200d92dfa9d894e7dc3fd
+          ACTUAL=$(sha256sum "$IMAGE" | awk '{print $1}')
+          echo "expected=$EXPECTED"
+          echo "actual=$ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+
+      - name: 使用 cvhhji AnyKernel3 重新打包
+        id: own_ak3
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch master \
+            "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AnyKernel3.git" own-ak3
+          rm -rf own-ak3/.git own-ak3/serial_lock
+          cp "$GITHUB_WORKSPACE/OP15T/kernel_platform/common/out/arch/arm64/boot/Image" own-ak3/Image
+          grep -q '^clear_legacy_ksud_attrs()' own-ak3/anykernel.sh
+          grep -q 'chattr -ia' own-ak3/anykernel.sh
+          SERIAL=$(printf '%s' '${{ inputs.device_serial }}' | tr -cd 'A-Za-z0-9._:-')
+          ZIP="ak3_OP15T_UPSTREAM_BOOTBASE_ReSukiSU_35119_6.12_android16-5-g844001fb8721-ab14552068-4k_SN-${SERIAL}.zip"
+          (cd own-ak3 && zip -r9 "$GITHUB_WORKSPACE/$ZIP" . -x '*.git*')
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: 删除上游动作自动上传的重复包
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("AK3_OP15T_A16_")) | .id' \
+            | while read -r id; do
+                [ -n "$id" ] && gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+              done
+
+      - name: 上传唯一的测试刷机包
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.own_ak3.outputs.zip }}
+          path: ${{ steps.own_ak3.outputs.zip }}
+          archive: false
+          compression-level: 0
+          retention-days: 14
