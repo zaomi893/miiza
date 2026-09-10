@@ -60,7 +60,6 @@ fi
 # ksud were broken this service wouldn't run — so we only re-assert the split here.)
 KSUD=/data/adb/ksud
 SUSFS_BIN=/data/adb/ksu/bin/ksu_susfs
-[ -f "$KSUD" ] && chattr -i "$KSUD" 2>/dev/null
 if [ -f "$KSUD" ] && [ -f "$SUSFS_BIN" ] \
    && [ "$(stat -c %s "$KSUD" 2>/dev/null)" -gt 1000000 ] \
    && [ "$(stat -c %i "$KSUD" 2>/dev/null)" = "$(stat -c %i "$SUSFS_BIN" 2>/dev/null)" ]; then
