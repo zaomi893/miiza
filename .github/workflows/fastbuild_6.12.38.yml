@@ -22,11 +22,6 @@ on:
         required: false
         type: string
         default: '3B15A800Y5D00000'
-      self_config:
-        description: '自用配置'
-        required: true
-        type: boolean
-        default: false
       ksu_type:
         description: 'KernelSU分支(ReSukiSU/SukiSU Ultra/KernelSU Next/KSU(原版)/无内置KSU,默认ReSukiSU)'
         required: true
@@ -901,13 +896,8 @@ jobs:
         id: create_zip
         run: |
           cd kernel_workspace
-          if [[ "${{ inputs.self_config }}" == "true" ]]; then
-            git clone --depth=1 --branch master https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AK3 ak3_workspace
-            AK3_PREFIX="AnyKernel3"
-          else
-            git clone --depth=1 --branch master https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AnyKernel3 ak3_workspace
-            AK3_PREFIX="ak3"
-          fi
+          git clone --depth=1 --branch master https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AnyKernel3 ak3_workspace
+          AK3_PREFIX="ak3"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
           install -m 0644 "$GITHUB_WORKSPACE/serial_lock/build-token" ./serial_lock/build-token
