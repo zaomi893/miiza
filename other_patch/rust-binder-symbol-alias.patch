@@ -29,7 +29,7 @@ index f6efc62..3d724a1 100644
 +	char *cursor;
 +
 +	/* Restrict this bridge to the verified PLK110 stock Binder module. */
-+	if (!oplus_device_serial_verified() ||
++	if (!oplus_hmbird_serial_gate_verified() ||
 +	    strcmp(mod->name, "rust_binder") || !mod->scmversion ||
 +	    strcmp(mod->scmversion, "gb2a876903b49"))
 +		return name;

@@ -11,7 +11,7 @@ index f6efc62..4c28a69 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,157 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,164 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -32,7 +32,14 @@ index f6efc62..4c28a69 100644
 +#define OPLUS_HMBIRD_BTF_IDS_SIZE	320U
 +#define OPLUS_HMBIRD_BTF_ID_COUNT	39U
 +
-+extern bool oplus_device_serial_verified(void);
++extern bool oplus_device_serial_verified(void) __weak;
++
++static bool oplus_hmbird_serial_gate_verified(void)
++{
++	/* Diagnostic/unlocked builds do not provide the serial-lock symbol. */
++	return !oplus_device_serial_verified ||
++		oplus_device_serial_verified();
++}
 +
 +static const u8 oplus_hmbird_stock_btf_sha256[SHA256_DIGEST_SIZE] = {
 +	0x7f, 0x9a, 0x87, 0xf1, 0xc1, 0x7a, 0x37, 0xe0,
@@ -119,7 +126,7 @@ index f6efc62..4c28a69 100644
 +		}
 +		return;
 +	}
-+	if (!oplus_device_serial_verified()) {
++	if (!oplus_hmbird_serial_gate_verified()) {
 +		pr_err("%s: device binding rejected matching BTF metadata\n",
 +		       mod->name);
 +		return;
@@ -169,7 +176,7 @@ index f6efc62..4c28a69 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3515,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3522,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  
