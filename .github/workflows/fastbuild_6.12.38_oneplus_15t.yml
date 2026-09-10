@@ -887,6 +887,13 @@ jobs:
           export OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump OBJSIZE=llvm-size STRIP=llvm-strip
           # 5. 编译前运行官方环境配置脚本
           source "./_setup_env.sh" 2>/dev/null || true
+          # _setup_env.sh restores the prebuilts path and PAHOLE value. Point
+          # back to the capacity-patched v1.25 after sourcing it, otherwise the
+          # build silently uses build-tools/bin/pahole and hits 4096 again.
+          export PAHOLE="$WORKDIR/kernel_workspace/pahole-src/build/pahole"
+          export LD_LIBRARY_PATH="$WORKDIR/kernel_workspace/pahole-src/build${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          grep -q '#define MAX_PERCPU_VAR_CNT 16384' "$WORKDIR/kernel_workspace/pahole-src/btf_encoder.c"
+          test -x "$PAHOLE"
           export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
 
           #在构建内核的同时清除不必要的.NET, Android NDK, Haskell, CodeQL运行库，清理空间且不阻塞后续步骤运行
