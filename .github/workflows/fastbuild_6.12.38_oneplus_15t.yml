@@ -922,7 +922,10 @@ jobs:
 
           export CC="ccache clang" CXX="ccache clang++"
           export HOSTCC="ccache clang" HOSTCXX="ccache clang++"
-          make LD="$(pwd)/ld-wrapper" HOSTLD="$(pwd)/ld-wrapper" -j"$(nproc --all)" O=out KCFLAGS="$KCFLAGS" KCPPFLAGS="$KCPPFLAGS" Image 2>&1 | tee build.log
+          # The kernel Makefile assigns `PAHOLE = pahole`, so an exported
+          # environment variable is not enough. A command-line make variable
+          # has the required precedence and keeps the patched encoder active.
+          make PAHOLE="$PAHOLE" LD="$(pwd)/ld-wrapper" HOSTLD="$(pwd)/ld-wrapper" -j"$(nproc --all)" O=out KCFLAGS="$KCFLAGS" KCPPFLAGS="$KCPPFLAGS" Image 2>&1 | tee build.log
           echo "内核编译完成！"
           if [[ "${{ github.event.inputs.ccache_debug }}" == "true" ]]; then
             echo "正在打包ccache日志及调试信息..."
