@@ -17,6 +17,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       # Tell the pinned upstream source-sync action this is a bounded single
       # device build, so cache misses fall back to the manifest's real remotes.
@@ -24,6 +25,30 @@ jobs:
     steps:
       - name: 检出本仓库
         uses: actions/checkout@v6
+
+      - name: 按上游流程释放完整源码构建空间
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Before cleanup:"
+          df -h /
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/aws-sam-cli \
+            /usr/local/share/chromium \
+            /usr/local/lib/heroku \
+            /opt/az \
+            /opt/microsoft/powershell \
+            /opt/hostedtoolcache/go \
+            /opt/hostedtoolcache/PyPy \
+            /usr/local/julia* || true
+          sudo apt-get clean
+          docker system prune -af >/dev/null 2>&1 || true
+          echo "After cleanup:"
+          df -h /
 
       - name: 使用已验证可启动版本的上游完整构建链
         id: upstream
