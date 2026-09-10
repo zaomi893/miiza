@@ -36,8 +36,8 @@ fi
 # Refresh changed APK/HMA inventories, auto-select their packages unless the
 # user explicitly unchecked them, then publish AppCloak policy.
 [ -f "$MODDIR/scan.sh" ] && sh "$MODDIR/scan.sh" --apply >/dev/null 2>&1
-# Publish the global package-visibility list to NoMount's AppCloak backend.
-[ -f "$MODDIR/appcloak-sync.sh" ] && sh "$MODDIR/appcloak-sync.sh" >/dev/null 2>&1
+# scan.sh --apply already publishes the AppCloak policy. Do not write and
+# restorecon the same files a second time during every boot.
 
 # Scene creates a randomized debugfs mount only after its service/game path is
 # active. The watcher starts fast, then backs off and remains available for a
@@ -120,12 +120,12 @@ fi
 # window is a real d_drop-style regression. Non-fatal; surfaced on the card / WebUI.
 if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ]; then
     _try=0
-    while [ "$_try" -lt 6 ]; do
+    while [ "$_try" -lt 2 ]; do
         "$BIN" check --device --write >/dev/null 2>&1
         _cons=$(sed -n 's/^consistency=//p' "$NMDIR/health.txt" 2>/dev/null)
         case "$_cons" in ok|unchecked*|'') break ;; esac
         _try=$((_try + 1))
-        sleep 15
+        sleep 10
     done
     _hv=$(sed -n 's/^verdict=//p' "$NMDIR/health.txt" 2>/dev/null)
     echo "nomount: device check verdict=${_hv:-unknown} consistency=${_cons:-unknown} (settle tries=$_try)" > /dev/kmsg 2>/dev/null
