@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Minimal NoMount-owned filter for Android's central package-visibility gate. */
 final class AppCloak {
@@ -29,8 +30,33 @@ final class AppCloak {
     private static volatile Set<String> hidden = Collections.emptySet();
     private static volatile Set<String> scoped = Collections.emptySet();
     private static volatile long policyStamp = Long.MIN_VALUE;
-    private static volatile long checkedAt;
+    private static volatile long policyGeneration;
+    private static volatile long checkedAt = -10_000L;
     private static volatile String phase = "init";
+    private static final long POLICY_CHECK_INTERVAL_MS = 10_000L;
+    private static final long CALLER_CACHE_TTL_MS = 60_000L;
+    private static final ConcurrentHashMap<Integer, CallerPolicy> callerCache =
+            new ConcurrentHashMap<>();
+    private static volatile Class<?> packageStateClass;
+    private static volatile Method packageNameMethod;
+    private static volatile Class<?> appIdClass;
+    private static volatile Method appIdMethod;
+    private static volatile Class<?> computerClass;
+    private static volatile Method packagesForUidMethod;
+
+    private static final class CallerPolicy {
+        final boolean hidden;
+        final boolean scoped;
+        final long generation;
+        final long expiresAt;
+
+        CallerPolicy(boolean hidden, boolean scoped, long generation, long expiresAt) {
+            this.hidden = hidden;
+            this.scoped = scoped;
+            this.generation = generation;
+            this.expiresAt = expiresAt;
+        }
+    }
 
     private AppCloak() {}
 
@@ -145,19 +171,25 @@ final class AppCloak {
             int callerIndex, int targetIndex, int snapshotIndex) throws Throwable {
         try {
             int callerUid = intArgument(frame, callerIndex);
-            Object targetState = referenceArgument(frame, targetIndex);
-            String target = packageName(targetState);
             int callerAppId = callerUid % 100000;
-            String[] callerPackages = callerAppId >= 10000
-                    ? packagesForUid(frame, callerUid, snapshotIndex) : null;
-            if (callerAppId >= 10000 && containsHidden(callerPackages)) {
+            CallerPolicy caller = callerAppId >= 10000
+                    ? callerPolicy(frame, callerUid, snapshotIndex) : null;
+            if (caller != null && caller.hidden) {
                 // A hidden caller sees the complete package set, including
                 // other members of the hidden group.
                 frame.accessor().setBoolean(EmulatedStackFrame.RETURN_VALUE_IDX, false);
                 return;
             }
-            if (callerAppId >= 10000 && containsScoped(callerPackages)
-                    && target != null && isHidden(target)
+            // Most callers are outside the configured scope. Return to the original
+            // gate before reflecting on the target package in that overwhelmingly
+            // common path.
+            if (caller == null || !caller.scoped) {
+                Transformers.invokeExactNoChecks(original, frame);
+                return;
+            }
+            Object targetState = referenceArgument(frame, targetIndex);
+            String target = packageName(targetState);
+            if (target != null && hidden.contains(target)
                     && !callerOwnsTarget(frame, callerUid, targetState, target,
                             snapshotIndex)) {
                 frame.accessor().setBoolean(EmulatedStackFrame.RETURN_VALUE_IDX, true);
@@ -181,8 +213,14 @@ final class AppCloak {
     private static boolean callerOwnsTarget(EmulatedStackFrame frame, int uid,
             Object targetState, String target, int snapshotIndex) {
         try {
-            Method appId = targetState.getClass().getMethod("getAppId");
-            appId.setAccessible(true);
+            Class<?> type = targetState.getClass();
+            Method appId = appIdClass == type ? appIdMethod : null;
+            if (appId == null) {
+                appId = type.getMethod("getAppId");
+                appId.setAccessible(true);
+                appIdClass = type;
+                appIdMethod = appId;
+            }
             Object value = appId.invoke(targetState);
             if (value instanceof Integer && uid % 100000 == (Integer) value) return true;
         } catch (Throwable ignored) {}
@@ -208,33 +246,56 @@ final class AppCloak {
         try {
             Object computer = referenceArgument(frame, snapshotIndex);
             if (computer == null) return null;
-            Method m = computer.getClass().getMethod("getPackagesForUid", int.class);
-            m.setAccessible(true);
+            Class<?> type = computer.getClass();
+            Method m = computerClass == type ? packagesForUidMethod : null;
+            if (m == null) {
+                m = type.getMethod("getPackagesForUid", int.class);
+                m.setAccessible(true);
+                computerClass = type;
+                packagesForUidMethod = m;
+            }
             return (String[]) m.invoke(computer, uid);
         } catch (Throwable ignored) {}
         return null;
     }
 
-    private static boolean containsHidden(String[] packages) {
-        if (packages != null) {
-            for (String pkg : packages) if (isHidden(pkg)) return true;
-        }
-        return false;
-    }
-
-    private static boolean containsScoped(String[] packages) {
+    private static CallerPolicy callerPolicy(EmulatedStackFrame frame, int uid,
+            int snapshotIndex) {
         reloadIfNeeded();
+        long now = SystemClock.uptimeMillis();
+        long generation = policyGeneration;
+        CallerPolicy cached = callerCache.get(uid);
+        if (cached != null && cached.generation == generation && now < cached.expiresAt)
+            return cached;
+        boolean isHidden = false;
+        boolean isScoped = false;
+        String[] packages = packagesForUid(frame, uid, snapshotIndex);
         if (packages != null) {
-            for (String pkg : packages) if (scoped.contains(pkg)) return true;
+            Set<String> hiddenSnapshot = hidden;
+            Set<String> scopedSnapshot = scoped;
+            for (String pkg : packages) {
+                isHidden |= hiddenSnapshot.contains(pkg);
+                isScoped |= scopedSnapshot.contains(pkg);
+                if (isHidden && isScoped) break;
+            }
         }
-        return false;
+        CallerPolicy result = new CallerPolicy(isHidden, isScoped, generation,
+                now + CALLER_CACHE_TTL_MS);
+        callerCache.put(uid, result);
+        return result;
     }
 
     private static String packageName(Object state) {
         if (state == null) return null;
         try {
-            Method m = state.getClass().getMethod("getPackageName");
-            m.setAccessible(true);
+            Class<?> type = state.getClass();
+            Method m = packageStateClass == type ? packageNameMethod : null;
+            if (m == null) {
+                m = type.getMethod("getPackageName");
+                m.setAccessible(true);
+                packageStateClass = type;
+                packageNameMethod = m;
+            }
             return (String) m.invoke(state);
         } catch (Throwable ignored) {}
         for (String fieldName : new String[]{"mName", "name"}) {
@@ -248,18 +309,13 @@ final class AppCloak {
         return null;
     }
 
-    private static boolean isHidden(String pkg) {
-        reloadIfNeeded();
-        return hidden.contains(pkg);
-    }
-
     private static void reloadIfNeeded() {
         long now = SystemClock.uptimeMillis();
-        if (now - checkedAt >= 1000) reload(now);
+        if (now - checkedAt >= POLICY_CHECK_INTERVAL_MS) reload(now);
     }
 
     private static synchronized void reload(long now) {
-        if (now - checkedAt < 1000) return;
+        if (now - checkedAt < POLICY_CHECK_INTERVAL_MS) return;
         checkedAt = now;
         long hiddenStamp = POLICY.exists() ? POLICY.lastModified() ^ POLICY.length() : Long.MIN_VALUE;
         long scopeStamp = SCOPE_POLICY.exists()
@@ -271,6 +327,8 @@ final class AppCloak {
         hidden = Collections.unmodifiableSet(nextHidden);
         scoped = Collections.unmodifiableSet(nextScoped);
         policyStamp = stamp;
+        policyGeneration++;
+        callerCache.clear();
         Log.i(TAG, "loaded " + nextHidden.size() + " hidden target(s), "
                 + nextScoped.size() + " scoped caller(s)");
     }

@@ -4045,7 +4045,11 @@ static struct proc_dir_entry *nm_pathhide_pde;
 bool nomount_pathhide_match_path(const char *path);
 static bool nm_pathhide_scope_matches(const struct nm_pathhide_table *table);
 
-#if defined(CONFIG_KPROBES) && defined(CONFIG_ARM64)
+/* The integration patch already checks PathMask in namei/stat/readdir/proc.
+ * Do not add syscall kretprobes on top of those VFS hooks: open/stat/access and
+ * getdents are system-wide hot paths, and probing them duplicates the result
+ * while measurably increasing CPU residency and power use. */
+#if 0 && defined(CONFIG_KPROBES) && defined(CONFIG_ARM64)
 struct nm_pathhide_syscall_data {
 	bool matched;
 	bool close_result;

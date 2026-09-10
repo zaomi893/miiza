@@ -1,7 +1,8 @@
 #!/system/bin/sh
 # Adapted from LKM-PathMask 2.7.2: discover only the official Scene package's
 # randomized debugfs mount under /dev. Scene may create it long after boot, so
-# boot mode backs off after ten minutes and watches for up to 24 hours.
+# boot mode uses inotify for immediate discovery and only a five-minute polling
+# fallback, avoiding the old 30-second wakeup for the entire first day.
 MODDIR=${0%/*}
 NMDIR=/data/adb/nomount
 PKG=com.omarea.vtools
@@ -9,13 +10,17 @@ STATE="$NMDIR/scene_debugfs_state"
 PATHS="$NMDIR/scene_debugfs_paths"
 LOCK="$NMDIR/scene_debugfs_watch.lock"
 
+# BusyBox inotifyd invokes this program as: PROGRAM watched-path events [name].
+# Re-enter in one-shot event mode before taking the long-lived watcher lock.
+[ "${1:-}" = "/dev" ] && exec sh "$0" --event
+
 [ -e /proc/pathhide ] || exit 0
 grep -q "^$PKG " /data/system/packages.list 2>/dev/null || {
     printf 'status=no-package\n' > "$STATE"
     : > "$PATHS"
     exit 0
 }
-if [ "$1" != "--once" ]; then
+if [ "${1:-}" != "--once" ] && [ "${1:-}" != "--event" ]; then
     if ! mkdir "$LOCK" 2>/dev/null; then
         _old_pid=$(cat "$LOCK/pid" 2>/dev/null)
         if [ -n "$_old_pid" ] && kill -0 "$_old_pid" 2>/dev/null; then
@@ -27,7 +32,7 @@ if [ "$1" != "--once" ]; then
         mkdir "$LOCK" 2>/dev/null || exit 0
     fi
     printf '%s\n' "$$" > "$LOCK/pid" 2>/dev/null
-    trap 'rm -f "$LOCK/pid" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT HUP INT TERM
+    trap '_ep=$(cat "$LOCK/event_pid" 2>/dev/null); [ -n "$_ep" ] && kill "$_ep" 2>/dev/null; rm -f "$LOCK/pid" "$LOCK/event_pid" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT HUP INT TERM
 fi
 
 _find_scene_mounts() {
@@ -72,20 +77,37 @@ _apply_found() {
     return 1
 }
 
-if [ "$1" = "--once" ]; then
-    if _find_scene_mounts; then _apply_found; exit $?; fi
+if [ "${1:-}" = "--once" ] || [ "${1:-}" = "--event" ]; then
+    if _find_scene_mounts; then
+        _apply_found
+        _rc=$?
+        if [ "${1:-}" = "--event" ] && [ "$_rc" = 0 ]; then
+            _watch_pid=$(cat "$LOCK/pid" 2>/dev/null)
+            [ -n "$_watch_pid" ] && kill "$_watch_pid" 2>/dev/null
+        fi
+        exit "$_rc"
+    fi
     rm -f "$NMDIR/.scene_paths.new"
     printf 'status=not-found\nupdated=%s\n' "$(date +%s 2>/dev/null)" > "$STATE"
     exit 0
 fi
 
+# React immediately when Scene creates its randomized directory below /dev.
+# The foreground loop remains as a sparse fallback for devices whose mountpoint
+# already existed before debugfs was mounted and therefore emitted no create event.
+BB=/data/adb/ksu/bin/busybox
+if [ -x "$BB" ] && "$BB" --list 2>/dev/null | grep -qx inotifyd; then
+    "$BB" inotifyd "$0" /dev:ny >/dev/null 2>&1 &
+    printf '%s\n' "$!" > "$LOCK/event_pid" 2>/dev/null
+fi
+
 _i=0
-while [ "$_i" -lt 3180 ]; do
+while [ "$_i" -lt 312 ]; do
     if _find_scene_mounts; then
         _apply_found
         exit $?
     fi
-    if [ "$_i" -lt 300 ]; then sleep 2; else sleep 30; fi
+    if [ "$_i" -lt 24 ]; then sleep 5; else sleep 300; fi
     _i=$((_i + 1))
 done
 rm -f "$NMDIR/.scene_paths.new"
