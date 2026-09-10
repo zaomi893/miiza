@@ -39,11 +39,9 @@ chmod 0755 "$BIN" "$NM_BIN" 2>/dev/null
 # after this, action.sh's cp only hits the copy and the ksud daemon inode is untouched.
 # Never change ksud's inode flags: reading an immutable source is allowed, and forcing
 # +i here persists across kernel switches and blocks ReSukiSU from updating userspace.
-# Clear the flag once to repair installations affected by NoMount Suite <= 1.6.8.
 # Only the de-link below is limited to a genuine (>1MB) multicall sharing the inode.
 KSUD=/data/adb/ksud
 SUSFS_BIN=/data/adb/ksu/bin/ksu_susfs
-[ -f "$KSUD" ] && chattr -i "$KSUD" 2>/dev/null
 if [ -f "$KSUD" ] && [ -f "$SUSFS_BIN" ] \
    && [ "$(stat -c %i "$KSUD" 2>/dev/null)" = "$(stat -c %i "$SUSFS_BIN" 2>/dev/null)" ] \
    && [ "$(stat -c %s "$KSUD" 2>/dev/null)" -gt 1000000 ]; then

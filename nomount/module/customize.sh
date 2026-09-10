@@ -3,11 +3,6 @@
 ui_print "- Installing NoMount metamodule"
 ui_print "- version $(grep_prop version "$MODPATH/module.prop")"
 
-# NoMount Suite <= 1.6.8 could leave the ReSukiSU userspace daemon immutable.
-# That survives kernel flashes and prevents a later SUSFS build from refreshing ksud.
-# Repair it silently during upgrade; the module never owns this inode flag.
-[ -f /data/adb/ksud ] && chattr -i /data/adb/ksud 2>/dev/null
-
 # --- integrity check: verify bundled files against their sha256 manifest ---
 # Catches a corrupted download or a tampered zip before we run a root binary.
 SUMS="$MODPATH/nomount.sha256sums"
