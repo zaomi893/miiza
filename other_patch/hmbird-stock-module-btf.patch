@@ -11,7 +11,7 @@ index f6efc62..4c28a69 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,164 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,169 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -32,13 +32,18 @@ index f6efc62..4c28a69 100644
 +#define OPLUS_HMBIRD_BTF_IDS_SIZE	320U
 +#define OPLUS_HMBIRD_BTF_ID_COUNT	39U
 +
-+extern bool oplus_device_serial_verified(void) __weak;
++#ifdef OPLUS_DEVICE_SERIAL_LOCK_ENABLED
++extern bool oplus_device_serial_verified(void);
++#endif
 +
 +static bool oplus_hmbird_serial_gate_verified(void)
 +{
-+	/* Diagnostic/unlocked builds do not provide the serial-lock symbol. */
-+	return !oplus_device_serial_verified ||
-+		oplus_device_serial_verified();
++#ifdef OPLUS_DEVICE_SERIAL_LOCK_ENABLED
++	return oplus_device_serial_verified();
++#else
++	/* Diagnostic/unlocked builds have no device-binding gate. */
++	return true;
++#endif
 +}
 +
 +static const u8 oplus_hmbird_stock_btf_sha256[SHA256_DIGEST_SIZE] = {
