@@ -27,13 +27,18 @@
 
 这里的“已下发”不是只看模块是否加载：`oplusHmbirdBpfManager` 已向内核注册，进入游戏后 `/proc/sys/hmbird_II/prefer_cpu`、`prefer_idle` 和 `prefer_preempt` 出现 `UnityMain`、`UnityGfxDeviceW`、`Job.worker` 等游戏线程规则，同时内核记录 `gpa pid set`、`scx enabled` 和 heartbeat。这说明风驰已接管并实际收到游戏云控调度配置。
 
-## 16.0.9.400 源码位置
+## 风驰版本入口
 
-同步入口在 [`.github/workflows/fastbuild_6.12.23_oneplus_15.yml`](.github/workflows/fastbuild_6.12.23_oneplus_15.yml)：
+一加 15 与一加 15T 分别提供金标、紫标两套风驰源码入口。四条工作流都只在 `vendor/oplus/kernel/cpu` 目录消费 OnePlusOSS 官方模块源码，并用同一次 GKI 编译提取匹配的 `.BTF` / `.BTF_ids`：
 
-- 可启动的 common GKI 底座仍取自本仓库配置的 `6.12.23` 源码分支，避免换成当前无法在该机启动的官方 common 版本。
-- 风驰模块源码固定到 OnePlus 官方 modules/device-tree 仓库提交 [`5ab2a689ff87d7d28c511f1762cf41c1b90d965a`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/5ab2a689ff87d7d28c511f1762cf41c1b90d965a)。CI 只稀疏检出 `vendor/oplus/kernel/cpu`，不会合入其中的 CPH/OOS 设备配置和非国行刷机逻辑。
-- 上述同步、仓库内资源自托管及序列号锁首次汇总在本仓库提交 [`7bf19d7`](https://github.com/zaomi893/miiza/commit/7bf19d7a30844120162045090b55f8d7202c8864)。官方上游提交本身同时包含多地区内容，因此这里准确的边界是“仅消费风驰 CPU 模块目录”，不是把整个提交宣称为 CN-only。
+| 机型 | 版本 | 官方同步版本 | 工作流 |
+| --- | --- | --- | --- |
+| 一加 15 | 金标 | `PLK110_16.0.9.400(CN01)`，[`5ab2a689`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/5ab2a689ff87d7d28c511f1762cf41c1b90d965a) | `fastbuild_6.12.23_oneplus_15_hmbird_gold.yml` |
+| 一加 15 | 紫标 | `PLK110_16.0.5.701(CN01)`，[`7fb7abf`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/7fb7abf097a18c6e2ad2fb9d18876b095898e87f) | `fastbuild_6.12.23_oneplus_15_hmbird_purple.yml` |
+| 一加 15T | 金标 | `PLZ110_16.0.8.300(CN01)`，[`d447f71`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/d447f713d6403f707a2910383495f4ada98cfa4d) | `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` |
+| 一加 15T | 紫标 | `PLZ110_16.0.4.603(CN01)`，[`bc8d91d`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/bc8d91d1e146be96d2e27bebe8f753f82bdebeee) | `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml` |
+
+一加 15 的 common GKI 底座仍取自本仓库配置的 `6.12.23` 源码分支，避免换成当前无法在该机启动的官方 common 版本；一加 15T 的底座继续跟随 `oneplus/sm8850_b_16.0_oneplus_15t` 已验证启动链。金标、紫标只改变风驰模块源码提交，不改变内核底座、工具链、启动基线或序列号锁。`7fb7abf` 与 `bc8d91d` 不再是当前分支头，工作流按完整 SHA 精确获取这两个历史同步点。
 
 ## 风驰兼容方式
 
