@@ -199,7 +199,7 @@ jobs:
           IMAGE="$GITHUB_WORKSPACE/kernel_workspace/common/out/arch/arm64/boot/Image"
           OUT="$GITHUB_WORKSPACE/kernel_workspace/common/out"
           test -s "$IMAGE"
-          file "$IMAGE" | grep -qi 'ARM aarch64'
+          file "$IMAGE" | grep -qiE 'ARM64|aarch64'
           SIZE=$(stat -c%s "$IMAGE")
           test "$SIZE" -gt 6000000
           BANNER=$(strings "$IMAGE" | grep -m1 '^Linux version ' || true)
