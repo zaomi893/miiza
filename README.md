@@ -63,16 +63,14 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 
 构建所需补丁、Droidspaces、NoMount、压缩资源及辅助文件从本仓库检出。LLVM/Rust 工具链、KernelSU 组件等大型上游依赖仍由 CI 从其各自官方或固定发布地址获取。
 
-同一仓库现在还提供三条独立构建入口：
+同一仓库现在提供以下独立构建入口：
 
+- `fastbuild_6.12.23_oneplus_15_hmbird_gold.yml` / `fastbuild_6.12.23_oneplus_15_hmbird_purple.yml`：一加 15 金标、紫标风驰构建。
+- `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml`：一加 15T 金标、紫标风驰构建。源码使用 `zaomi893/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_oneplus_15t` 分支；TCP Brutal、ADIOS、Re-Kernel 源码随树提供，但仅由各自开关启用。版本号为 `android16-5-gbe6292a1543d-ab14525421-4k`，构建时间默认为 `Mon Dec 1 03:28:37 UTC 2025`，工具链为 Clang `r547379` / Rust 1.82。
 - `fastbuild_6.12.38_oneplus_ace6t.yml`：沿用 Ace6T 源码的 6.12.38 构建。
-- `fastbuild_6.12.38_oneplus_15t.yml`：一加 15T 专用 6.12.38 快速构建。源码使用 `zaomi893/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_oneplus_15t` 分支，固定 `14ba6a5ab0...`（其父提交为已验证可启动的 `150cab866c...`）；TCP Brutal、ADIOS、Re-Kernel 源码随树提供，但仅由各自开关启用。版本号为 `android16-5-gbe6292a1543d-ab14525421-4k`，构建时间默认为 `Mon Dec 1 03:28:37 UTC 2025`，工具链为 Clang `r547379` / Rust 1.82，继续固定 `CONFIG_LTO_NONE=y`。
-- `fastbuild_6.12.38_oneplus_15t_clean.yml`：一加 15T 干净可启动基线，只加入当前公开仓库的 ReSukiSU root，不加入风驰 BTF、序列号锁或其他功能；通过 uname、ARM64 Image、`CONFIG_LTO_NONE`、`CONFIG_KSU` 和 BTF 配置检查后再上传刷机包。
-
-15T 的 6.12.38 推荐使用上述完整快速构建入口，而不是仅用于增量取样的 `op15t_serial_hmbird.yml`。该入口采用与 6.12.23 相同的显式源码、工具链、ccache、补丁、序列号锁、风驰 BTF 元数据和 AnyKernel3 流程；序列号锁与风驰兼容默认开启，其余自定义功能均保留为可选输入，默认值维持 NMS 已验证的可启动组合。这样可以在保持 15T 启动和风驰基线的前提下，按需选择 LZ4/Zstd、LZ4KD、Droidspaces、网络增强、ADIOS、Re-Kernel、基带保护、NoMount、SUSFS 和 KPM 等功能。
 - `fastbuild_6.12.58.yml`：6.12.58 构建。
 
-三者均复用 6.12.23 已稳定使用的序列号锁、ReSukiSU 分支选择、LZ4/Zstd、LZ4KD、zarm、Unicode 修复、BBR/Brutal、Droidspaces、网络增强、ADIOS、Re-Kernel、基带保护、NoMount v1.6.8、AppCloak、PathMask 和刷机包命名规则，并分别保留开启/关闭选项。所有工作流现在默认关闭 SUSFS 和 NoMount，且两者同时开启会立即拒绝构建。15T 的 6.12.38 工作流已切换到 `oneplus/sm8850_b_16.0_oneplus_15t` 分支，该分支以已验证可启动的 `150cab866c...` 为父提交并内置 TCP Brutal、ADIOS、Re-Kernel 源码；这些功能仍由独立开关控制，默认组合保持启动基线，风驰兼容与序列号锁固定启用。
+这些入口复用 6.12.23 已稳定使用的序列号锁、ReSukiSU 分支选择、LZ4/Zstd、LZ4KD、zarm、Unicode 修复、BBR/Brutal、Droidspaces、网络增强、ADIOS、Re-Kernel、基带保护、NoMount、AppCloak、PathMask 和刷机包命名规则，并分别保留开启/关闭选项。所有工作流默认关闭 SUSFS 和 NoMount，且两者同时开启会立即拒绝构建。15T 的序列号锁与风驰兼容固定启用；`self_config` 只属于 6.12.23 的一加 15 入口，机器人不会向 15T 工作流提交该输入。
 
 15T 的 6.12.38 构建直接使用已验证可启动的 NMS OP15T common 基线及其 Clang r547379 / Rust 1.82 身份；源码分支额外提供 TCP Brutal、ADIOS、Re-Kernel，关闭相应开关时不会启用它们。首次构建建议保持默认选项，仅在确认启动后逐项开启其他功能。
 
