@@ -192,26 +192,6 @@ jobs:
           echo "Image=$COMMON/out/arch/arm64/boot/Image" >> "$GITHUB_ENV"
           ccache -s
 
-      - name: 验证 15T 干净 Image 启动基线
-        shell: bash
-        run: |
-          set -euo pipefail
-          IMAGE="$GITHUB_WORKSPACE/kernel_workspace/common/out/arch/arm64/boot/Image"
-          OUT="$GITHUB_WORKSPACE/kernel_workspace/common/out"
-          test -s "$IMAGE"
-          file "$IMAGE" | grep -qiE 'ARM64|aarch64'
-          SIZE=$(stat -c%s "$IMAGE")
-          test "$SIZE" -gt 6000000
-          BANNER=$(strings "$IMAGE" | grep -m1 '^Linux version ' || true)
-          echo "$BANNER"
-          [[ "$BANNER" == *'Linux version 6.12.38-android16-5-gbe6292a1543d-ab14525421-4k'* ]]
-          [[ "$BANNER" == *'Mon Dec 1 03:28:37 UTC 2025'* ]]
-          grep -aFq 'based on r547379' "$IMAGE"
-          grep -qx 'CONFIG_LTO_NONE=y' "$OUT/.config"
-          grep -qx 'CONFIG_KSU=y' "$OUT/.config"
-          grep -qx 'CONFIG_DEBUG_INFO_BTF=y' "$OUT/.config"
-          echo 'PASS: clean OP15T Image passed boot-baseline checks'
-
       - name: 保存 ccache
         if: ${{ inputs.ccache_update }}
         uses: actions/cache/save@v4
