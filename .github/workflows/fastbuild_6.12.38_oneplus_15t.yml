@@ -40,7 +40,7 @@ on:
         description: '启用一加15T风驰模块兼容补丁（可启动基线验证通过后再开启）'
         required: true
         type: boolean
-        default: false
+        default: true
       ksu_type:
         description: 'KernelSU分支(ReSukiSU/SukiSU Ultra/KernelSU Next/KSU(原版)/无内置KSU,默认ReSukiSU)'
         required: true
