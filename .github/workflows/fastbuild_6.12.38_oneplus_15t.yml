@@ -188,7 +188,7 @@ jobs:
 
           echo "正在克隆一加 15T 6.12.38 源码..."
           git clone --depth=1 --branch "$KERNEL_SOURCE_BRANCH" \
-            "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$KERNEL_SOURCE_REPO.git" common &&
+            "https://github.com/$KERNEL_SOURCE_REPO.git" common &&
           test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT" &
 
           echo "正在克隆与 NMS OP15T 发布包一致的 llvm-clang20 工具链..." &&
@@ -461,10 +461,9 @@ jobs:
         run: |
           echo "正在添加lz4 1.10.0 & zstd 1.5.7补丁…"
           cd kernel_workspace/common
-          auth_header="Authorization: Bearer ${{ secrets.GH_TOKEN }}"
           base_url="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/zram_patch"
-          curl --fail --location --retry 3 -H "$auth_header" "$base_url/001-lz4.patch" -o 001-lz4.patch
-          curl --fail --location --retry 3 -H "$auth_header" "$base_url/002-zstd.patch" -o 002-zstd.patch
+          curl --fail --location --retry 3 "$base_url/001-lz4.patch" -o 001-lz4.patch
+          curl --fail --location --retry 3 "$base_url/002-zstd.patch" -o 002-zstd.patch
           if patch --dry-run --batch --forward -p1 < 001-lz4.patch >/dev/null 2>&1; then
             patch --batch --forward --no-backup-if-mismatch -p1 < 001-lz4.patch
           else
@@ -631,16 +630,16 @@ jobs:
             echo "正在启用 Droidspaces 容器支持..."
             cd kernel_workspace/common
             # 应用 Droidspaces 容器必须补丁
-            wget https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/droidspaces_patch/fix_sysvipc_kabi_a16-6.12.patch
+            wget https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/droidspaces_patch/fix_sysvipc_kabi_a16-6.12.patch
             patch -p1 -F 3 < fix_sysvipc_kabi_a16-6.12.patch || true
             # 修补 oplus_bsp_midas 行为，避免开机崩溃
-            wget https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/droidspaces_patch/fix_oplus_bsp_midas.patch
+            wget https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/droidspaces_patch/fix_oplus_bsp_midas.patch
             patch -p1 -F 3 < fix_oplus_bsp_midas.patch || true
             # 修补 oplus_bsp_sched_assist 数组越界访问导致的运行随机崩溃
-            wget https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/droidspaces_patch/ddl_hit_hook.patch
+            wget https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/droidspaces_patch/ddl_hit_hook.patch
             patch -p1 -F 3 < ddl_hit_hook.patch || true
             # 应用 NTSync 补丁
-            wget https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/droidspaces_patch/ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch
+            wget https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/$GITHUB_REF_NAME/droidspaces_patch/ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch
             patch -p1 -F 3 < ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
             # 开启 Droidspaces 容器所需内核支持
             echo "CONFIG_PID_NS=y" >> ./arch/arm64/configs/gki_defconfig
@@ -668,7 +667,7 @@ jobs:
               # 开启 systemd-coredump 支持
               echo "CONFIG_STATIC_USERMODEHELPER=n" >> ./arch/arm64/configs/gki_defconfig
               # 添加 Lindroid EVDI DRM 驱动
-              # wget https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$GITHUB_REPOSITORY/raw/refs/heads/${{ env.KERNEL_VERSION }}/droidspaces_patch/evdi_drm.patch
+              # wget https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/${{ env.KERNEL_VERSION }}/droidspaces_patch/evdi_drm.patch
               # patch -p1 -F 3 < evdi_drm.patch || true
               # echo "CONFIG_DRM_LINDROID_EVDI=y" >> ./arch/arm64/configs/gki_defconfig
             fi
@@ -1038,7 +1037,7 @@ jobs:
         id: create_zip
         run: |
           cd kernel_workspace
-          git clone --depth=1 --branch master https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/zaomi893/AnyKernel3_ZAOMI ak3_workspace
+          git clone --depth=1 --branch master https://github.com/zaomi893/AnyKernel3_ZAOMI ak3_workspace
           AK3_PREFIX="ak3_OP15T"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
