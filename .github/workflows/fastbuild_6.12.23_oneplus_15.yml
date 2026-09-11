@@ -1,4 +1,4 @@
-name: 6.12.23 欧加真OKI内核快速构建
+name: 6.12.23 一加15 欧加真OKI内核快速构建
 run-name: 6.12.23 · ${{ inputs.device_serial || '手动构建' }}
 
 env:
