@@ -893,6 +893,15 @@ jobs:
           echo "编译后空间:"
           df -h
 
+      - name: 保存新的 ccache 缓存
+        # Save completed compiler work immediately after a successful kernel
+        # build so later validation or packaging failures cannot lose it.
+        if: ${{ success() && (inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true') }}
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ env.CCACHE_REAL_KEY }}-${{ runner.os }}-${{ github.ref_name }}
+
       - name: 验证风驰/HMBIRD GKI 兼容性与启动基线
         run: |
           set -euo pipefail
@@ -1010,15 +1019,6 @@ jobs:
             'The phone continues to load the signed vendor_dlkm module.' \
             'Only the matching BTF and BTF_ids metadata are embedded in Image.' \
             > hmbird_artifact/README.txt
-
-      - name: 保存新的 ccache 缓存
-        # Diagnostic builds must retain completed compiler work even when a
-        # later identity, module, or packaging check fails.
-        if: ${{ always() && (inputs.ccache_update || steps.ccache-restore.outputs.cache-hit != 'true') }}
-        uses: actions/cache/save@v5
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ env.CCACHE_REAL_KEY }}-${{ runner.os }}-${{ github.ref_name }}
 
       - name: 应用KPM并修补内核
         if: inputs.kpm_enable
