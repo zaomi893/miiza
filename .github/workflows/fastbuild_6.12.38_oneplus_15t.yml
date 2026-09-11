@@ -31,16 +31,6 @@ on:
         required: false
         type: string
         default: '3B15A800Y5D00000'
-      serial_lock_enable:
-        description: '启用序列号内核锁（15T 启动对照测试时可关闭）'
-        required: true
-        type: boolean
-        default: true
-      hmbird_compat_enable:
-        description: '启用一加15T风驰模块兼容补丁（可启动基线验证通过后再开启）'
-        required: true
-        type: boolean
-        default: true
       ksu_type:
         description: 'KernelSU分支(ReSukiSU/SukiSU Ultra/KernelSU Next/KSU(原版)/无内置KSU,默认ReSukiSU)'
         required: true
@@ -254,7 +244,7 @@ jobs:
           done
 
       - name: 添加一加15T原厂风驰模块 BTF 兼容层
-        if: inputs.hmbird_compat_enable
+        if: true
         run: |
           set -euxo pipefail
           patch -d kernel_workspace/common -p1 < other_patch/hmbird-stock-module-btf.patch
@@ -264,7 +254,7 @@ jobs:
           test -f kernel_workspace/common/kernel/module/oplus_legacy_btf_denylist.inc
 
       - name: 写入设备序列号锁
-        if: ${{ inputs.serial_lock_enable == true }}
+        if: true
         env:
           DEVICE_SERIAL: ${{ inputs.device_serial }}
         run: |
@@ -781,7 +771,7 @@ jobs:
           export PATH="$WORKDIR/kernel_workspace/build-tools/bin:$PATH"
           export PATH="$WORKDIR/kernel_workspace/rust/bin:$PATH"
           export CLANG_DIR="$WORKDIR/kernel_workspace/clang19/bin"
-          if [[ "${{ inputs.hmbird_compat_enable }}" == "true" ]]; then
+          if true; then
             export PAHOLE="$WORKDIR/kernel_workspace/pahole-src/build/pahole"
           else
             export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
@@ -857,7 +847,7 @@ jobs:
           KCFLAGS+=" -Qunused-arguments"
           KCFLAGS+=" -Wno-unused-command-line-argument"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
-          if [[ "${{ inputs.serial_lock_enable }}" == "true" ]]; then
+          if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi
           KCPPFLAGS+=" -DCONFIG_OPTIMIZE_INLINING"
@@ -876,7 +866,7 @@ jobs:
           source "./_setup_env.sh" 2>/dev/null || true
           # _setup_env.sh may restore PAHOLE. Use the stock encoder for the
           # bootable baseline, and the capacity-patched encoder only for HMBIRD.
-          if [[ "${{ inputs.hmbird_compat_enable }}" == "true" ]]; then
+          if true; then
             export PAHOLE="$WORKDIR/kernel_workspace/pahole-src/build/pahole"
             export LD_LIBRARY_PATH="$WORKDIR/kernel_workspace/pahole-src/build${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             grep -q '#define MAX_PERCPU_VAR_CNT 16384' "$WORKDIR/kernel_workspace/pahole-src/btf_encoder.c"
@@ -946,7 +936,7 @@ jobs:
           echo "PASS: Image 使用 OP15T 6.12.38 / r547379 基线"
 
       - name: 构建一加15T风驰研究工件
-        if: inputs.hmbird_compat_enable
+        if: true
         run: |
           set -euxo pipefail
           cd kernel_workspace
@@ -1078,7 +1068,7 @@ jobs:
           grep -q '^clear_legacy_ksud_attrs()' anykernel.sh
           grep -q 'chattr -ia' anykernel.sh
           grep -q 'lsattr -d' anykernel.sh
-          if [[ "${{ inputs.serial_lock_enable }}" == "true" ]]; then
+          if true; then
             install -m 0644 "$GITHUB_WORKSPACE/serial_lock/build-token" ./serial_lock/build-token
             [[ -s ./serial_lock/install.sh && -s ./serial_lock/post-fs-data.sh && ! -e ./serial_lock/module.prop && $(wc -c < ./serial_lock/build-token) -eq 65 ]] || { echo "AK3 序列号锁资源、非模块化约束或构建令牌无效"; exit 1; }
           fi
@@ -1147,7 +1137,7 @@ jobs:
           echo "NoMount: ${{ inputs.nomount_enable }}" >> ./ak3.log
           echo "Blacklist Modules: ${{ inputs.blacklist_modules }}" >> ./ak3.log
           echo "Device serial: ${{ inputs.device_serial }}" >> ./ak3.log
-          if [[ "${{ inputs.serial_lock_enable }}" == "true" ]]; then
+          if true; then
             echo "Device serial lock: enabled; staged init_boot marker; first mismatch reboots at 180s after verified write, next mismatch fails before Android init; matching serial ignores marker" >> ./ak3.log
           else
             echo "Device serial lock: disabled for upstream boot compatibility test" >> ./ak3.log
