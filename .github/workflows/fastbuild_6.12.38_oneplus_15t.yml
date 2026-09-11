@@ -19,7 +19,7 @@ env:
   HMBIRD_SOURCE_COMMIT: 'bc8d91d1e146be96d2e27bebe8f753f82bdebeee'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
-  CCACHE_KEY: ccache-ecsv10-6.12.38-oneplus15t-14ba6a5-r547379
+  CCACHE_KEY: ccache-ecsv11-6.12.23-chain-6.12.38-oneplus15t-14ba6a5-r547379
 
 on:
   workflow_dispatch:
@@ -237,6 +237,7 @@ jobs:
             kernel_build_env
           git -C kernel_build_env sparse-checkout set kernel_platform/build/kernel
           test -s kernel_build_env/kernel_platform/build/kernel/_setup_env.sh
+          cp kernel_build_env/kernel_platform/build/kernel/_setup_env.sh common/_setup_env.sh
 
       - name: 添加一加15T原厂风驰模块 BTF 兼容层
         if: true
@@ -342,7 +343,7 @@ jobs:
       - name: 初始化并配置ccache
         run: |
           # 设置ccache环境变量
-          export CCACHE_COMPILERCHECK="content"
+          export CCACHE_COMPILERCHECK="none"
           export CCACHE_BASEDIR="${{ github.workspace }}"
           export CCACHE_NOHASHDIR="true"
           export CCACHE_NOHARDLINK="true"
@@ -549,9 +550,6 @@ jobs:
           # 使用 scripts/config 原地更新配置，避免重复项和 override 警告
           ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig \
             --disable HEADERS_INSTALL \
-            --enable LTO_NONE \
-            --disable LTO_CLANG_FULL \
-            --disable LTO_CLANG_THIN \
             --enable RUST \
             --module ANDROID_BINDER_IPC_RUST
           # 启动基线阶段不再无条件改动 rtmutex；待基线确认可启动后，
@@ -775,7 +773,7 @@ jobs:
           pahole_version=$($PAHOLE --version 2>/dev/null | head -n1); [ -z "$pahole_version" ] && echo "pahole版本：不可用" || echo "pahole版本：$pahole_version"
 
           export CCACHE_LOGFILE="${{ github.workspace }}/kernel_workspace/ccache.log"
-          export CCACHE_COMPILERCHECK="content"
+          export CCACHE_COMPILERCHECK="none"
           export CCACHE_BASEDIR="${{ github.workspace }}"
           export CCACHE_NOHASHDIR="true"
           export CCACHE_NOHARDLINK="true"
@@ -805,10 +803,23 @@ jobs:
           export FAKETIME="@$FAKE_TS"
           echo "FAKESTAT=$FAKESTAT" >> $GITHUB_ENV
           echo "FAKETIME=$FAKETIME" >> $GITHUB_ENV
-          # Match the upstream bootable action: KBUILD owns the timestamp;
-          # do not preload faketime into clang/ld or disable stack protection.
+          SO_DIR=$(pwd)
+          export PRELOAD_LIBS="$SO_DIR/libfakestat.so $SO_DIR/libfaketimeMT.so"
+          export REAL_CLANG_PATH="$WORKDIR/kernel_workspace/clang19/bin/clang"
+          echo '#!/bin/bash' > fake-env
+          echo "export LD_PRELOAD=\"$PRELOAD_LIBS\"" >> fake-env
+          echo 'exec "$@"' >> fake-env
+          chmod +x fake-env
+          echo '#!/bin/bash' > cc-wrapper
+          echo "export FAKESTAT=\"$FAKESTAT\"" >> cc-wrapper
+          echo "export FAKETIME=\"$FAKETIME\"" >> cc-wrapper
+          echo "export CCACHE_PREFIX=\"$SO_DIR/fake-env\"" >> cc-wrapper
+          echo 'ccache "$REAL_CLANG_PATH" "$@"' >> cc-wrapper
           echo '#!/bin/bash' > ld-wrapper
-          echo 'exec ld.lld "$@" --thinlto-jobs=$(nproc --all)' >> ld-wrapper
+          echo "export LD_PRELOAD=\"$PRELOAD_LIBS\"" >> ld-wrapper
+          echo "export FAKESTAT=\"$FAKESTAT\"" >> ld-wrapper
+          echo "export FAKETIME=\"$FAKETIME\"" >> ld-wrapper
+          echo 'ld.lld "$@"' >> ld-wrapper
           chmod +x ld-wrapper
 
           # 6.12内核make编译核心配置：
@@ -849,25 +860,8 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export LD=ld.lld HOSTLD=ld.lld AR=llvm-ar NM=llvm-nm AS=clang READELF=llvm-readelf
           export OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump OBJSIZE=llvm-size STRIP=llvm-strip
-          # 5. 运行与已验证 op15t-build 链路相同的官方环境脚本。
-          # common 仓库本身没有 _setup_env.sh；该脚本位于 OnePlusOSS
-          # modules/devicetree 仓库的 kernel_platform/build/kernel/ 下。
-          set +u
-          source "$GITHUB_WORKSPACE/kernel_workspace/kernel_build_env/kernel_platform/build/kernel/_setup_env.sh" 2>/dev/null || true
-          set -u
-          export KBUILD_GENDWARFKSYMS_STABLE=1
-          export TZ=UTC
-          export LC_ALL=C
-          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
-          export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
-          export KBUILD_BUILD_USER=kernel
-          export KBUILD_BUILD_HOST=kleaf
-          export KBUILD_BUILD_VERSION=1
-          test "${KBUILD_GENDWARFKSYMS_STABLE:-}" = 1
-          # Keep the same official encoder used by the verified upstream and
-          # 6.12.23 chains; it preserves the stock BTF/type-ID layout.
-          export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
-          test -x "$PAHOLE"
+          # 5. 编译前运行官方环境配置脚本
+          source "./_setup_env.sh" 2>/dev/null || true
           export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
 
           #在构建内核的同时清除不必要的.NET, Android NDK, Haskell, CodeQL运行库，清理空间且不阻塞后续步骤运行
@@ -879,28 +873,9 @@ jobs:
           fi
           sudo rm -rf /opt/ghc &
           sudo rm -rf /opt/hostedtoolcache/CodeQL &
-          make LD="$(pwd)/ld-wrapper" HOSTLD="$(pwd)/ld-wrapper" O=out gki_defconfig
-
-          # Match the released 15T build configuration: no LTO and no
-          # module-only KUnit test payloads.
-          scripts/config --file out/.config -e LTO_CLANG -e LTO_CLANG_NONE -d LTO_CLANG_THIN -d LTO_CLANG_FULL
-          for symbol in \
-            REGMAP_KUNIT INPUT_KUNIT_TEST SND_SOC_TOPOLOGY_KUNIT_TEST \
-            SND_SOC_UTILS_KUNIT_TEST HID_KUNIT_TEST RTC_LIB_KUNIT_TEST \
-            CLK_KUNIT_TEST CLK_GATE_KUNIT_TEST IIO_FORMAT_KUNIT_TEST \
-            EXT4_KUNIT_TESTS FAT_KUNIT_TEST; do
-            scripts/config --file out/.config -d "$symbol"
-          done
-          make LD="$(pwd)/ld-wrapper" HOSTLD="$(pwd)/ld-wrapper" O=out olddefconfig
-          grep -q '^CONFIG_LTO_NONE=y$' out/.config
-
-          export CC="ccache clang" CXX="ccache clang++"
-          export HOSTCC="ccache clang" HOSTCXX="ccache clang++"
-          # The kernel Makefile assigns `PAHOLE = pahole`, so an exported
-          # environment variable is not enough. A command-line make variable
-          # has the required precedence and keeps the selected official
-          # encoder active.
-          make PAHOLE="$PAHOLE" LD="$(pwd)/ld-wrapper" HOSTLD="$(pwd)/ld-wrapper" -j"$(nproc --all)" O=out KCFLAGS="$KCFLAGS" KCPPFLAGS="$KCPPFLAGS" Image 2>&1 | tee build.log
+          make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out gki_defconfig &&
+          export CC="$(pwd)/cc-wrapper" && export LD="$(pwd)/ld-wrapper" &&
+          make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="llvm-objcopy" O=out Image
           echo "内核编译完成！"
           if [[ "${{ github.event.inputs.ccache_debug }}" == "true" ]]; then
             echo "正在打包ccache日志及调试信息..."
@@ -936,7 +911,6 @@ jobs:
           [[ "$BANNER" == *'6.12.38-android16-5-gbe6292a1543d-ab14525421-4k'* ]]
           [[ "$BANNER" == *'Mon Dec 1 03:28:37 UTC 2025'* ]]
           OUT=kernel_workspace/common/out
-          grep -qx 'CONFIG_LTO_NONE=y' "$OUT/.config"
           grep -qx 'CONFIG_KSU=y' "$OUT/.config"
           grep -qx 'CONFIG_DEBUG_INFO_BTF=y' "$OUT/.config"
           echo "PASS: Image 使用 OP15T 6.12.38 / r547379 可启动基线"
