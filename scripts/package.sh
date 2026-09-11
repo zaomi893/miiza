@@ -24,7 +24,7 @@ cat > "$WORK/anykernel.sh" <<'EOF'
 ## OnePlus 15 stock-HMBIRD GKI
 
 properties() { '
-kernel.string=OnePlus 15 stock-HMBIRD GKI by cvhhji
+kernel.string=OnePlus 15 stock-HMBIRD GKI by ZAOMI
 do.devicecheck=1
 do.modules=0
 do.systemless=1

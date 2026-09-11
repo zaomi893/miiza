@@ -7,7 +7,7 @@ env:
   KERNEL_VERSION: '6.12'
   SUB_VERSION: '23'
   KERNEL_NAME: 'android16-5-gb2a876903b49-ab14541642-4k'
-  KERNEL_SOURCE_REPO: 'cvhhji/android_kernel_common_oneplus_sm8850'
+  KERNEL_SOURCE_REPO: 'zaomi893/android_kernel_common_oneplus_sm8850'
   # Official OnePlus 15 history with the verified cctv18 boot-fix sequence.
   KERNEL_SOURCE_BRANCH: 'oneplus/sm8850_v_16.0.0_oneplus_15'
   # PLK110 16.0.9.400 (CN01) is included in this official synchronized revision.
@@ -1138,10 +1138,10 @@ jobs:
         run: |
           cd kernel_workspace
           if [[ "${{ inputs.self_config }}" == "true" ]]; then
-            git clone --depth=1 https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AK3 ak3_workspace
+            git clone --depth=1 https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/zaomi893/AnyKernel3_ZAOMIN ak3_workspace
             AK3_PREFIX="AnyKernel3"
           else
-            git clone --depth=1 https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/cvhhji/AnyKernel3 ak3_workspace
+            git clone --depth=1 https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/zaomi893/AnyKernel3_ZAOMI ak3_workspace
             AK3_PREFIX="ak3"
           fi
           rm -rf ./ak3_workspace/.git
