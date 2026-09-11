@@ -703,9 +703,39 @@ jobs:
           echo "正在应用内核模块加载黑名单: ${{ inputs.blacklist_modules }}"
           cd kernel_workspace/common
           echo 'CONFIG_DEBLOAT_VENDOR_MODULES="${{ inputs.blacklist_modules }}"' >> arch/arm64/configs/gki_defconfig
-          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 15 \
-            'https://raw.githubusercontent.com/Bouteillepleine/kernel_patches/main/experimental/0001-Support-conditional-vendor-modules-blacklisting-6.1-and-above.patch' \
-            | patch -p1
+          export BLACKLIST_MODULES="${{ inputs.blacklist_modules }}"
+          python3 - <<'PYEOF'
+          import os, sys
+          mods = [m.strip() for m in os.environ.get('BLACKLIST_MODULES','').replace('\n',',').replace(' ',',').split(',') if m.strip()]
+          if not mods:
+              print('黑名单为空,跳过')
+              sys.exit(0)
+          path = 'kernel/module/main.c'
+          src = open(path).read()
+          anchor = 'mod = layout_and_allocate(info, flags);'
+          if anchor not in src:
+              print('警告: 未找到 load_module 锚点,跳过黑名单注入')
+              sys.exit(0)
+          block = ''
+          injected = []
+          for m in mods:
+              if f'strcmp(info->name, "{m}")' in src:
+                  print(f'模块 {m} 已在黑名单中,跳过')
+                  continue
+              block += (f'\t/* Skip blacklisted module: {m} */\n'
+                        f'\tif (strcmp(info->name, "{m}") == 0) {{\n'
+                        f'\t\tpr_warn("Blocking blacklisted module: %s\\n", info->name);\n'
+                        f'\t\terr = 0;\n'
+                        f'\t\tgoto free_copy;\n'
+                        f'\t}}\n')
+              injected.append(m)
+          if block:
+              src = src.replace(anchor, block + anchor, 1)
+              open(path, 'w').write(src)
+              print(f'已注入黑名单模块: {", ".join(injected)}')
+          else:
+              print('没有新的黑名单模块需要注入')
+          PYEOF
 
       - name: 集成 NoMount/PathMask 内核模块
         if: inputs.nomount_enable
