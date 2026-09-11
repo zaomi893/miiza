@@ -19,7 +19,7 @@ env:
   HMBIRD_SOURCE_COMMIT: 'bc8d91d1e146be96d2e27bebe8f753f82bdebeee'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
-  CCACHE_KEY: ccache-ecsv9-6.12.38-oneplus15t-14ba6a5-r547379
+  CCACHE_KEY: ccache-ecsv10-6.12.38-oneplus15t-14ba6a5-r547379
 
 on:
   workflow_dispatch:
@@ -227,6 +227,17 @@ jobs:
             sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$f"
           done
 
+      - name: 同步 OnePlus 官方内核构建环境
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd kernel_workspace
+          git clone --depth=1 --filter=blob:none --sparse \
+            https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850.git \
+            kernel_build_env
+          git -C kernel_build_env sparse-checkout set kernel_platform/build/kernel
+          test -s kernel_build_env/kernel_platform/build/kernel/_setup_env.sh
+
       - name: 添加一加15T原厂风驰模块 BTF 兼容层
         if: true
         run: |
@@ -331,7 +342,7 @@ jobs:
       - name: 初始化并配置ccache
         run: |
           # 设置ccache环境变量
-          export CCACHE_COMPILERCHECK="none"
+          export CCACHE_COMPILERCHECK="content"
           export CCACHE_BASEDIR="${{ github.workspace }}"
           export CCACHE_NOHASHDIR="true"
           export CCACHE_NOHARDLINK="true"
@@ -363,17 +374,13 @@ jobs:
           cd kernel_workspace
           if [[ ${{ github.event.inputs.ksu_type }} == "sukisu" || ${{ github.event.inputs.ksu_type }} == "resukisu" ]]; then
             echo "正在配置ReSukiSU（由于SukiSU长期未维护无法正常编译，且ReSukiSU兼容sukisu管理器，故SukiSU源码仓库已重定向为resukisu）..."
-            # 与已确认可启动的 RSKSU_35119 包使用完全相同的提交，避免
-            # ReSukiSU main 漂移给 15T 启动对照引入额外变量。
-            RSKSU_BOOTABLE_SHA='f1dd81dc96d7f3f6691e6ac8b50fba9ae8a2f17c'
-            curl -fLSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/$RSKSU_BOOTABLE_SHA/kernel/setup.sh" | bash -s "$RSKSU_BOOTABLE_SHA"
+            curl -fLSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s main
             echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-⚡Ultra⚡@ReSukiSU"' >> ./common/arch/arm64/configs/gki_defconfig
             echo 'CONFIG_KSU_TOOLKIT_SUPPORT=y' >> ./common/arch/arm64/configs/gki_defconfig
             cd ./KernelSU
             # 生成自定义版本号（基于提交计数）, 失败时使用 114514
-            test "$(git rev-parse HEAD)" = "$RSKSU_BOOTABLE_SHA"
             KSU_VERSION=$(expr $(git rev-list --count HEAD) + 30700 2>/dev/null || echo 114514)
-            test "$KSU_VERSION" = 35119
+            test "$KSU_VERSION" -gt 30700
             # 存储版本号到 GitHub 环境变量
             echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
             echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
@@ -768,7 +775,7 @@ jobs:
           pahole_version=$($PAHOLE --version 2>/dev/null | head -n1); [ -z "$pahole_version" ] && echo "pahole版本：不可用" || echo "pahole版本：$pahole_version"
 
           export CCACHE_LOGFILE="${{ github.workspace }}/kernel_workspace/ccache.log"
-          export CCACHE_COMPILERCHECK="none"
+          export CCACHE_COMPILERCHECK="content"
           export CCACHE_BASEDIR="${{ github.workspace }}"
           export CCACHE_NOHASHDIR="true"
           export CCACHE_NOHARDLINK="true"
@@ -809,6 +816,7 @@ jobs:
           KCFLAGS+=" -fdebug-prefix-map=$GITHUB_WORKSPACE=."
           KCFLAGS+=" -fmacro-prefix-map=$GITHUB_WORKSPACE=."
           KCFLAGS+=" -ffile-prefix-map=$GITHUB_WORKSPACE=."
+          KCFLAGS+=" -fdiagnostics-color=never"
           KCPPFLAGS+=" -fdebug-prefix-map=$GITHUB_WORKSPACE=."
           KCPPFLAGS+=" -fmacro-prefix-map=$GITHUB_WORKSPACE=."
           KCPPFLAGS+=" -ffile-prefix-map=$GITHUB_WORKSPACE=."
@@ -841,8 +849,21 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export LD=ld.lld HOSTLD=ld.lld AR=llvm-ar NM=llvm-nm AS=clang READELF=llvm-readelf
           export OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump OBJSIZE=llvm-size STRIP=llvm-strip
-          # 5. 编译前运行官方环境配置脚本
-          source "./_setup_env.sh" 2>/dev/null || true
+          # 5. 运行与已验证 op15t-build 链路相同的官方环境脚本。
+          # common 仓库本身没有 _setup_env.sh；该脚本位于 OnePlusOSS
+          # modules/devicetree 仓库的 kernel_platform/build/kernel/ 下。
+          set +u
+          source "$GITHUB_WORKSPACE/kernel_workspace/kernel_build_env/kernel_platform/build/kernel/_setup_env.sh" 2>/dev/null || true
+          set -u
+          export KBUILD_GENDWARFKSYMS_STABLE=1
+          export TZ=UTC
+          export LC_ALL=C
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
+          export KBUILD_BUILD_USER=kernel
+          export KBUILD_BUILD_HOST=kleaf
+          export KBUILD_BUILD_VERSION=1
+          test "${KBUILD_GENDWARFKSYMS_STABLE:-}" = 1
           # Keep the same official encoder used by the verified upstream and
           # 6.12.23 chains; it preserves the stock BTF/type-ID layout.
           export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
