@@ -79,7 +79,7 @@ jobs:
           enable_adios: false
           nomount_ref: main
           patches_ref: main
-          github_token: ${{ secrets.GH_TOKEN }}
+          github_token: ${{ github.token }}
           device_serial: ${{ inputs.device_serial }}
           serial_lock_enable: 'true'
           hmbird_compat_enable: 'true'
@@ -192,7 +192,7 @@ jobs:
         run: |
           set -euo pipefail
           git clone --depth=1 --branch master \
-            "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/zaomi893/AnyKernel3_ZAOMI.git" own-ak3
+            https://github.com/zaomi893/AnyKernel3_ZAOMI.git own-ak3
           rm -rf own-ak3/.git
           cp "$GITHUB_WORKSPACE/OP15T/kernel_platform/common/out/arch/arm64/boot/Image" \
             own-ak3/Image

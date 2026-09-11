@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           git clone --depth=1 --branch master \
-            "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/zaomi893/AnyKernel3_ZAOMI.git" own-ak3
+            https://github.com/zaomi893/AnyKernel3_ZAOMI.git own-ak3
           rm -rf own-ak3/.git own-ak3/serial_lock
           cp upstream-image/Image own-ak3/Image
           grep -q '^clear_legacy_ksud_attrs()' own-ak3/anykernel.sh

@@ -177,7 +177,7 @@ jobs:
           sudo install -m 0755 "$GITHUB_WORKSPACE/lib/ccache-x86-64" /usr/local/bin/ccache
 
           echo "正在下载固定源码分支：${KERNEL_SOURCE_REPO}@${KERNEL_SOURCE_BRANCH}"
-          aria2c -s16 -x16 -k1M --header="Authorization: token ${{ secrets.GH_TOKEN }}" "https://github.com/${KERNEL_SOURCE_REPO}/archive/refs/heads/${KERNEL_SOURCE_BRANCH}.zip" -o common.zip &&
+          aria2c -s16 -x16 -k1M "https://github.com/${KERNEL_SOURCE_REPO}/archive/refs/heads/${KERNEL_SOURCE_BRANCH}.zip" -o common.zip &&
           SOURCE_DIR="$(unzip -Z1 common.zip | head -n1 | cut -d/ -f1)" &&
           test -n "$SOURCE_DIR" &&
           unzip -q common.zip &&
@@ -428,10 +428,9 @@ jobs:
         run: |
           echo "正在添加lz4 1.10.0 & zstd 1.5.7补丁…"
           cd kernel_workspace/common
-          auth_header="Authorization: Bearer ${{ secrets.GH_TOKEN }}"
           base_url="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/zram_patch"
-          curl --fail --location --retry 3 -H "$auth_header" "$base_url/001-lz4.patch" -o 001-lz4.patch
-          curl --fail --location --retry 3 -H "$auth_header" "$base_url/002-zstd.patch" -o 002-zstd.patch
+          curl --fail --location --retry 3 "$base_url/001-lz4.patch" -o 001-lz4.patch
+          curl --fail --location --retry 3 "$base_url/002-zstd.patch" -o 002-zstd.patch
           patch --batch --forward --no-backup-if-mismatch -p1 < 001-lz4.patch
           awk '/^diff --git / { skip = (index($0, "diff --git a/lib/zstd/common/portability_macros.h " ) == 1) } !skip' 002-zstd.patch > 002-zstd.filtered.patch
           patch --batch --forward --no-backup-if-mismatch -p1 < 002-zstd.filtered.patch
@@ -589,16 +588,16 @@ jobs:
             echo "正在启用 Droidspaces 容器支持..."
             cd kernel_workspace/common
             # 应用 Droidspaces 容器必须补丁
-            wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/droidspaces_patch/fix_sysvipc_kabi_a16-6.12.patch
+            wget https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/droidspaces_patch/fix_sysvipc_kabi_a16-6.12.patch
             patch -p1 -F 3 < fix_sysvipc_kabi_a16-6.12.patch || true
             # 修补 oplus_bsp_midas 行为，避免开机崩溃
-            wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/droidspaces_patch/fix_oplus_bsp_midas.patch
+            wget https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/droidspaces_patch/fix_oplus_bsp_midas.patch
             patch -p1 -F 3 < fix_oplus_bsp_midas.patch || true
             # 修补 oplus_bsp_sched_assist 数组越界访问导致的运行随机崩溃
-            wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/droidspaces_patch/ddl_hit_hook.patch
+            wget https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/droidspaces_patch/ddl_hit_hook.patch
             patch -p1 -F 3 < ddl_hit_hook.patch || true
             # 应用 NTSync 补丁
-            wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/droidspaces_patch/ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch
+            wget https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_REF_NAME/droidspaces_patch/ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch
             patch -p1 -F 3 < ntsync_compat_${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
             # 开启 Droidspaces 容器所需内核支持
             echo "CONFIG_PID_NS=y" >> ./arch/arm64/configs/gki_defconfig
@@ -626,7 +625,7 @@ jobs:
               # 开启 systemd-coredump 支持
               echo "CONFIG_STATIC_USERMODEHELPER=n" >> ./arch/arm64/configs/gki_defconfig
               # 添加 Lindroid EVDI DRM 驱动
-              # wget --header="Authorization: token ${{ secrets.GH_TOKEN }}" https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/${{ env.KERNEL_VERSION }}/droidspaces_patch/evdi_drm.patch
+              # wget https://github.com/$GITHUB_REPOSITORY/raw/refs/heads/${{ env.KERNEL_VERSION }}/droidspaces_patch/evdi_drm.patch
               # patch -p1 -F 3 < evdi_drm.patch || true
               # echo "CONFIG_DRM_LINDROID_EVDI=y" >> ./arch/arm64/configs/gki_defconfig
             fi
@@ -911,7 +910,7 @@ jobs:
         id: create_zip
         run: |
           cd kernel_workspace
-          git clone --depth=1 --branch master https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/zaomi893/AnyKernel3_ZAOMI ak3_workspace
+          git clone --depth=1 --branch master https://github.com/zaomi893/AnyKernel3_ZAOMI ak3_workspace
           AK3_PREFIX="ak3"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace

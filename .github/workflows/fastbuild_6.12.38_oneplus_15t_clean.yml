@@ -60,7 +60,7 @@ jobs:
           sudo install -m 0755 "$GITHUB_WORKSPACE/lib/ccache-x86-64" /usr/local/bin/ccache
 
           git clone --depth=1 --branch "$KERNEL_SOURCE_BRANCH" \
-            "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/$KERNEL_SOURCE_REPO.git" common
+            "https://github.com/$KERNEL_SOURCE_REPO.git" common
           test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT"
 
           mkdir -p clang19 rust
@@ -89,21 +89,19 @@ jobs:
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
           sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' common/scripts/setlocalversion
 
-      - name: 加入固定 ReSukiSU root
+      - name: 加入当前 ReSukiSU root
         id: resukisu
         shell: bash
         run: |
           set -euo pipefail
           cd kernel_workspace
-          RSKSU_SHA='f1dd81dc96d7f3f6691e6ac8b50fba9ae8a2f17c'
           curl -fLSs \
-            "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/$RSKSU_SHA/kernel/setup.sh" \
-            | bash -s "$RSKSU_SHA"
-          echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-ReSukiSU"' >> common/arch/arm64/configs/gki_defconfig
+            https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh \
+            | bash -s main
+          echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%@ZAOMI"' >> common/arch/arm64/configs/gki_defconfig
           echo 'CONFIG_KSU_TOOLKIT_SUPPORT=y' >> common/arch/arm64/configs/gki_defconfig
-          test "$(git -C KernelSU rev-parse HEAD)" = "$RSKSU_SHA"
-          KSU_VERSION=$(( $(git -C KernelSU rev-list --count HEAD) + 30700 ))
-          test "$KSU_VERSION" = 35119
+          KSU_VERSION=$(expr $(git -C KernelSU rev-list --count main) + 30700 2>/dev/null || echo 0)
+          test "$KSU_VERSION" -gt 30700
           echo "KSU_VERSION=$KSU_VERSION" >> "$GITHUB_ENV"
           echo "ksuver=$KSU_VERSION" >> "$GITHUB_OUTPUT"
 
@@ -228,7 +226,7 @@ jobs:
           set -euo pipefail
           cd kernel_workspace
           git clone --depth=1 --branch master \
-            "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/zaomi893/AnyKernel3_ZAOMI" ak3
+            https://github.com/zaomi893/AnyKernel3_ZAOMI ak3
           rm -rf ak3/.git ak3/serial_lock
           cp common/out/arch/arm64/boot/Image ak3/Image
           grep -q '^clear_legacy_ksud_attrs()' ak3/anykernel.sh
