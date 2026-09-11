@@ -1,5 +1,5 @@
 name: 一加15T 已验证Image与自有AK3交叉测试
-run-name: 15T known-good Image + cvhhji AK3 · ${{ inputs.device_serial }}
+run-name: 15T known-good Image + ZAOMI AK3 · ${{ inputs.device_serial }}
 
 on:
   workflow_dispatch:
@@ -28,7 +28,7 @@ jobs:
           echo '40354c116f898ddde101e3c824d0864463e7845ae51200d92dfa9d894e7dc3fd  upstream-image/Image' \
             | sha256sum -c -
 
-      - name: 使用最新版 cvhhji AnyKernel3 打包
+      - name: 使用最新版 ZAOMI AnyKernel3 打包
         id: package
         shell: bash
         run: |

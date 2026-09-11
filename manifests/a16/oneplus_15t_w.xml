@@ -6,7 +6,7 @@
   <default remote="clo-la" revision="dummy_revision" sync-c="true" sync-tags="false"/>
   <project remote="zaomi" name="AnyKernel3_ZAOMI" path="AnyKernel3" revision="master"/>
 
-  <project remote="origin" name="android_kernel_common_oneplus_sm8850" path="kernel_platform/common" revision="oneplus/sm8850_b_16.0_oneplus_15t" clone-depth="1">
+  <project remote="zaomi" name="android_kernel_common_oneplus_sm8850" path="kernel_platform/common" revision="oneplus/sm8850_b_16.0_oneplus_15t" clone-depth="1">
     <linkfile dest="kernel_platform/.source_date_epoch_dir" src="."/>
   </project>
 
