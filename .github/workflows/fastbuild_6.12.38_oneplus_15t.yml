@@ -808,7 +808,7 @@ jobs:
           echo "export FAKESTAT=\"$FAKESTAT\"" >> ld-wrapper
           echo "export FAKETIME=\"$FAKETIME\"" >> ld-wrapper
           echo 'ld.lld "$@"' >> ld-wrapper
-          chmod +x ld-wrapper
+          chmod +x cc-wrapper ld-wrapper
 
           # 6.12内核make编译核心配置：
           # 1. 重映射物理路径 (由于6.12内核引入了Rust代码，计算内核符号版本的工具变成了gendwarfksyms，而gendwarfksyms无法正确预处理绝对路径，故我们需要手动把绝对路径重映射为相对路径，否则内核符号校验值会大面积出错)
