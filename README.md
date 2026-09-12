@@ -92,9 +92,9 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 
 ## NoMount Suite 与 PathMask
 
-选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.7.1.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
+选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.7.2.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
-- 正确上游为 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite)，2026-09-09 再次拉取核对后，`origin/main` 仍为 `36a4621`（Suite v1.3.176 / Prism engine v32），与本仓库已固定的上游提交一致，因此本次没有可继续同步的新提交。当前内核仍如实标记为 v13 定制分支；v32 内核协议需要单独移植和真机验证，不会冒充“已同步”。
+- 正确上游为 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite)，2026-09-09 再次拉取核对后，`origin/main` 仍为 `36a4621`（Suite v1.3.176 / Prism engine v32），与本仓库已固定的上游提交一致，因此本次没有可继续同步的新提交。当前内核是本仓库的 v14 PathHide 协议定制分支；v32 内核协议需要单独移植和真机验证，不会冒充“已同步”。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。手动 `+` 规则仍按原来的 global/deny 语义全局生效；`&` 规则是 AppCloak 可选补充，只在 `@uid:` 白名单中的调用方 UID 下生效。
 - 从正确上游回移 `286c2ac`：合成目录正确响应 `SEEK_DATA/SEEK_HOLE`，关闭普通应用无需 root 即可识别该目录的两次 `lseek` 特征；仅在显式 seek 时执行，不增加日常常驻开销。
 - 路径遮罩默认使用 `global` 作用域，对全系统读取统一返回隐藏结果；它与 NoMount 的按 UID 注入屏蔽名单相互独立。写操作保留文件系统原生行为，避免用统一错误码形成额外指纹。
@@ -104,7 +104,7 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 - NoMount 引擎在 CI 中从固定上游提交打上 `upstream-module-id-validation.patch` 后重新编译。核心扫描会要求模块目录名与 `module.prop` 的 `id=` 完全一致，并对启用模块的重复 ID 做确定性拒绝，避免元模块那种目录名与声明 ID 漂移导致的挂载与状态错配。
 - 挂载兼容性分两类处理：目录名/声明 ID 不一致或重复的模块会在核心扫描阶段被明确跳过并输出原因；第三方模块自己创建的 bind mount 会在开机完成后由 `nomount absorb` 转成无挂载注入。仍可见的 `my_*` mount 是上游故意保留的安全回退——这些路径的 hookless 注入可能触发 zygote FD 白名单导致开机循环，默认不开启 `my_hookless` 试验模式。
 
-v1.7.1 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
+v1.7.2 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
 
 AppCloak 的隐藏组内应用仍可以看到自己和所有其他应用；系统 UID 不过滤，未勾选的调用应用也不过滤。策略文件通过 inotify 事件即时更新，仅以 5 分钟低频检查兜底；列表未变化时不读取文件，调用方策略缓存最长 5 分钟，策略变更时立即失效。
 

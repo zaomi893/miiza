@@ -1012,7 +1012,7 @@ jobs:
           test -x "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang"
           echo "ANDROID_NDK_HOME=$NDK_HOME" >> "$GITHUB_ENV"
 
-      - name: 构建并打包 NoMount Suite v1.7.1
+      - name: 构建并打包 NoMount Suite v1.7.2
         if: inputs.nomount_enable
         run: |
           set -euo pipefail
@@ -1037,14 +1037,14 @@ jobs:
           cd "$DEST"
           find . -type f ! -name nomount.sha256sums ! -path './META-INF/*' -print0 | sort -z | xargs -0 sha256sum > nomount.sha256sums
           sha256sum -c nomount.sha256sums
-          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.7.1.zip" . -x '*.git*'
+          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.7.2.zip" . -x '*.git*'
 
       - name: 上传 NoMount Suite 模块
         if: inputs.nomount_enable
         uses: actions/upload-artifact@v7
         with:
-          name: NoMount-Suite-v1.7.1
-          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.7.1.zip
+          name: NoMount-Suite-v1.7.2
+          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.7.2.zip
           archive: false
 
 
@@ -1075,7 +1075,7 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/download-artifact@v8
         with:
-          name: NoMount-Suite-v1.7.1.zip
+          name: NoMount-Suite-v1.7.2.zip
           path: ./release_zips
           skip-decompress: true
 
@@ -1137,7 +1137,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount/PathMask/AppCloak支持：${{ inputs.nomount_enable }}
-          - NoMount Suite版本：v1.7.1（不修改 ksud/ksu_susfs）
+          - NoMount Suite版本：v1.7.2（不修改 ksud/ksu_susfs）
           - 模块加载黑名单：${{ inputs.blacklist_modules }}
           - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)

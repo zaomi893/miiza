@@ -4019,6 +4019,7 @@ void nomount_spoof_mmap_metadata(const struct inode *inode, dev_t *dev,
 #define NM_PATHHIDE_MAX_PATHS    256
 #define NM_PATHHIDE_MAX_PATH_LEN 512
 #define NM_PATHHIDE_MAX_APP_UIDS 256
+#define NM_PATHHIDE_PROTOCOL_VERSION 14
 
 enum nm_pathhide_scope {
 	NM_PATHHIDE_SCOPE_DENY = 0,
@@ -4810,6 +4811,8 @@ static int __init nomount_pathhide_init(void)
 #endif
 	if (!nm_pathhide_pde)
 		return -ENOMEM;
+	pr_info("nomount: PathHide protocol v%d\n",
+		NM_PATHHIDE_PROTOCOL_VERSION);
 	return 0;
 }
 

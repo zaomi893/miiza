@@ -1955,7 +1955,7 @@
     const engineVersion = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "");
     const suiteVersion = (await exec("sed -n 's/^version=//p' /data/adb/modules/meta-nomount/module.prop 2>/dev/null | head -n1")).stdout.trim();
     $("ver").textContent = suiteVersion || engineVersion || "v?";
-    const protocol = currentLang === "zh" ? "内核协议 v13" : "kernel protocol v13";
+    const protocol = currentLang === "zh" ? "内核协议 v14" : "kernel protocol v14";
     $("footver").textContent = suiteVersion ? ("Suite " + suiteVersion + " · " + protocol) : protocol;
     await Promise.all([
       refreshStatus(), refreshDevice(), refreshStealth(), refreshGuard(),
