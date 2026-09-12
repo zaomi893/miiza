@@ -16,7 +16,7 @@ Other reviewed sources:
 - LKM-PathMask: `Andrea-lyz/LKM-PathMask@98274c85ba41442c35b05ed316b16308551240f9` (`2.7.2`).
 - Original local module baseline: user-supplied `NoMount-Module-v1.3.0.zip`, SHA-256 `2e60374091ae8d8f8b013fb61a851d94a30a0d890c8c9e0e0c70d8bb37e8fea3`.
 
-The current local kernel half is a device-tested Prism v13 derivative with the
+The current local kernel half is a v14 PathHide protocol derivative with the
 PathMask fast path integrated directly. Upstream v32 is not relabelled as
 already synchronized: it changes both the engine and userspace and must be
 ported as a pair, followed by a real OP15 boot/detection test. Low-risk fixes

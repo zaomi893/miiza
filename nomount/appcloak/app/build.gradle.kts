@@ -15,8 +15,8 @@ android {
         // references in DexFile to its build-time-only R8 RecordTag marker.
         minSdk = 36
         targetSdk = 36
-        versionCode = 10701
-        versionName = "1.7.0"
+        versionCode = 10702
+        versionName = "1.7.2"
     }
 }
 
