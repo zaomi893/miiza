@@ -18,3 +18,8 @@ done
 # to update; writing this last also supports kernels whose first-rule default
 # predates global PathMask.
 printf %s @global > /proc/pathhide 2>/dev/null || true
+
+# Rebuilding manual PathMask rules clears the optional AppCloak supplement too.
+# Publish it again from the durable package policy so saving one card does not
+# silently turn off the other.
+[ -f "${0%/*}/appcloak-sync.sh" ] && sh "${0%/*}/appcloak-sync.sh" >/dev/null 2>&1

@@ -39,6 +39,15 @@ fi
 # scan.sh --apply already publishes the AppCloak policy. Do not write and
 # restorecon the same files a second time during every boot.
 
+# Package install/remove events can reassign an app UID. Watch packages.list so
+# the optional kernel supplement is rebuilt without polling in the common case.
+WATCH_PID="$NMDIR/.appcloak_pathhide_watch.pid"
+if [ -f "$MODDIR/appcloak-pathhide-watch.sh" ] && \
+   { [ ! -f "$WATCH_PID" ] || ! kill -0 "$(cat "$WATCH_PID" 2>/dev/null)" 2>/dev/null; }; then
+    sh "$MODDIR/appcloak-pathhide-watch.sh" >/dev/null 2>&1 &
+    echo $! > "$WATCH_PID"
+fi
+
 # Scene creates a randomized debugfs mount only after its service/game path is
 # active. The watcher starts fast, then backs off and remains available for a
 # late game launch instead of expiring after ten minutes.

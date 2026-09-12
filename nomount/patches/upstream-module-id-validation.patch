@@ -1,0 +1,61 @@
+diff --git a/src/mount.rs b/src/mount.rs
+index c64d3ce..59be5ed 100644
+--- a/src/mount.rs
++++ b/src/mount.rs
+@@ -622,6 +622,20 @@ pub(crate) fn module_enabled(dir: &Path) -> bool {
+         && !dir.join("skip_mount").exists()
+ }
+ 
++fn declared_module_id(dir: &Path) -> Result<String, String> {
++    let prop = fs::read_to_string(dir.join("module.prop"))
++        .map_err(|_| format!("cannot read {}", dir.join("module.prop").display()))?;
++    let id = prop
++        .lines()
++        .find_map(|line| line.strip_prefix("id="))
++        .map(str::trim)
++        .unwrap_or("");
++    if id.is_empty() {
++        return Err("module.prop has no id=".to_string());
++    }
++    Ok(id.to_string())
++}
++
+ fn load_blocklist() -> HashSet<String> {
+     let mut set: HashSet<String> = BUILTIN_BLOCKLIST.iter().map(|s| (*s).to_string()).collect();
+     if let Ok(contents) = fs::read_to_string(BLOCKLIST_FILE) {
+@@ -1141,6 +1155,7 @@ pub(crate) fn collect_plan() -> Result<(Vec<PlanEntry>, u32)> {
+     let blocklist = load_blocklist();
+     let mut plan = Vec::new();
+     let mut skipped = 0u32;
++    let mut seen_ids = HashSet::new();
+     // Sorted for the same reason plan_tree sorts: a contested target must resolve
+     // to the same module on every boot.
+     let dirs = fs::read_dir(MODULES_DIR)
+@@ -1175,6 +1190,27 @@ pub(crate) fn collect_plan() -> Result<(Vec<PlanEntry>, u32)> {
+             skipped += 1;
+             continue;
+         }
++        match declared_module_id(&mdir) {
++            Ok(declared) if declared == id => {
++                if !seen_ids.insert(declared) {
++                    eprintln!("nomount: skipping {id} — another enabled module already declared id={id}");
++                    skipped += 1;
++                    continue;
++                }
++            }
++            Ok(declared) => {
++                eprintln!(
++                    "nomount: skipping {id} — module.prop declares id={declared}, which does not match its directory name"
++                );
++                skipped += 1;
++                continue;
++            }
++            Err(reason) => {
++                eprintln!("nomount: skipping {id} — {reason}");
++                skipped += 1;
++                continue;
++            }
++        }
+         let id = id.to_string();
+         // "system/" is the classic layout; auto_mount modules (e.g. OxygenCustomizer)
+         // ship content directly under module-root partition dirs. Process every

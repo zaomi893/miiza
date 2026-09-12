@@ -5,18 +5,49 @@ NMDIR=/data/adb/nomount
 CACHE="$NMDIR/xposed_cache"
 INDEX="$NMDIR/xposed_packages"
 HMA_CACHE="$NMDIR/hma_blacklist_cache"
+NEW="$NMDIR/.xposed_packages.new"
+CHANGED="$NMDIR/.xposed_packages.changed"
+REMOVED="$NMDIR/.xposed_packages.removed"
+SCAN_OUT="$NMDIR/.xposed_scan.new"
+CACHE_TMP="$NMDIR/.xposed_cache.tmp"
+LOCK="$NMDIR/.xposed_scan.lock"
 mkdir -p "$NMDIR" && chmod 0700 "$NMDIR"
 
-{
-    echo '# scan-v2'
-    pm list packages -f 2>/dev/null | sort
-} > "$NMDIR/.xposed_packages.new"
-if ! cmp -s "$NMDIR/.xposed_packages.new" "$INDEX" 2>/dev/null; then
-    J=$(( $(nproc 2>/dev/null || echo 4) * 2 ))
-    [ "$J" -gt 24 ] && J=24
-    [ "$J" -lt 4 ] && J=4
-    sed '1d' "$NMDIR/.xposed_packages.new" | xargs -P "$J" -n1 sh -c '
-        apk="${1%=*}"; apk="${apk#package:}"; pkg="${1##*=}"
+if ! mkdir "$LOCK" 2>/dev/null; then
+    if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +10 2>/dev/null)" ]; then
+        rm -rf "$LOCK"
+        mkdir "$LOCK" 2>/dev/null || exit 0
+    else
+        exit 0
+    fi
+fi
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT INT TERM
+
+if [ -f "$INDEX" ] && [ "$(head -n1 "$INDEX" 2>/dev/null)" = "# scan-v2" ]; then
+    sed '1d' "$INDEX" > "$NMDIR/.xposed_packages.old"
+    mv -f "$NMDIR/.xposed_packages.old" "$INDEX"
+fi
+
+pm list packages -f 2>/dev/null | sort > "$NEW"
+if [ ! -f "$INDEX" ]; then
+    cp -f "$NEW" "$CHANGED"
+    : > "$REMOVED"
+elif cmp -s "$NEW" "$INDEX" 2>/dev/null; then
+    rm -f "$NEW" "$CHANGED" "$REMOVED" "$SCAN_OUT" "$CACHE_TMP"
+else
+    comm -13 "$INDEX" "$NEW" > "$CHANGED"
+    comm -23 "$INDEX" "$NEW" > "$REMOVED"
+fi
+
+if [ -f "$CHANGED" ]; then
+    J=$(( $(nproc 2>/dev/null || echo 4) / 2 ))
+    [ "$J" -gt 4 ] && J=4
+    [ "$J" -lt 1 ] && J=1
+    : > "$SCAN_OUT"
+    if [ -s "$CHANGED" ]; then
+        tr '\n' '\0' < "$CHANGED" | xargs -0 -P "$J" -n1 sh -c '
+        line="$1"
+        apk="${line%=*}"; apk="${apk#package:}"; pkg="${line##*=}"
         [ -f "$apk" ] || exit 0
         if timeout 4 unzip -l "$apk" 2>/dev/null | grep -qaE "assets/xposed_init|META-INF/xposed/"; then
             printf "%s\t%s\n" "$pkg" "$apk"; exit 0
@@ -24,10 +55,21 @@ if ! cmp -s "$NMDIR/.xposed_packages.new" "$INDEX" 2>/dev/null; then
         timeout 4 unzip -p "$apk" AndroidManifest.xml 2>/dev/null | tr -d "\000" | \
             grep -qaE "xposedmodule|xposedminversion|xposeddescription|XposedProvider|libxposed" && \
             printf "%s\t%s\n" "$pkg" "$apk"
-    ' _ | sort -u > "$CACHE"
-    mv -f "$NMDIR/.xposed_packages.new" "$INDEX"
-else
-    rm -f "$NMDIR/.xposed_packages.new"
+    ' _ >> "$SCAN_OUT"
+    fi
+    if [ -s "$REMOVED" ] && [ -s "$CACHE" ]; then
+        sed 's/.*=//' "$REMOVED" | awk -F '\t' 'NR==FNR { del[$1]=1; next } !($1 in del)' - "$CACHE" > "$CACHE_TMP"
+    elif [ -s "$CACHE" ]; then
+        cp -f "$CACHE" "$CACHE_TMP"
+    else
+        : > "$CACHE_TMP"
+    fi
+    if [ -s "$SCAN_OUT" ] || [ -s "$CACHE_TMP" ]; then
+        cat "$SCAN_OUT" "$CACHE_TMP" 2>/dev/null | sort -u > "$CACHE.new"
+        mv -f "$CACHE.new" "$CACHE"
+    fi
+    mv -f "$NEW" "$INDEX"
+    rm -f "$CHANGED" "$REMOVED" "$SCAN_OUT" "$CACHE_TMP"
 fi
 
 : > "$HMA_CACHE"
