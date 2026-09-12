@@ -183,7 +183,7 @@ final class AppCloak {
             }
         };
         Thread watcher = new Thread(() -> {
-            observer.start();
+            observer.startWatching();
             try {
                 while (true) {
                     long now = SystemClock.uptimeMillis();
@@ -212,7 +212,7 @@ final class AppCloak {
                     forceReload();
                 }
             } catch (Throwable t) {
-                observer.stop();
+                observer.stopWatching();
                 Log.w(TAG, "policy watcher stopped; falling back to lazy checks", t);
             }
         }, "NoMount-AppCloak-Policy");
