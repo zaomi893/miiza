@@ -861,7 +861,6 @@ jobs:
           export LIBCLANG_PATH="$WORKDIR/kernel_workspace/clang19/lib"
           # 3. 配置KCFLAGS
           KCFLAGS+=" -no-canonical-prefixes"
-          KCFLAGS+=" -mcpu=oryon-1"
           KCFLAGS+=" -O2"
           KCFLAGS+=" -pipe"
           KCFLAGS+=" -Wno-error"
