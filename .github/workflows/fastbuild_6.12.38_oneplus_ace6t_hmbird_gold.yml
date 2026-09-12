@@ -16,6 +16,7 @@ env:
   HMBIRD_SOURCE_BRANCH: 'oneplus/sm8845_b_16.0.0_ace_6t'
   # Gold HMBIRD source: PLR110 16.0.9.400 (CN01).
   HMBIRD_SOURCE_COMMIT: 'c198db99380d7f268894229b8e3ab1deaff8ba79'
+  HMBIRD_TRACK: 'gold'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
   CCACHE_KEY: ccache-ecsv11-6.12.38-ace6t-hmbird-gold
@@ -157,6 +158,16 @@ jobs:
     steps:
       - name: 检出本仓库构建资源
         uses: actions/checkout@v4
+
+      - name: 验证官方风驰源码版本
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/verify-hmbird-source.py \
+            --repo "$HMBIRD_SOURCE_REPO" \
+            --branch "$HMBIRD_SOURCE_BRANCH" \
+            --commit "$HMBIRD_SOURCE_COMMIT" \
+            --track "$HMBIRD_TRACK"
 
       - name: 验证 SUSFS / NoMount 互斥选项
         run: |
@@ -870,6 +881,10 @@ jobs:
           if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi
+          # These non-PLK/PLZ targets have no published stock .ko fingerprint.
+          # Gate substitution by the exact module name and generated .BTF_ids
+          # structure from the pinned official source commit.
+          KCFLAGS+=" -DOPLUS_HMBIRD_SOURCE_IDENTITY"
           KCPPFLAGS+=" -DCONFIG_OPTIMIZE_INLINING"
           export KCFLAGS
           export KCPPFLAGS
@@ -984,54 +999,8 @@ jobs:
           IDS_PAYLOAD=hmbird_artifact/gki-module.btf_ids
           test "$(stat -c%s "$BTF_PAYLOAD")" -gt 0
           test "$(stat -c%s "$BTF_PAYLOAD")" -le 32768
-          test "$(stat -c%s "$IDS_PAYLOAD")" -eq 320
-
-          # Replace only the fixed metadata slots in the already linked Image.
-          # This keeps every code address and the donor module's BTF ID space in
-          # lockstep with this exact upstream-style build.
-          python3 - common/out/arch/arm64/boot/Image "$BTF_PAYLOAD" "$IDS_PAYLOAD" <<'PY'
-          from pathlib import Path
-          import sys
-
-          image_path = Path(sys.argv[1])
-          image = bytearray(image_path.read_bytes())
-          payloads = (
-              (b"HMBIRD_BTF_SLOT", Path(sys.argv[2]).read_bytes(), 32768, False),
-              (b"HMBIRD_IDS_SLOT", Path(sys.argv[3]).read_bytes(), 320, True),
-          )
-          offsets = {}
-          for marker, payload, capacity, exact in payloads:
-              if not payload or len(payload) > capacity or (exact and len(payload) != capacity):
-                  raise SystemExit(f"invalid payload for {marker!r}: {len(payload)}")
-              matches = []
-              start = 0
-              while True:
-                  offset = image.find(marker, start)
-                  if offset < 0:
-                      break
-                  if len(image) - offset >= capacity and not any(image[offset + len(marker):offset + capacity]):
-                      matches.append(offset)
-                  start = offset + 1
-              if len(matches) != 1:
-                  raise SystemExit(f"slot resolution failed for {marker!r}: {matches}")
-              offset = matches[0]
-              image[offset:offset + capacity] = payload + bytes(capacity - len(payload))
-              offsets[marker] = offset
-
-          size_marker = b"HMBIRD_LEN_SLOT"
-          size_offset = image.find(size_marker)
-          if size_offset < 0 or image.find(size_marker, size_offset + 1) >= 0:
-              raise SystemExit("BTF size slot is missing or ambiguous")
-          size_record = len(payloads[0][1]).to_bytes(4, "little") + b"BTFSIZEV001"
-          image[size_offset:size_offset + len(size_marker)] = size_record
-          image_path.write_bytes(image)
-
-          verify = image_path.read_bytes()
-          if verify[offsets[b"HMBIRD_BTF_SLOT"]:offsets[b"HMBIRD_BTF_SLOT"] + len(payloads[0][1])] != payloads[0][1]:
-              raise SystemExit("BTF payload readback failed")
-          if verify[offsets[b"HMBIRD_IDS_SLOT"]:offsets[b"HMBIRD_IDS_SLOT"] + len(payloads[1][1])] != payloads[1][1]:
-              raise SystemExit("BTF IDs payload readback failed")
-          PY
+          python3 "$GITHUB_WORKSPACE/tools/embed-hmbird-metadata.py" \
+            common/out/arch/arm64/boot/Image "$BTF_PAYLOAD" "$IDS_PAYLOAD"
           grep -aFq 'using embedded matching GKI BTF metadata' common/out/arch/arm64/boot/Image
           cp common/out/Module.symvers hmbird_artifact/gki-Module.symvers
           cp common/out/System.map hmbird_artifact/gki-System.map
