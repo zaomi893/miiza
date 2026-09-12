@@ -962,6 +962,31 @@ jobs:
               -e 's#[<"]\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g' \
               -e 's#[<"]\.\./\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g' \
               -e 's#<linux/sa_common\.h>#<sa_common.h>#g'
+          if [[ "$SUB_VERSION" == "23_mtk" ]]; then
+            python3 - "$MODULE_DIR/sched_ext/hmbird_II/hmbird_II.c" <<'PY'
+            from pathlib import Path
+            import sys
+
+            path = Path(sys.argv[1])
+            source = path.read_text()
+            for name in (
+                "android_vh_scx_restore_flags",
+                "android_vh_enq_to_priq",
+                "android_vh_scx_switch_repeat_skip",
+            ):
+                call = f"\tregister_trace_{name}("
+                start = source.index(call)
+                end = source.index("\n", start) + 1
+                source = (
+                    source[:start]
+                    + "#ifndef CONFIG_OPLUS_SYSTEM_KERNEL_MTK\n"
+                    + source[start:end]
+                    + "#endif\n"
+                    + source[end:]
+                )
+            path.write_text(source)
+            PY
+          fi
           [ -s common/out/Module.symvers ] || cp common/out/vmlinux.symvers common/out/Module.symvers
           export PATH="$PWD/clang19/bin:$PWD/build-tools/bin:$PATH"
           export LIBCLANG_PATH="$PWD/clang19/lib"
