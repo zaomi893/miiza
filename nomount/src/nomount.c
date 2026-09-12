@@ -4007,14 +4007,18 @@ void nomount_spoof_mmap_metadata(const struct inode *inode, dev_t *dev,
  * /proc/<pid>/maps and /proc/<pid>/fd, controlled through the
  * /proc/pathhide interface expected by the WebUI Cloak card:
  *   write '-'         -> clear all rules
- *   write '+<path>'   -> add a hide rule (prefix match on '/' boundary)
+ *   write '+<path>'   -> add a manual hide rule (prefix match on '/' boundary)
+ *   write '&<path>'   -> add an AppCloak-supplement hide rule
  *   write '-<path>'   -> remove one rule
  *   write '@global'   -> apply rules to every process (default)
  *   write '@deny'     -> apply rules only to NoMount-blocked UIDs
+ *   write '@uid:<id>' -> allow this caller UID to see '&' AppCloak rules
+ *   write '@appcloak-clear' -> clear only '&' rules and caller UIDs
  *   read              -> one rule per line
  * ===================================================================== */
 #define NM_PATHHIDE_MAX_PATHS    256
 #define NM_PATHHIDE_MAX_PATH_LEN 512
+#define NM_PATHHIDE_MAX_APP_UIDS 256
 
 enum nm_pathhide_scope {
 	NM_PATHHIDE_SCOPE_DENY = 0,
@@ -4027,14 +4031,17 @@ struct nm_pathhide_rule {
 	unsigned long ino;
 	bool inode_valid;
 	bool needs_path_match;
+	bool appcloak_scope;
 };
 
 struct nm_pathhide_table {
 	struct rcu_head rcu;
 	u16 count;
+	u16 appcloak_uid_count;
 	u8 scope;
 	bool has_path_rules;
 	u64 inode_bloom;
+	u32 appcloak_uids[NM_PATHHIDE_MAX_APP_UIDS];
 	struct nm_pathhide_rule rules[];
 };
 
@@ -4296,6 +4303,23 @@ static bool nm_pathhide_scope_matches(const struct nm_pathhide_table *table)
 	return nomount_is_uid_blocked(__kuid_val(current_fsuid()));
 }
 
+static bool nm_pathhide_rule_matches(const struct nm_pathhide_table *table,
+				     const struct nm_pathhide_rule *rule,
+				     bool manual_scope, uid_t caller_uid)
+{
+	if (!rule->appcloak_scope)
+		return manual_scope;
+	if (!table->appcloak_uid_count)
+		return false;
+	int i;
+
+	for (i = 0; i < table->appcloak_uid_count; i++) {
+		if (table->appcloak_uids[i] == caller_uid)
+			return true;
+	}
+	return false;
+}
+
 static __always_inline u64 nm_pathhide_inode_bit(dev_t dev, unsigned long ino)
 {
 	u64 key = ((u64)new_encode_dev(dev) << 32) ^ (u64)ino;
@@ -4329,9 +4353,14 @@ bool nomount_pathhide_match_path(const char *path)
 		return false;
 	rcu_read_lock();
 	table = rcu_dereference(nm_pathhide_rules);
-	if (table && nm_pathhide_scope_matches(table)) {
+	if (table) {
+		bool manual_scope = nm_pathhide_scope_matches(table);
+		uid_t caller_uid = __kuid_val(current_fsuid());
+
 		for (i = 0; i < table->count; i++) {
-			if (nm_pathhide_text_matches(path, table->rules[i].path)) {
+			if (nm_pathhide_rule_matches(table, &table->rules[i],
+						      manual_scope, caller_uid) &&
+			    nm_pathhide_text_matches(path, table->rules[i].path)) {
 				hide = true;
 				break;
 			}
@@ -4352,13 +4381,18 @@ bool nomount_pathhide_hide_inode(const struct inode *inode)
 		return false;
 	rcu_read_lock();
 	table = rcu_dereference(nm_pathhide_rules);
-	if (table && nm_pathhide_scope_matches(table)) {
+	if (table) {
+		bool manual_scope = nm_pathhide_scope_matches(table);
+		uid_t caller_uid = __kuid_val(current_fsuid());
+
 		if (!(table->inode_bloom & nm_pathhide_inode_bit(inode->i_sb->s_dev,
 							       inode->i_ino)))
 			goto out;
 		for (i = 0; i < table->count; i++) {
 			const struct nm_pathhide_rule *rule = &table->rules[i];
-			if (rule->inode_valid && rule->dev == inode->i_sb->s_dev &&
+			if (nm_pathhide_rule_matches(table, rule,
+						      manual_scope, caller_uid) &&
+			    rule->inode_valid && rule->dev == inode->i_sb->s_dev &&
 			    rule->ino == inode->i_ino) {
 				hide = true;
 				break;
@@ -4382,13 +4416,18 @@ bool nomount_pathhide_hide_dirent(const struct inode *dir, u64 ino,
 		return false;
 	rcu_read_lock();
 	table = rcu_dereference(nm_pathhide_rules);
-	if (table && nm_pathhide_scope_matches(table)) {
+	if (table) {
+		bool manual_scope = nm_pathhide_scope_matches(table);
+		uid_t caller_uid = __kuid_val(current_fsuid());
+
 		if (!(table->inode_bloom & nm_pathhide_inode_bit(dir->i_sb->s_dev,
 							       (unsigned long)ino)))
 			goto out;
 		for (i = 0; i < table->count; i++) {
 			const struct nm_pathhide_rule *rule = &table->rules[i];
-			if (rule->inode_valid && rule->dev == dir->i_sb->s_dev &&
+			if (nm_pathhide_rule_matches(table, rule,
+						      manual_scope, caller_uid) &&
+			    rule->inode_valid && rule->dev == dir->i_sb->s_dev &&
 			    rule->ino == ino) {
 				hide = true;
 				break;
@@ -4418,7 +4457,7 @@ bool nomount_pathhide_hide_path(const struct path *path)
 		return true;
 	rcu_read_lock();
 	table = rcu_dereference(nm_pathhide_rules);
-	if (table && nm_pathhide_scope_matches(table))
+	if (table)
 		need_text = table->has_path_rules;
 	rcu_read_unlock();
 	if (!need_text)
@@ -4432,7 +4471,7 @@ bool nomount_pathhide_hide_path(const struct path *path)
 	return i;
 }
 
-static int nm_pathhide_add(const char *path)
+static int nm_pathhide_add(const char *path, bool appcloak_scope)
 {
 	struct nm_pathhide_table *old, *new;
 	struct path resolved;
@@ -4446,7 +4485,8 @@ static int nm_pathhide_add(const char *path)
 	old = rcu_dereference_protected(nm_pathhide_rules,
 					lockdep_is_held(&nm_pathhide_mutex));
 	for (i = 0; old && i < old->count; i++)
-		if (!strcmp(old->rules[i].path, path))
+		if (old->rules[i].appcloak_scope == appcloak_scope &&
+		    !strcmp(old->rules[i].path, path))
 			goto out;
 	if (old && old->count >= NM_PATHHIDE_MAX_PATHS) {
 		ret = -ENOSPC;
@@ -4458,10 +4498,15 @@ static int nm_pathhide_add(const char *path)
 		goto out;
 	}
 	new->scope = old ? old->scope : NM_PATHHIDE_SCOPE_GLOBAL;
+	new->appcloak_uid_count = old ? old->appcloak_uid_count : 0;
 	if (old)
 		memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
+	if (old)
+		memcpy(new->appcloak_uids, old->appcloak_uids,
+		       sizeof(new->appcloak_uids));
 	strscpy(new->rules[new->count - 1].path, path,
 		sizeof(new->rules[new->count - 1].path));
+	new->rules[new->count - 1].appcloak_scope = appcloak_scope;
 	/* A trailing slash denotes a directory-prefix rule. */
 	new->rules[new->count - 1].needs_path_match = path[len - 1] == '/';
 	if (!kern_path(path, LOOKUP_FOLLOW, &resolved)) {
@@ -4507,13 +4552,17 @@ static int nm_pathhide_remove(const char *path)
 	}
 	if (*path) {
 		for (i = 0; i < old->count; i++)
-			if (!strcmp(old->rules[i].path, path)) { found = i; break; }
+			if (!old->rules[i].appcloak_scope &&
+			    !strcmp(old->rules[i].path, path)) { found = i; break; }
 		if (found < 0) { ret = -ENOENT; goto out; }
 	}
 	if (*path && old->count > 1) {
 		new = nm_pathhide_alloc(old->count - 1);
 		if (!new) { ret = -ENOMEM; goto out; }
 		new->scope = old->scope;
+		new->appcloak_uid_count = old->appcloak_uid_count;
+		memcpy(new->appcloak_uids, old->appcloak_uids,
+		       sizeof(new->appcloak_uids));
 		for (i = 0, j = 0; i < old->count; i++) {
 			if (i == found) continue;
 			new->rules[j] = old->rules[i];
@@ -4551,8 +4600,109 @@ static int nm_pathhide_set_scope(const char *scope)
 	if (!new) { mutex_unlock(&nm_pathhide_mutex); return -ENOMEM; }
 	memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
 	new->scope = value;
+	new->appcloak_uid_count = old->appcloak_uid_count;
+	memcpy(new->appcloak_uids, old->appcloak_uids, sizeof(new->appcloak_uids));
 	new->has_path_rules = old->has_path_rules;
 	new->inode_bloom = old->inode_bloom;
+	rcu_assign_pointer(nm_pathhide_rules, new);
+	kvfree_rcu(old, rcu);
+	mutex_unlock(&nm_pathhide_mutex);
+	return 0;
+}
+
+static int nm_pathhide_add_uid(const char *value)
+{
+	struct nm_pathhide_table *old, *new;
+	char *end;
+	unsigned long uid;
+	u16 i;
+
+	uid = simple_strtoul(value, &end, 10);
+	if (!*value || *end || uid > 0xffffffffUL)
+		return -EINVAL;
+	mutex_lock(&nm_pathhide_mutex);
+	old = rcu_dereference_protected(nm_pathhide_rules,
+					lockdep_is_held(&nm_pathhide_mutex));
+	for (i = 0; old && i < old->appcloak_uid_count; i++) {
+		if (old->appcloak_uids[i] == (u32)uid) {
+			mutex_unlock(&nm_pathhide_mutex);
+			return 0;
+		}
+	}
+	if (!old) {
+		new = nm_pathhide_alloc(0);
+		if (!new) {
+			mutex_unlock(&nm_pathhide_mutex);
+			return -ENOMEM;
+		}
+	} else {
+		if (old->appcloak_uid_count >= NM_PATHHIDE_MAX_APP_UIDS) {
+			mutex_unlock(&nm_pathhide_mutex);
+			return -ENOSPC;
+		}
+		new = nm_pathhide_alloc(old->count);
+		if (!new) {
+			mutex_unlock(&nm_pathhide_mutex);
+			return -ENOMEM;
+		}
+		memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
+		new->scope = old->scope;
+		new->has_path_rules = old->has_path_rules;
+		new->inode_bloom = old->inode_bloom;
+		memcpy(new->appcloak_uids, old->appcloak_uids,
+		       sizeof(new->appcloak_uids));
+		new->appcloak_uid_count = old->appcloak_uid_count;
+	}
+	new->appcloak_uids[new->appcloak_uid_count++] = (u32)uid;
+	rcu_assign_pointer(nm_pathhide_rules, new);
+	if (!old)
+		static_branch_enable(&nm_pathhide_active);
+	else
+		kvfree_rcu(old, rcu);
+	mutex_unlock(&nm_pathhide_mutex);
+	return 0;
+}
+
+static int nm_pathhide_clear_appcloak(void)
+{
+	struct nm_pathhide_table *old, *new = NULL;
+	int i, j, appcloak_count = 0;
+
+	mutex_lock(&nm_pathhide_mutex);
+	old = rcu_dereference_protected(nm_pathhide_rules,
+					lockdep_is_held(&nm_pathhide_mutex));
+	if (!old) {
+		mutex_unlock(&nm_pathhide_mutex);
+		return 0;
+	}
+	for (i = 0; i < old->count; i++) {
+		if (old->rules[i].appcloak_scope)
+			appcloak_count++;
+	}
+	if (old->count == appcloak_count) {
+		rcu_assign_pointer(nm_pathhide_rules, NULL);
+		static_branch_disable(&nm_pathhide_active);
+		nm_pathhide_unregister_syscall_hooks();
+		kvfree_rcu(old, rcu);
+		mutex_unlock(&nm_pathhide_mutex);
+		return 0;
+	}
+	new = nm_pathhide_alloc(old->count - appcloak_count);
+	if (!new) {
+		mutex_unlock(&nm_pathhide_mutex);
+		return -ENOMEM;
+	}
+	new->scope = old->scope;
+	for (i = 0, j = 0; i < old->count; i++) {
+		if (old->rules[i].appcloak_scope)
+			continue;
+		new->rules[j] = old->rules[i];
+		new->has_path_rules |= new->rules[j].needs_path_match;
+		if (new->rules[j].inode_valid)
+			new->inode_bloom |= nm_pathhide_inode_bit(new->rules[j].dev,
+								  new->rules[j].ino);
+		j++;
+	}
 	rcu_assign_pointer(nm_pathhide_rules, new);
 	kvfree_rcu(old, rcu);
 	mutex_unlock(&nm_pathhide_mutex);
@@ -4570,7 +4720,11 @@ static int nm_pathhide_show(struct seq_file *m, void *v)
 		seq_printf(m, "@%s\n", table->scope == NM_PATHHIDE_SCOPE_GLOBAL ?
 			   "global" : "deny");
 		for (i = 0; i < table->count; i++)
-			seq_printf(m, "%s\n", table->rules[i].path);
+			seq_printf(m, "%c%s\n",
+				   table->rules[i].appcloak_scope ? '&' : '+',
+				   table->rules[i].path);
+		for (i = 0; i < table->appcloak_uid_count; i++)
+			seq_printf(m, "@uid:%u\n", table->appcloak_uids[i]);
 	} else {
 		/* An empty table still defaults the next rule to global scope. */
 		seq_puts(m, "@global\n");
@@ -4608,9 +4762,15 @@ static ssize_t nm_pathhide_write(struct file *file, const char __user *ubuf,
 		buf[--len] = '\0';
 
 	if (buf[0] == '+')
-		ret = nm_pathhide_add(buf + 1);
+		ret = nm_pathhide_add(buf + 1, false);
+	else if (buf[0] == '&')
+		ret = nm_pathhide_add(buf + 1, true);
 	else if (buf[0] == '-')
 		ret = nm_pathhide_remove(buf + 1);
+	else if (!strncmp(buf, "@uid:", 5))
+		ret = nm_pathhide_add_uid(buf + 5);
+	else if (!strcmp(buf, "@appcloak-clear"))
+		ret = nm_pathhide_clear_appcloak();
 	else if (buf[0] == '@')
 		ret = nm_pathhide_set_scope(buf + 1);
 	else

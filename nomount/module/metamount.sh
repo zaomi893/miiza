@@ -16,9 +16,18 @@ mkdir -p "$NMDIR" && chmod 0700 "$NMDIR"
 # create that path pre-empted the whole mount pass. flock releases on exit and
 # lives in the 0700 state dir.
 LOCK="$NMDIR/.mount.lock"
-exec 9>"$LOCK" 2>/dev/null
+LOCK_DIR="$NMDIR/.mount.lock.dir"
+if [ -d "$LOCK_DIR" ] && [ -n "$(find "$LOCK_DIR" -maxdepth 0 -mmin +2 2>/dev/null)" ]; then
+    rmdir "$LOCK_DIR" 2>/dev/null
+fi
 if command -v flock >/dev/null 2>&1; then
-    flock -n 9 || { ksud kernel notify-module-mounted 2>/dev/null; exit 0; }
+    exec 9>"$LOCK" 2>/dev/null
+    flock -n 9 || exit 0
+else
+    # Hybrid Mount uses an atomic mkdir lock for managers whose toybox lacks
+    # flock. Keep the same semantics instead of silently allowing a double run.
+    mkdir "$LOCK_DIR" 2>/dev/null || exit 0
+    trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT INT TERM
 fi
 
 ABI=$(getprop ro.product.cpu.abi)
@@ -35,6 +44,45 @@ chmod 0755 "$BIN" "$NM_BIN" 2>/dev/null
 # zygote/system_server come up. Best-effort: it never aborts the boot, and
 # it is kept separate from the mount pass so a spoof failure can't affect mounting.
 [ -f "$MODDIR/spoof.sh" ] && sh "$MODDIR/spoof.sh" 2>/dev/null
+
+# --- Mountify compatibility ---
+# The engine understands disable/remove/skip_mount, while Magisk-side modules
+# use skip_mountify to opt out of a third-party metamodule. Mirror that marker
+# through NoMount's own module blocklist without touching the module directory.
+BLOCKLIST="$NMDIR/blocklist"
+AUTO_SKIP="$NMDIR/.skip_mountify.auto"
+CURRENT_SKIP="$NMDIR/.skip_mountify.current"
+STALE_SKIP="$NMDIR/.skip_mountify.stale"
+touch "$BLOCKLIST" "$AUTO_SKIP" "$CURRENT_SKIP" "$STALE_SKIP" 2>/dev/null
+: > "$CURRENT_SKIP"
+for d in /data/adb/modules/*/; do
+    [ -d "$d" ] || continue
+    { [ -f "$d/disable" ] || [ -f "$d/remove" ] || [ -f "$d/skip_mount" ]; } && continue
+    [ -f "$d/skip_mountify" ] || continue
+    basename "$d" >> "$CURRENT_SKIP"
+done
+sort -u "$AUTO_SKIP" > "$NMDIR/.skip_mountify.auto.sorted"
+sort -u "$CURRENT_SKIP" > "$NMDIR/.skip_mountify.current.sorted"
+comm -23 "$NMDIR/.skip_mountify.auto.sorted" "$NMDIR/.skip_mountify.current.sorted" > "$STALE_SKIP"
+comm -12 "$NMDIR/.skip_mountify.auto.sorted" "$NMDIR/.skip_mountify.current.sorted" > "$NMDIR/.skip_mountify.keep"
+if [ -s "$STALE_SKIP" ]; then
+    awk 'NR==FNR { stale[$0]=1; next } !($0 in stale)' \
+        "$STALE_SKIP" "$BLOCKLIST" > "$NMDIR/.blocklist.new"
+    mv -f "$NMDIR/.blocklist.new" "$BLOCKLIST"
+fi
+: > "$NMDIR/.skip_mountify.added"
+while IFS= read -r mid; do
+    [ -n "$mid" ] || continue
+    grep -Fxq "$mid" "$BLOCKLIST" || {
+        echo "$mid" >> "$BLOCKLIST"
+        echo "$mid" >> "$NMDIR/.skip_mountify.added"
+    }
+done < "$NMDIR/.skip_mountify.current.sorted"
+cat "$NMDIR/.skip_mountify.keep" "$NMDIR/.skip_mountify.added" 2>/dev/null | sort -u > "$NMDIR/.skip_mountify.auto.new"
+mv -f "$NMDIR/.skip_mountify.auto.new" "$AUTO_SKIP"
+rm -f "$NMDIR/.skip_mountify.auto.sorted" "$NMDIR/.skip_mountify.current.sorted" \
+      "$STALE_SKIP" "$NMDIR/.skip_mountify.keep" "$NMDIR/.skip_mountify.added"
+chmod 0600 "$BLOCKLIST" "$AUTO_SKIP" 2>/dev/null
 
 # --- bootloop guard ---
 GUARD_MAX=3
@@ -58,7 +106,7 @@ elif [ "$COUNT" -ge "$GUARD_MAX" ]; then
         echo "suite=$(sed -n 's/^version=//p' "$MODDIR/module.prop" 2>/dev/null | head -1)"
         echo "rules_at_trip=$("$NM_BIN" list 2>/dev/null | wc -l)"
         echo "modules_enabled=$(for m in /data/adb/modules/*/; do
-                [ -f "$m/disable" ] || [ -f "$m/remove" ] || [ -f "$m/skip_mount" ] && continue
+                { [ -f "$m/disable" ] || [ -f "$m/remove" ] || [ -f "$m/skip_mount" ] || [ -f "$m/skip_mountify" ]; } && continue
                 basename "$m"
             done | tr '\n' ' ')"
         # Newest native crash + its abort line: for an early-boot bootloop this is almost
@@ -72,6 +120,9 @@ elif [ "$COUNT" -ge "$GUARD_MAX" ]; then
     } > "$NMDIR/incident.log" 2>/dev/null
 elif [ -x "$BIN" ]; then
     timeout 60 "$BIN" mount 2>/dev/null
+    MOUNT_STATUS=$?
+else
+    MOUNT_STATUS=1
 fi
 
 # --- hiding ---
@@ -88,7 +139,7 @@ if command -v ksud >/dev/null 2>&1; then
         [ -d "$d" ] || continue
         mid=$(basename "$d")
         { [ "$mid" = "meta-nomount" ] || [ "$mid" = "kernelnosu" ]; } && continue
-        { [ -f "$d/disable" ] || [ -f "$d/remove" ] || [ -f "$d/skip_mount" ]; } && continue
+        { [ -f "$d/disable" ] || [ -f "$d/remove" ] || [ -f "$d/skip_mount" ] || [ -f "$d/skip_mountify" ]; } && continue
         # Mirror the injector (src/mount.rs): content lives under ANY top-level dir that maps
         # to a real partition, not just system/ (auto_mount modules ship product/ directly).
         # Plain `find` (no -L) is deliberate: a module's `system/product -> ../product`
@@ -104,7 +155,6 @@ if command -v ksud >/dev/null 2>&1; then
             case "$_n" in
                 data|mnt|dev|proc|sys|cache|metadata|config|storage|sdcard|apex|tmp|\
                 debug_ramdisk|linkerconfig|postinstall|second_stage_resources|bin|sbin) continue ;;
-                my_*) continue ;;
             esac
             [ -d "/$_n" ] || continue
             _roots="$_roots $_pd"
@@ -147,5 +197,7 @@ if command -v ksud >/dev/null 2>&1; then
     KSU_MODULE=meta-nomount ksud module config set --temp override.description "$_desc" >/dev/null 2>&1
 fi
 
-ksud kernel notify-module-mounted 2>/dev/null
+if [ "${MOUNT_STATUS:-1}" -eq 0 ]; then
+    ksud kernel notify-module-mounted 2>/dev/null
+fi
 exit 0

@@ -842,6 +842,7 @@
     </div>
     <p class="note" data-i18n="note_global_hide">Choose applications to hide. Detected Xposed modules and HMA blacklist entries are selected automatically.</p>
     <div class="val multiline" id="ghstatus" data-i18n="gh_checking">AppCloak: checking…</div>
+    <div class="swrow"><div class="swi"><div class="lbl" data-i18n="gh_pathhide_label">Hide APK path evidence</div><div class="val" data-i18n="gh_pathhide_note">Optional AppCloak supplement; scoped callers only.</div></div><label class="switch"><input type="checkbox" id="ghPathHide"><span class="sl"></span></label></div>
     <div class="btns">
       <button class="act" id="ghShow" onclick="toggleAppList('hide',this)" data-i18n="btn_show_list">Show list</button>
       <button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button>
@@ -1006,6 +1007,8 @@
       ph_search_path: "search full paths",
       h2_global_hide: "Global hidden applications",
       note_global_hide: "Choose applications to hide. Detected Xposed modules and HMA blacklist entries are selected automatically.",
+      gh_pathhide_label: "Hide APK path evidence",
+      gh_pathhide_note: "Optional AppCloak supplement; scoped callers only.",
       gh_checking: "AppCloak: checking…",
       ph_search_apps: "search app name or package",
       h3_hide_targets: "Hidden targets",
@@ -1094,6 +1097,8 @@
       ph_search_path: "搜索完整路径",
       h2_global_hide: "全局隐藏应用",
       note_global_hide: "选择要隐藏的应用。检测到的 Xposed 模块和 HMA 黑名单条目会自动勾选。",
+      gh_pathhide_label: "隐藏 APK 路径痕迹",
+      gh_pathhide_note: "AppCloak 可选补充；仅对生效应用隐藏。",
       gh_checking: "AppCloak：检查中…",
       ph_search_apps: "搜索应用名或包名",
       h3_hide_targets: "隐藏目标",
@@ -1542,11 +1547,9 @@
       'id=$(basename "$d"); ' +
       '[ "$id" = meta-nomount ] && { echo "$id|suite"; continue; }; ' +
       '[ "$id" = kernelnosu ] && { echo "$id|su"; continue; }; ' +
-      'st=on; { [ -f "$d/disable" ] || [ -f "$d/remove" ] || [ -f "$d/skip_mount" ]; } && st=off; ' +
+      'st=on; { [ -f "$d/disable" ] || [ -f "$d/remove" ] || [ -f "$d/skip_mount" ] || [ -f "$d/skip_mountify" ]; } && st=off; ' +
       'roots=""; for pd in "$d"*/; do [ -d "$pd" ] || continue; [ -L "${pd%/}" ] && continue; n=$(basename "$pd"); ' +
-      'case "$n" in data|mnt|dev|proc|sys|cache|metadata|config|storage|sdcard|apex|tmp' +
-      '|debug_ramdisk|linkerconfig|postinstall|second_stage_resources|bin|sbin) continue;; ' +
-      'my_*) continue;; esac; [ -d "/$n" ] || continue; roots="$roots $pd"; done; ' +
+      'case "$n" in data|mnt|dev|proc|sys|cache|metadata|config|storage|sdcard|apex|tmp|debug_ramdisk|linkerconfig|postinstall|second_stage_resources|bin|sbin) continue;; esac; [ -d "/$n" ] || continue; roots="$roots $pd"; done; ' +
       '[ -z "$roots" ] && [ "$st" = on ] && st=nopart; ' +
       'mech=""; cnt=0; ' +
       'if [ "$st" = on ]; then ov=0; vf=0; ' +
@@ -1586,7 +1589,7 @@
       else {
         const st = p[1], mech = p[2];
         if (st === "nopart") { label = labelMap["script only"]; cls = "off"; tip = currentLang === "zh" ? "不含分区目录（脚本、zygisk、二进制等）—— Suite 无需注入。" : "Ships no partition directory at all (scripts, zygisk, binaries) — nothing for the Suite to inject."; }
-        else if (st === "off") { label = labelMap.skipped; cls = "off"; tip = currentLang === "zh" ? "存在 disable/remove/skip_mount 标记，Suite 将跳过。" : "Has a disable / remove / skip_mount marker, so the Suite leaves it alone."; }
+        else if (st === "off") { label = labelMap.skipped; cls = "off"; tip = currentLang === "zh" ? "存在 disable/remove/skip_mount/skip_mountify 标记，Suite 将跳过。" : "Has a disable / remove / skip_mount / skip_mountify marker, so the Suite leaves it alone."; }
         else if (mech === "overlay") { label = labelMap.overlay; cls = "ov"; served++; showCnt = true; }
         else if (mech === "vfs+overlay") { label = labelMap["vfs+overlay"]; cls = "ov"; served++; showCnt = true; }
         else if (mech === "vfs") { label = labelMap.vfs; cls = "vfs"; served++; showCnt = true; }
@@ -1968,6 +1971,7 @@
   const PH_EXCLUDE = "/data/adb/nomount/.cloak_exclude";
   const GH_CONF = "/data/adb/nomount/hidden_apps.conf";
   const GS_CONF = "/data/adb/nomount/scope_apps.conf";
+  const GH_PATHHIDE = "/data/adb/nomount/appcloak_pathhide";
   const GH_EXCLUDE = "/data/adb/nomount/.global_hide_exclude";
   let GH = new Map(); let GS = new Set(); let GHX = new Set();
   let ghShown = false; let gsShown = false;
@@ -1997,6 +2001,9 @@
     scope.stdout.split("\n").map(function(s){ return s.trim(); }).filter(validPkg).forEach(function(p){
       if (_pkgByName.has(p)) GS.add(p);
     });
+    const pathHide = await exec("cat " + GH_PATHHIDE + " 2>/dev/null");
+    const pathHideSwitch = document.getElementById("ghPathHide");
+    if (pathHideSwitch) pathHideSwitch.checked = pathHide.stdout.trim() === "1";
     renderGlobalHide(); await refreshGlobalHideStatus();
   }
   function renderGlobalHide() {
@@ -2059,7 +2066,7 @@
     let cmd="mkdir -p /data/adb/nomount; { echo '# NoMount global hidden packages'; ";
     pkgs.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_CONF+"; { ";
     excluded.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_EXCLUDE+"; { echo '# NoMount AppCloak caller scope'; ";
-    [...GS].sort().forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GS_CONF+"; chmod 0600 "+GH_CONF+" "+GS_CONF+" "+GH_EXCLUDE+"; sh /data/adb/modules/meta-nomount/appcloak-sync.sh 2>/dev/null";
+    [...GS].sort().forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GS_CONF+"; printf '%s\\n' " + (((document.getElementById("ghPathHide") || {}).checked) ? "1" : "0") + " > "+GH_PATHHIDE+"; chmod 0600 "+GH_CONF+" "+GS_CONF+" "+GH_EXCLUDE+" "+GH_PATHHIDE+"; sh /data/adb/modules/meta-nomount/appcloak-sync.sh 2>/dev/null";
     return await exec(cmd);
   }
   async function applyGlobalHide(btn) {

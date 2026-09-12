@@ -29,6 +29,11 @@ Backported independently from the primary upstream:
   answer `SEEK_DATA` and `SEEK_HOLE` like their backing EROFS directories. This
   closes an unprivileged two-`lseek` detection oracle without changing the
   userspace protocol or adding steady-state overhead.
+- Local compatibility patch `upstream-module-id-validation.patch`: the core
+  scanner requires each enabled module's directory name to equal its declared
+  `module.prop` `id=` and rejects duplicate enabled IDs deterministically. The
+  workflows build the arm64 engine from this patched fixed upstream revision;
+  they do not silently rely on the unpatched prebuilt binary.
 
 PathMask uses compile-time VFS call sites plus the six arm64 path-metadata
 fallback probes and `getdents64` filtering used by LKM-PathMask 2.7.2. The

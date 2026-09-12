@@ -34,7 +34,7 @@ for mp in /data/adb/modules/*/module.prop; do
     [ "$id" = "meta-nomount" ] && continue          # our own (update/reinstall)
     [ -f "$mdir/remove" ] && continue               # pending uninstall
     [ -f "$mdir/disable" ] && continue              # disabled -> won't run
-    if grep -q '^metamodule=1' "$mp"; then
+    if grep -Eq '^[[:space:]]*metamodule[[:space:]]*=[[:space:]]*(1|true|yes)[[:space:]]*$' "$mp"; then
         other="$(grep '^name=' "$mp" | head -n1 | cut -d= -f2-)"
         ui_print "*********************************************************"
         ui_print "! Another metamodule is already installed:"
@@ -85,6 +85,7 @@ ui_print "  config: $CONF"
 [ -f "$MODPATH/pathhide-apply.sh" ] && set_perm "$MODPATH/pathhide-apply.sh" 0 0 0755
 [ -f "$MODPATH/scene-debugfs-watch.sh" ] && set_perm "$MODPATH/scene-debugfs-watch.sh" 0 0 0755
 [ -f "$MODPATH/appcloak-sync.sh" ] && set_perm "$MODPATH/appcloak-sync.sh" 0 0 0755
+[ -f "$MODPATH/appcloak-pathhide-watch.sh" ] && set_perm "$MODPATH/appcloak-pathhide-watch.sh" 0 0 0755
 [ -f "$MODPATH/migrate-state.sh" ] && set_perm "$MODPATH/migrate-state.sh" 0 0 0755
 [ -f "$NMDIR/pathhide.conf" ] || echo "# NoMount PathMask rule list (managed by WebUI › Tools › PathMask)" > "$NMDIR/pathhide.conf"
 [ -f "$NMDIR/hidden_apps.conf" ] || echo "# NoMount global hidden packages (managed by WebUI)" > "$NMDIR/hidden_apps.conf"

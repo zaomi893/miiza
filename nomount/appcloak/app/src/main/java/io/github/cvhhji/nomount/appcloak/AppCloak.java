@@ -1,5 +1,6 @@
 package io.github.cvhhji.nomount.appcloak;
 
+import android.os.FileObserver;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -33,16 +34,22 @@ final class AppCloak {
     private static volatile long policyGeneration;
     private static volatile long checkedAt = -10_000L;
     private static volatile String phase = "init";
-    private static final long POLICY_CHECK_INTERVAL_MS = 10_000L;
-    private static final long CALLER_CACHE_TTL_MS = 60_000L;
+    private static final long POLICY_FALLBACK_INTERVAL_MS = 300_000L;
+    private static final long POLICY_EVENT_DEBOUNCE_MS = 250L;
+    private static final long CALLER_CACHE_TTL_MS = 300_000L;
+    private static final Object POLICY_WATCH_LOCK = new Object();
+    private static boolean policyEventPending;
+    private static long policyEventAt = Long.MIN_VALUE;
     private static final ConcurrentHashMap<Integer, CallerPolicy> callerCache =
             new ConcurrentHashMap<>();
-    private static volatile Class<?> packageStateClass;
-    private static volatile Method packageNameMethod;
-    private static volatile Class<?> appIdClass;
-    private static volatile Method appIdMethod;
-    private static volatile Class<?> computerClass;
-    private static volatile Method packagesForUidMethod;
+    private static final ConcurrentHashMap<Class<?>, Method> packageNameMethods =
+            new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<?>, Field> packageNameFields =
+            new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<?>, Method> appIdMethods =
+            new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<?>, Method> packagesForUidMethods =
+            new ConcurrentHashMap<>();
 
     private static final class CallerPolicy {
         final boolean hidden;
@@ -69,6 +76,7 @@ final class AppCloak {
                 publishStatus("installing");
                 install();
                 markActive();
+                watchPolicyChanges();
                 publishStatus("active");
                 Log.i(TAG, "package visibility filter installed");
             } catch (Throwable t) {
@@ -159,6 +167,59 @@ final class AppCloak {
         }
     }
 
+    private static void watchPolicyChanges() {
+        File directory = POLICY.getParentFile();
+        int events = FileObserver.CLOSE_WRITE | FileObserver.MOVED_TO
+                | FileObserver.DELETE | FileObserver.ATTRIB;
+        FileObserver observer = new FileObserver(directory, events) {
+            @Override
+            public void onEvent(int event, String path) {
+                if (!"hidden_apps.conf".equals(path) && !"scope_apps.conf".equals(path)) return;
+                synchronized (POLICY_WATCH_LOCK) {
+                    policyEventPending = true;
+                    policyEventAt = SystemClock.uptimeMillis();
+                    POLICY_WATCH_LOCK.notifyAll();
+                }
+            }
+        };
+        Thread watcher = new Thread(() -> {
+            observer.start();
+            try {
+                while (true) {
+                    long now = SystemClock.uptimeMillis();
+                    long fallbackAt = checkedAt + POLICY_FALLBACK_INTERVAL_MS;
+                    long waitMs = policyEventPending
+                            ? Math.max(0L, policyEventAt + POLICY_EVENT_DEBOUNCE_MS - now)
+                            : Math.max(1L, fallbackAt - now);
+                    if (waitMs > 0L) {
+                        synchronized (POLICY_WATCH_LOCK) {
+                            if (!policyEventPending) {
+                                POLICY_WATCH_LOCK.wait(Math.min(waitMs, POLICY_FALLBACK_INTERVAL_MS));
+                                continue;
+                            } else {
+                                POLICY_WATCH_LOCK.wait(waitMs);
+                                continue;
+                            }
+                        }
+                    }
+                    synchronized (POLICY_WATCH_LOCK) {
+                        if (!policyEventPending
+                                && SystemClock.uptimeMillis() < checkedAt + POLICY_FALLBACK_INTERVAL_MS) {
+                            continue;
+                        }
+                        policyEventPending = false;
+                    }
+                    forceReload();
+                }
+            } catch (Throwable t) {
+                observer.stop();
+                Log.w(TAG, "policy watcher stopped; falling back to lazy checks", t);
+            }
+        }, "NoMount-AppCloak-Policy");
+        watcher.setDaemon(true);
+        watcher.start();
+    }
+
     private static void publishStatus(String value) {
         phase = value;
         try (FileWriter out = new FileWriter(STATUS, false)) {
@@ -214,12 +275,11 @@ final class AppCloak {
             Object targetState, String target, int snapshotIndex) {
         try {
             Class<?> type = targetState.getClass();
-            Method appId = appIdClass == type ? appIdMethod : null;
+            Method appId = appIdMethods.get(type);
             if (appId == null) {
                 appId = type.getMethod("getAppId");
                 appId.setAccessible(true);
-                appIdClass = type;
-                appIdMethod = appId;
+                appIdMethods.put(type, appId);
             }
             Object value = appId.invoke(targetState);
             if (value instanceof Integer && uid % 100000 == (Integer) value) return true;
@@ -227,8 +287,13 @@ final class AppCloak {
         try {
             if (snapshotIndex < 0) return false;
             Object computer = referenceArgument(frame, snapshotIndex);
-            Method m = computer.getClass().getMethod("getPackagesForUid", int.class);
-            m.setAccessible(true);
+            Class<?> computerType = computer.getClass();
+            Method m = packagesForUidMethods.get(computerType);
+            if (m == null) {
+                m = computerType.getMethod("getPackagesForUid", int.class);
+                m.setAccessible(true);
+                packagesForUidMethods.put(computerType, m);
+            }
             String[] packages = (String[]) m.invoke(computer, uid);
             if (packages != null) for (String p : packages) if (target.equals(p)) return true;
         } catch (Throwable ignored) {}
@@ -247,12 +312,11 @@ final class AppCloak {
             Object computer = referenceArgument(frame, snapshotIndex);
             if (computer == null) return null;
             Class<?> type = computer.getClass();
-            Method m = computerClass == type ? packagesForUidMethod : null;
+            Method m = packagesForUidMethods.get(type);
             if (m == null) {
                 m = type.getMethod("getPackagesForUid", int.class);
                 m.setAccessible(true);
-                computerClass = type;
-                packagesForUidMethod = m;
+                packagesForUidMethods.put(type, m);
             }
             return (String[]) m.invoke(computer, uid);
         } catch (Throwable ignored) {}
@@ -289,19 +353,23 @@ final class AppCloak {
         if (state == null) return null;
         try {
             Class<?> type = state.getClass();
-            Method m = packageStateClass == type ? packageNameMethod : null;
+            Method m = packageNameMethods.get(type);
             if (m == null) {
                 m = type.getMethod("getPackageName");
                 m.setAccessible(true);
-                packageStateClass = type;
-                packageNameMethod = m;
+                packageNameMethods.put(type, m);
             }
             return (String) m.invoke(state);
         } catch (Throwable ignored) {}
         for (String fieldName : new String[]{"mName", "name"}) {
             try {
-                Field f = state.getClass().getDeclaredField(fieldName);
-                f.setAccessible(true);
+                Class<?> type = state.getClass();
+                Field f = packageNameFields.get(type);
+                if (f == null || !fieldName.equals(f.getName())) {
+                    f = type.getDeclaredField(fieldName);
+                    f.setAccessible(true);
+                    packageNameFields.put(type, f);
+                }
                 Object value = f.get(state);
                 if (value instanceof String) return (String) value;
             } catch (Throwable ignored) {}
@@ -311,11 +379,18 @@ final class AppCloak {
 
     private static void reloadIfNeeded() {
         long now = SystemClock.uptimeMillis();
-        if (now - checkedAt >= POLICY_CHECK_INTERVAL_MS) reload(now);
+        if (now - checkedAt >= POLICY_FALLBACK_INTERVAL_MS) reload(now);
+    }
+
+    private static void forceReload() {
+        synchronized (AppCloak.class) {
+            checkedAt = -POLICY_FALLBACK_INTERVAL_MS;
+            reload(SystemClock.uptimeMillis());
+        }
     }
 
     private static synchronized void reload(long now) {
-        if (now - checkedAt < POLICY_CHECK_INTERVAL_MS) return;
+        if (now - checkedAt < 0L) return;
         checkedAt = now;
         long hiddenStamp = POLICY.exists() ? POLICY.lastModified() ^ POLICY.length() : Long.MIN_VALUE;
         long scopeStamp = SCOPE_POLICY.exists()
