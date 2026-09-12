@@ -79,10 +79,10 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 
 - `fastbuild_6.12.23_oneplus_15_hmbird_gold.yml` / `fastbuild_6.12.23_oneplus_15_hmbird_purple.yml`：一加 15 金标、紫标风驰构建。
 - `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml`：一加 15T 金标、紫标风驰构建。源码使用 `zaomi893/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_oneplus_15t` 分支；TCP Brutal、ADIOS、Re-Kernel 源码随树提供，但仅由各自开关启用。版本号为 `android16-5-gbe6292a1543d-ab14525421-4k`，构建时间默认为 `Mon Dec 1 03:28:37 UTC 2025`，工具链为 Clang `r547379` / Rust 1.82。
-- `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml`：Ace6T 金标、紫标风驰构建，底座沿用已验证启动的 SM8845 源码分支。
-- `fastbuild_6.12.58_hmbird_gold.yml` / `fastbuild_6.12.58_hmbird_purple.yml`：6.12.58 通用版金标、紫标风驰构建，底座沿用 `oneplus/sm8850_b_16.0_pad_3_pro`。
-- `fastbuild_6.12.23_mtk_hmbird_gold.yml` / `fastbuild_6.12.23_mtk_hmbird_purple.yml`：天玑 6.12.23 金标、紫标风驰构建，底座沿用 `oppo/mt6993_b_16.0.0_find_x9`。
-- `fastbuild_6.12.58_mtk_hmbird_gold.yml` / `fastbuild_6.12.58_mtk_hmbird_purple.yml`：天玑 6.12.58 金标、紫标风驰构建，底座沿用 `oneplus/mt6993_b_16.0_ace_6_ultra`。
+- `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml`：Ace6T 金标、紫标风驰构建，源码使用 `zaomi893/android_kernel_common_oneplus_sm8845` 的 `oneplus/sm8845_b_16.0.0_ace_6t` 分支。
+- `fastbuild_6.12.58_hmbird_gold.yml` / `fastbuild_6.12.58_hmbird_purple.yml`：6.12.58 通用版金标、紫标风驰构建，源码使用 `zaomi893/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_pad_3_pro` 分支。
+- `fastbuild_6.12.23_mtk_hmbird_gold.yml` / `fastbuild_6.12.23_mtk_hmbird_purple.yml`：天玑 6.12.23 金标、紫标风驰构建，源码使用 `zaomi893/android_kernel_oppo_mt6993` 的 `oppo/mt6993_b_16.0.0_find_x9` 分支。
+- `fastbuild_6.12.58_mtk_hmbird_gold.yml` / `fastbuild_6.12.58_mtk_hmbird_purple.yml`：天玑 6.12.58 金标、紫标风驰构建，源码使用 `zaomi893/android_kernel_oneplus_mt6993` 的 `oneplus/mt6993_b_16.0_ace_6_ultra` 分支。
 
 这些入口复用 6.12.23 已稳定使用的序列号锁、ReSukiSU 分支选择、LZ4/Zstd、LZ4KD、zarm、Unicode 修复、BBR/Brutal、Droidspaces、网络增强、ADIOS、Re-Kernel、基带保护、NoMount、AppCloak、PathMask 和刷机包命名规则，并分别保留开启/关闭选项。所有工作流默认关闭 SUSFS 和 NoMount，且两者同时开启会立即拒绝构建。15T 的序列号锁与风驰兼容固定启用；`self_config` 只属于 6.12.23 的一加 15 入口，机器人不会向 15T 工作流提交该输入。
 
