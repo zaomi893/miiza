@@ -7,7 +7,7 @@ env:
   KERNEL_VERSION: '6.12'
   SUB_VERSION: '38'
   KERNEL_NAME: 'android16-5-g8c67d4274c0a-ab14275539-4k'
-  KERNEL_SOURCE_REPO: 'cctv18/android_kernel_common_oneplus_sm8845'
+  KERNEL_SOURCE_REPO: 'zaomi893/android_kernel_common_oneplus_sm8845'
   # The migrated Ace6T branch contains the same selectable feature sources as
   # the proven 6.12.23 chain. Their code may be present in the tree; only the
   # workflow config switches decide whether it is built and enabled.

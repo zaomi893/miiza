@@ -7,7 +7,7 @@ env:
   KERNEL_VERSION: '6.12'
   SUB_VERSION: '23_mtk'
   KERNEL_NAME: 'android16-5-ge7f2a9832757-ab13799791-4k'
-  KERNEL_SOURCE_REPO: 'cctv18/android_kernel_oppo_mt6993'
+  KERNEL_SOURCE_REPO: 'zaomi893/android_kernel_oppo_mt6993'
   # The migrated MTK6993 branch contains the same selectable feature sources as
   # the proven 6.12.23 chain. Their code may be present in the tree; only the
   # workflow config switches decide whether it is built and enabled.
