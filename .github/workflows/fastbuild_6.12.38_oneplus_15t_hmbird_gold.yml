@@ -1178,7 +1178,9 @@ jobs:
           NDK_VERSION=27.2.12479018
           NDK_HOME="$ANDROID_SDK/ndk/$NDK_VERSION"
           if [ ! -d "$NDK_HOME" ]; then
+            set +o pipefail
             yes | "$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" >/dev/null
+            set -o pipefail
           fi
           test -x "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang"
           echo "ANDROID_NDK_HOME=$NDK_HOME" >> "$GITHUB_ENV"
