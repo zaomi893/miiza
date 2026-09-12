@@ -221,10 +221,10 @@ jobs:
         run: |
           set -euo pipefail
           cd kernel_workspace
-          git clone --depth=1 --filter=blob:none --sparse \
-            https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850.git \
-            kernel_build_env
-          git -C kernel_build_env sparse-checkout set kernel_platform/build/kernel
+          mkdir -p kernel_build_env/kernel_platform/build/kernel
+          curl -fsSL --retry 5 --retry-all-errors \
+            https://raw.githubusercontent.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/oneplus/sm8850_b_16.0.0_oneplus_15/kernel_platform/build/kernel/_setup_env.sh \
+            -o kernel_build_env/kernel_platform/build/kernel/_setup_env.sh
           test -s kernel_build_env/kernel_platform/build/kernel/_setup_env.sh
           test -f common/net/ipv4/tcp_brutal.c
           test -f common/block/adios.c
