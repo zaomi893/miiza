@@ -1050,7 +1050,7 @@ jobs:
         run: |
           cd kernel_workspace
           git clone --depth=1 --branch master https://github.com/zaomi893/AnyKernel3_ZAOMI ak3_workspace
-          AK3_PREFIX="ak3_FindX9_MTK6993_PurpleHmbird"
+          AK3_PREFIX="ak3_FindX9_MTK6993_GoldHmbird"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
           grep -q '^clear_legacy_ksud_attrs()' anykernel.sh
