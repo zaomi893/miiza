@@ -18,15 +18,8 @@ while [ ! -f "$PKG_LIST" ]; do
 done
 sync_once
 
-if command -v inotifyd >/dev/null 2>&1; then
-    exec inotifyd "$MODDIR/appcloak-pathhide-watch.sh --event" "$PKG_LIST:e"
-fi
-
-stamp=""
-while sleep 300; do
-    next=$(stat -c '%s:%Y' "$PKG_LIST" 2>/dev/null || echo '')
-    if [ -n "$next" ] && [ "$next" != "$stamp" ]; then
-        stamp="$next"
-        sync_once
-    fi
-done
+# Modern KSU/Magisk BusyBox provides inotifyd. If a minimal environment does
+# not, keep the boot-time sync and exit instead of waking the device forever
+# for a five-minute polling fallback; the next boot/WebUI apply refreshes it.
+command -v inotifyd >/dev/null 2>&1 || exit 0
+exec inotifyd "$MODDIR/appcloak-pathhide-watch.sh --event" "$PKG_LIST:e"

@@ -1006,6 +1006,9 @@ jobs:
           readelf -SW "$HMBIRD_KO" > hmbird_artifact/sections.txt
           llvm-objcopy --dump-section .BTF=hmbird_artifact/gki-module.btf "$HMBIRD_KO"
           llvm-objcopy --dump-section .BTF_ids=hmbird_artifact/gki-module.btf_ids "$HMBIRD_KO"
+          test "$(modinfo -F srcversion "$HMBIRD_KO")" = 'CAD3D00952B4ECFE53162C5'
+          test "$(stat -c%s hmbird_artifact/gki-module.btf_ids)" -eq 320
+          test "$(od -An -tu4 -N4 hmbird_artifact/gki-module.btf_ids | tr -d ' ')" -eq 39
           BTF_PAYLOAD=hmbird_artifact/gki-module.btf
           IDS_PAYLOAD=hmbird_artifact/gki-module.btf_ids
           test "$(stat -c%s "$BTF_PAYLOAD")" -gt 0

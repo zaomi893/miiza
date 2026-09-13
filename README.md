@@ -29,7 +29,7 @@
 
 ## 风驰版本入口
 
-每个入口只使用与目标机型相同的官方内核模块仓库和分支。官方同步版本 `16.0.7` 及以上归为金标，取该范围最新提交；低于 `16.0.7` 归为紫标，同样取该范围最新提交。某个机型缺少对应范围的官方提交时，不提供该版本入口。构建只消费 `vendor/oplus/kernel/cpu` 中的官方风驰源码，并用同一次 GKI 编译提取匹配的 `.BTF` / `.BTF_ids`：
+每个入口优先使用目标机型自己的官方内核模块仓库和分支。官方同步版本 `16.0.7` 及以上归为金标，低于 `16.0.7` 归为紫标。唯一例外是尚未公开当前 MT6993 模块树的 Find X9 金标：它使用与实机原厂模块源码指纹完全一致的官方同步点，并仍按 MTK 配置只生成元数据。构建只消费 `vendor/oplus/kernel/cpu` 中的官方风驰源码，并用同一次 GKI 编译提取匹配的 `.BTF` / `.BTF_ids`：
 
 | 机型 | 版本 | 官方同步版本 | 工作流 |
 | --- | --- | --- | --- |
@@ -40,13 +40,14 @@
 | Ace6T | 金标 | `PLR110_16.0.9.400(CN01)`，[`c198db9`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845/commit/c198db99380d7f268894229b8e3ab1deaff8ba79) | `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` |
 | Ace6T | 紫标 | `PLR110_16.0.5.702(CN01)`，[`5bc6b8a`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845/commit/5bc6b8ab8671f68c7754ea42bda91b660ff0ac53) | `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml` |
 | OnePlus Pad 3 Pro | 紫标 | `OPD2513_16.0.6.103(CN01)`，[`8be53e8`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/8be53e8b737a83a33512d5e0106cccb010a5c24c) | `fastbuild_6.12.58_hmbird_purple.yml` |
+| OPPO Find X9 系列 | 金标 | `PLG110_16.0.10.501(CN01)` 实机模块对应的 39-ID 源码修订，[`c198db9`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845/commit/c198db99380d7f268894229b8e3ab1deaff8ba79) | `fastbuild_6.12.23_mtk_hmbird_gold.yml` |
 | OPPO Find X9 系列 | 紫标 | `16.0.1.301/302`，[`4d505a4`](https://github.com/oppo-source/android_kernel_modules_and_devicetree_oppo_mt6993/commit/4d505a4292dab3176a45fec66dc85debc362e24c) | `fastbuild_6.12.23_mtk_hmbird_purple.yml` |
 | OnePlus Ace 6 Ultra | 金标 | `PMB110_16.0.9.400(CN01)`，[`2cc7f46`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_mt6993/commit/2cc7f4606b65a9ede42030ee82614dd845b665a1) | `fastbuild_6.12.58_mtk_hmbird_gold.yml` |
 | OnePlus Ace 6 Ultra | 紫标 | `PMB110_16.0.6.103(CN01)`，[`366500c`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_mt6993/commit/366500c5f2c1b45764722d20b2d923b3816e7bda) | `fastbuild_6.12.58_mtk_hmbird_purple.yml` |
 
 一加 15 的 common GKI 底座仍取自本仓库配置的 `6.12.23` 源码分支，避免换成当前无法在该机启动的官方 common 版本；一加 15T 的底座继续跟随 `oneplus/sm8850_b_16.0_oneplus_15t` 已验证启动链。其他入口保留各自已验证启动的内核底座和 Clang `r536225` 构建链。金标、紫标只改变风驰模块源码提交，不改变内核底座、启动基线或序列号锁。`7fb7abf` 与 `bc8d91d` 不再是当前分支头，工作流按完整 SHA 精确获取这两个历史同步点。
 
-Pad 3 Pro 的 SM8850 官方分支目前只有 `16.0.6.103`，因此仅保留紫标入口，不再复用 15T 的跨机型提交。Find X9 的 OPPO 官方 MT6993 分支目前只有 `16.0.1.301/302`，同样仅保留紫标入口。
+Pad 3 Pro 的 SM8850 官方分支目前只有 `16.0.6.103`，因此仅保留紫标入口，不再复用 15T 的跨机型提交。Find X9 的 OPPO 官方 MT6993 分支只到 `16.0.1.301/302`；紫标继续使用它，金标则使用与 `16.0.10.501` 实机模块 `srcversion` 和39项 kfunc 布局完全一致的官方同步点。
 
 除一加 15/15T 外，各入口的底座均固定到 `zaomi893` 账号中对应迁移分支的当前完整提交，并在编译前通过 GitHub API 核对分支 HEAD、Linux 版本、SoC 与模块平台；任一项漂移或串线都会直接停止构建：
 
@@ -63,7 +64,9 @@ Pad 3 Pro 的 SM8850 官方分支目前只有 `16.0.6.103`，因此仅保留紫�
 
 另有 103 个国行固件模块携带与自定义 GKI 不兼容的旧式 split-BTF。内核只按仓库内固定名单忽略这些模块的错误 BTF，而不改模块代码、符号 CRC 或 KMI，也不会宽泛屏蔽所有模块的 BTF 检查。风险是名单与其他固件版本不一定一致，因此本仓库只声明支持 `PLK110_16.0.9.400(CN01)`；系统升级后必须重新验证。
 
-天玑入口使用 `hmbird_module/Makefile.mtk` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_MTK`；Ace 6 Ultra 取 OnePlusOSS MT6993 模块仓库，Find X9 取 `oppo-source` MT6993 模块仓库，两者不会互换。由于这些仓库未提供可提取指纹的预编译 `.ko`，MTK 配置下的兼容层使用“精确模块名 + `.BTF_ids` 结构”校验。高通入口使用独立的 `hmbird_module/Makefile.qcom` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM`，并保留原有 BTF 哈希指纹校验。
+天玑入口使用 `hmbird_module/Makefile.mtk` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_MTK`；Ace 6 Ultra 取 OnePlusOSS MT6993 模块仓库，Find X9 的旧版元数据取 `oppo-source` MT6993 模块仓库。Find X9 当前 OTA 尚无对应 MT6993 公开提交，因此仅用与其实机模块 `srcversion` 完全一致的 Ace6T 提交补齐新版元数据，并仍按 MTK 配置编译；手机不会加载该构建产物的代码。由于这些仓库未提供可提取指纹的预编译 `.ko`，MTK 配置下的兼容层使用“精确模块名 + `.BTF_ids` 结构”校验。高通入口使用独立的 `hmbird_module/Makefile.qcom` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM`，并保留原有 BTF 哈希指纹校验。
+
+Find X9 `16.0.10.501` 与 Ace6T `16.0.10.500` 的实机原厂模块都报告 `srcversion=CAD3D00952B4ECFE53162C5`，并暴露 39 个 kfunc ID；旧公开 Find X9 源码只生成33个。因此金标和紫标保持为两个独立工作流，构建时分别强制校验39项或33项，不填充未知 ID，也不替换 `vendor_dlkm` 中的原厂代码。
 
 ## 原厂模块兼容日志
 
@@ -88,7 +91,7 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 - `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml`：一加 15T 金标、紫标风驰构建。源码使用 `zaomi893/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_oneplus_15t` 分支；TCP Brutal、ADIOS、Re-Kernel 源码随树提供，但仅由各自开关启用。版本号为 `android16-5-gbe6292a1543d-ab14525421-4k`，构建时间默认为 `Mon Dec 1 03:28:37 UTC 2025`，工具链为 Clang `r547379` / Rust 1.82。
 - `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml`：Ace6T 金标、紫标风驰构建，源码使用 `zaomi893/android_kernel_common_oneplus_sm8845` 的 `oneplus/sm8845_b_16.0.0_ace_6t` 分支。
 - `fastbuild_6.12.58_hmbird_purple.yml`：OnePlus Pad 3 Pro 紫标风驰构建；官方分支没有金标同步版本，因此不提供金标入口。
-- `fastbuild_6.12.23_mtk_hmbird_purple.yml`：OPPO Find X9 系列紫标风驰构建；官方分支没有金标同步版本，因此不提供金标入口。
+- `fastbuild_6.12.23_mtk_hmbird_gold.yml` / `fastbuild_6.12.23_mtk_hmbird_purple.yml`：OPPO Find X9 系列金标、紫标风驰构建；当前 `16.0.10.501` 使用金标。
 - `fastbuild_6.12.58_mtk_hmbird_gold.yml` / `fastbuild_6.12.58_mtk_hmbird_purple.yml`：OnePlus Ace 6 Ultra（PMB110）金标、紫标风驰构建。
 
 这些入口复用 6.12.23 已稳定使用的序列号锁、ReSukiSU 分支选择、LZ4/Zstd、LZ4KD、zarm、Unicode 修复、BBR/Brutal、Droidspaces、网络增强、ADIOS、Re-Kernel、基带保护、NoMount、AppCloak、PathMask 和刷机包命名规则，并分别保留开启/关闭选项。所有工作流默认关闭 SUSFS 和 NoMount，且两者同时开启会立即拒绝构建。15T 的序列号锁与风驰兼容固定启用；`self_config` 只属于 6.12.23 的一加 15 入口，机器人不会向 15T 工作流提交该输入。
@@ -121,6 +124,8 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。手动 `+` 规则仍按原来的 global/deny 语义全局生效；`&` 规则是 AppCloak 可选补充，只在 `@uid:` 白名单中的调用方 UID 下生效。
 - 从正确上游回移 `286c2ac`：合成目录正确响应 `SEEK_DATA/SEEK_HOLE`，关闭普通应用无需 root 即可识别该目录的两次 `lseek` 特征；仅在显式 seek 时执行，不增加日常常驻开销。
 - 路径遮罩默认使用 `global` 作用域，对全系统读取统一返回隐藏结果；它与 NoMount 的按 UID 注入屏蔽名单相互独立。写操作保留文件系统原生行为，避免用统一错误码形成额外指纹。
+- PathMask 热路径使用双哈希 2-Kbit inode 过滤器，避免隐藏规则较多时 64-bit Bloom 饱和、导致普通 `inode_permission/stat/readdir` 进入线性规则扫描；未启用规则时仍由 static key 直接跳过。
+- 包列表变化使用 `inotifyd` 事件同步；极简环境缺少 `inotifyd` 时完成一次启动同步后退出，不再保留每五分钟唤醒一次的常驻轮询进程。
 - 借鉴 LKM-PathMask `2.7.2` 的目标身份与 Scene 发现设计，内核直接覆盖 inode 权限、stat、getdents、proc maps/fd，不加载常驻 syscall kprobe。官方 Scene（`com.omarea.vtools`）存在时，模块最多观察十分钟，只接受 `/dev` 下、SELinux 标签为 `u:object_r:debugfs:s0` 的 debugfs 挂载；发现或超时后进程退出。
 - 应用隐藏会缓存识别 Xposed 模块并读取 HMA 黑名单，默认勾选为隐藏目标；扫描只处理新增、变更和卸载的包，并发限制在最多 4 个 APK，避免 WebUI 刷新造成 CPU 峰值。PathMask 只保存用户手动输入的完整文件路径和 Scene 自动发现的 debugfs 路径。
 - WebUI 的“隐藏 APK 路径痕迹”默认关闭。开启后，模块用 `pm list packages -f -U` 把 `hidden_apps.conf` 映射为应用目录路径规则，把 `scope_apps.conf` 映射为调用方 UID 规则，并全量重建内核补充规则。`packages.list` 变化时由 inotify 事件触发同步；卸载、重装或 UID 复用后的旧规则会被清除，不会残留到新包。该功能只补充 AppCloak，不改变手动 PathMask。

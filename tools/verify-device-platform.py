@@ -72,7 +72,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", required=True, choices=DEVICES)
     args = parser.parse_args()
-    expected = DEVICES[args.device]
+    expected = dict(DEVICES[args.device])
+    # OPPO has not published the PLG110 16.0.10.501 MT6993 module tree. Its
+    # stock sched_ext module has the same CAD3... source version and 39-kfunc
+    # layout as this official Ace6T sync point; compile those sources with the
+    # Find X9 MTK Makefile to generate metadata only (never replacement code).
+    if args.device == "findx9" and os.environ.get("HMBIRD_TRACK") == "gold":
+        expected["module_repo"] = (
+            "OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845"
+        )
+        expected["module_branch"] = "oneplus/sm8845_b_16.0.0_ace_6t"
     actual = {
         "platform": os.environ["SOC_PLATFORM"],
         "soc": os.environ["SOC_ID"],

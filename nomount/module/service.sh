@@ -5,9 +5,9 @@ NMDIR=/data/adb/nomount
 MODDIR="${0%/*}"
 i=0
 booted=0
-while [ "$i" -lt 120 ]; do
+while [ "$i" -lt 48 ]; do
     if [ "$(getprop sys.boot_completed)" = "1" ]; then booted=1; break; fi
-    sleep 2
+    sleep 5
     i=$((i + 1))
 done
 

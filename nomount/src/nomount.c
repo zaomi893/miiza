@@ -13,6 +13,7 @@
 #include <linux/sizes.h>
 #include <linux/magic.h>
 #include <linux/hash.h>
+#include <linux/bitmap.h>
 #include <linux/dcache.h>
 #include <linux/uaccess.h>
 #include <linux/limits.h>
@@ -4019,6 +4020,7 @@ void nomount_spoof_mmap_metadata(const struct inode *inode, dev_t *dev,
 #define NM_PATHHIDE_MAX_PATHS    256
 #define NM_PATHHIDE_MAX_PATH_LEN 512
 #define NM_PATHHIDE_MAX_APP_UIDS 256
+#define NM_PATHHIDE_INODE_BLOOM_BITS 2048
 #define NM_PATHHIDE_PROTOCOL_VERSION 14
 
 enum nm_pathhide_scope {
@@ -4041,7 +4043,10 @@ struct nm_pathhide_table {
 	u16 appcloak_uid_count;
 	u8 scope;
 	bool has_path_rules;
-	u64 inode_bloom;
+	/* Two-hash 2-Kbit filter. The old single-word filter saturated quickly
+	 * when AppCloak published tens of APK directories, turning inode_permission()
+	 * into a linear rule scan on ordinary filesystem traffic. */
+	unsigned long inode_bloom[BITS_TO_LONGS(NM_PATHHIDE_INODE_BLOOM_BITS)];
 	u32 appcloak_uids[NM_PATHHIDE_MAX_APP_UIDS];
 	struct nm_pathhide_rule rules[];
 };
@@ -4321,11 +4326,30 @@ static bool nm_pathhide_rule_matches(const struct nm_pathhide_table *table,
 	return false;
 }
 
-static __always_inline u64 nm_pathhide_inode_bit(dev_t dev, unsigned long ino)
+static __always_inline u64 nm_pathhide_inode_key(dev_t dev, unsigned long ino)
 {
-	u64 key = ((u64)new_encode_dev(dev) << 32) ^ (u64)ino;
+	return ((u64)new_encode_dev(dev) << 32) ^ (u64)ino;
+}
 
-	return 1ULL << hash_64(key, 6);
+static __always_inline bool nm_pathhide_inode_maybe(
+		const struct nm_pathhide_table *table, dev_t dev, unsigned long ino)
+{
+	u64 key = nm_pathhide_inode_key(dev, ino);
+	u32 first = hash_64(key, 11);
+	u32 second = hash_64(key ^ 0x9e3779b97f4a7c15ULL, 11);
+
+	return test_bit(first, table->inode_bloom) &&
+	       test_bit(second, table->inode_bloom);
+}
+
+static __always_inline void nm_pathhide_inode_bloom_add(
+		struct nm_pathhide_table *table, dev_t dev, unsigned long ino)
+{
+	u64 key = nm_pathhide_inode_key(dev, ino);
+
+	__set_bit(hash_64(key, 11), table->inode_bloom);
+	__set_bit(hash_64(key ^ 0x9e3779b97f4a7c15ULL, 11),
+		  table->inode_bloom);
 }
 
 /* Exact path or directory-prefix matching only.  The old strstr() rule made
@@ -4386,8 +4410,8 @@ bool nomount_pathhide_hide_inode(const struct inode *inode)
 		bool manual_scope = nm_pathhide_scope_matches(table);
 		uid_t caller_uid = __kuid_val(current_fsuid());
 
-		if (!(table->inode_bloom & nm_pathhide_inode_bit(inode->i_sb->s_dev,
-							       inode->i_ino)))
+		if (!nm_pathhide_inode_maybe(table, inode->i_sb->s_dev,
+					       inode->i_ino))
 			goto out;
 		for (i = 0; i < table->count; i++) {
 			const struct nm_pathhide_rule *rule = &table->rules[i];
@@ -4421,8 +4445,8 @@ bool nomount_pathhide_hide_dirent(const struct inode *dir, u64 ino,
 		bool manual_scope = nm_pathhide_scope_matches(table);
 		uid_t caller_uid = __kuid_val(current_fsuid());
 
-		if (!(table->inode_bloom & nm_pathhide_inode_bit(dir->i_sb->s_dev,
-							       (unsigned long)ino)))
+		if (!nm_pathhide_inode_maybe(table, dir->i_sb->s_dev,
+					       (unsigned long)ino))
 			goto out;
 		for (i = 0; i < table->count; i++) {
 			const struct nm_pathhide_rule *rule = &table->rules[i];
@@ -4525,8 +4549,8 @@ static int nm_pathhide_add(const char *path, bool appcloak_scope)
 	for (i = 0; i < new->count; i++) {
 		new->has_path_rules |= new->rules[i].needs_path_match;
 		if (new->rules[i].inode_valid)
-			new->inode_bloom |= nm_pathhide_inode_bit(new->rules[i].dev,
-							      new->rules[i].ino);
+			nm_pathhide_inode_bloom_add(new, new->rules[i].dev,
+						      new->rules[i].ino);
 	}
 	rcu_assign_pointer(nm_pathhide_rules, new);
 	if (!old) {
@@ -4569,8 +4593,8 @@ static int nm_pathhide_remove(const char *path)
 			new->rules[j] = old->rules[i];
 			new->has_path_rules |= new->rules[j].needs_path_match;
 			if (new->rules[j].inode_valid)
-				new->inode_bloom |= nm_pathhide_inode_bit(new->rules[j].dev,
-								      new->rules[j].ino);
+				nm_pathhide_inode_bloom_add(new, new->rules[j].dev,
+							      new->rules[j].ino);
 			j++;
 		}
 	}
@@ -4604,7 +4628,8 @@ static int nm_pathhide_set_scope(const char *scope)
 	new->appcloak_uid_count = old->appcloak_uid_count;
 	memcpy(new->appcloak_uids, old->appcloak_uids, sizeof(new->appcloak_uids));
 	new->has_path_rules = old->has_path_rules;
-	new->inode_bloom = old->inode_bloom;
+	bitmap_copy(new->inode_bloom, old->inode_bloom,
+		    NM_PATHHIDE_INODE_BLOOM_BITS);
 	rcu_assign_pointer(nm_pathhide_rules, new);
 	kvfree_rcu(old, rcu);
 	mutex_unlock(&nm_pathhide_mutex);
@@ -4649,7 +4674,8 @@ static int nm_pathhide_add_uid(const char *value)
 		memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
 		new->scope = old->scope;
 		new->has_path_rules = old->has_path_rules;
-		new->inode_bloom = old->inode_bloom;
+		bitmap_copy(new->inode_bloom, old->inode_bloom,
+			    NM_PATHHIDE_INODE_BLOOM_BITS);
 		memcpy(new->appcloak_uids, old->appcloak_uids,
 		       sizeof(new->appcloak_uids));
 		new->appcloak_uid_count = old->appcloak_uid_count;
@@ -4700,8 +4726,8 @@ static int nm_pathhide_clear_appcloak(void)
 		new->rules[j] = old->rules[i];
 		new->has_path_rules |= new->rules[j].needs_path_match;
 		if (new->rules[j].inode_valid)
-			new->inode_bloom |= nm_pathhide_inode_bit(new->rules[j].dev,
-								  new->rules[j].ino);
+			nm_pathhide_inode_bloom_add(new, new->rules[j].dev,
+							  new->rules[j].ino);
 		j++;
 	}
 	rcu_assign_pointer(nm_pathhide_rules, new);

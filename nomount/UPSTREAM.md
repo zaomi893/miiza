@@ -35,8 +35,9 @@ Backported independently from the primary upstream:
   workflows build the arm64 engine from this patched fixed upstream revision;
   they do not silently rely on the unpatched prebuilt binary.
 
-PathMask uses compile-time VFS call sites plus the six arm64 path-metadata
-fallback probes and `getdents64` filtering used by LKM-PathMask 2.7.2. The
-probes exist only while at least one PathMask rule is active, and deliberately
-omit legacy `faccessat` to avoid its measurable timing cost. AppCloak remains
-a small independent package-visibility component maintained in this repository.
+PathMask uses compile-time VFS call sites; the old arm64 syscall kretprobe
+fallback is compiled out because it duplicated those checks on system-wide hot
+paths. A two-hash 2-Kbit inode filter keeps ordinary permission/stat/readdir
+traffic out of the linear rule matcher even with a large AppCloak list.
+AppCloak remains a small independent package-visibility component maintained
+in this repository.

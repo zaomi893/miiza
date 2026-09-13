@@ -17,14 +17,11 @@
 #endif
 #include <linux/jump_label.h>
 
-#define NM_MODULE_VERSION "13.0"
-/* Bumped for the directory-size correction: userspace has no other way to tell
- * whether the running engine keeps a managed erofs directory's i_size in step
- * with the listing. The Suite refuses whiteouts on non-overlayfs precisely
- * because an older engine did not, so it must be able to gate that refusal on
- * >= 13 rather than assume. Nothing compares this for equality -- the nm client
- * only parses it for liveness -- so raising it is safe. */
-#define NOMOUNT_VERSION    13
+#define NM_MODULE_VERSION "14.0"
+/* v14 adds the larger two-hash PathHide inode filter. Nothing compares this for
+ * equality -- the nm client only parses it for liveness -- so raising it is
+ * backward compatible with the existing userspace control plane. */
+#define NOMOUNT_VERSION    14
 #define NOMOUNT_HASH_BITS  12
 #define NM_FLAG_IS_DIR      (1 << 0)
 #define NM_FLAG_VIRTUAL_DIR (1 << 1)
