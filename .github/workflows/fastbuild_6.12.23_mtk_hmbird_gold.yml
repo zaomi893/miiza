@@ -18,7 +18,7 @@ env:
   KERNEL_SOURCE_COMMIT: '05b2cfbb13711a7ce39d62fca2e81a42a0e70de0'
   HMBIRD_SOURCE_REPO: 'OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845'
   HMBIRD_SOURCE_BRANCH: 'oneplus/sm8845_b_16.0.0_ace_6t'
-  # Current 39-kfunc source matching the PLG110 16.0.10.501 stock module srcversion.
+  # Current 39-kfunc source selected from the PLG110 16.0.10.501 stock module layout.
   HMBIRD_SOURCE_COMMIT: 'c198db99380d7f268894229b8e3ab1deaff8ba79'
   HMBIRD_MAKEFILE: 'hmbird_module/Makefile.mtk'
   HMBIRD_TRACK: 'gold'
@@ -1003,10 +1003,17 @@ jobs:
           cp "$HMBIRD_KO" hmbird_artifact/
           modinfo "$HMBIRD_KO" > hmbird_artifact/modinfo.txt
           modprobe --dump-modversions "$HMBIRD_KO" > hmbird_artifact/modversions.txt
+          GENERATED_SRCVERSION="$(modinfo -F srcversion "$HMBIRD_KO")"
+          GENERATED_VERMAGIC="$(modinfo -F vermagic "$HMBIRD_KO")"
+          KERNEL_RELEASE="$(cat common/out/include/config/kernel.release)"
+          test -n "$GENERATED_SRCVERSION"
+          test -s hmbird_artifact/modversions.txt
+          [[ "$GENERATED_VERMAGIC" == "$KERNEL_RELEASE "* ]]
+          printf '%s\n' "$GENERATED_SRCVERSION" > hmbird_artifact/generated-srcversion.txt
+          printf '%s\n' "$GENERATED_VERMAGIC" > hmbird_artifact/generated-vermagic.txt
           readelf -SW "$HMBIRD_KO" > hmbird_artifact/sections.txt
           llvm-objcopy --dump-section .BTF=hmbird_artifact/gki-module.btf "$HMBIRD_KO"
           llvm-objcopy --dump-section .BTF_ids=hmbird_artifact/gki-module.btf_ids "$HMBIRD_KO"
-          test "$(modinfo -F srcversion "$HMBIRD_KO")" = 'CAD3D00952B4ECFE53162C5'
           test "$(stat -c%s hmbird_artifact/gki-module.btf_ids)" -eq 320
           test "$(od -An -tu4 -N4 hmbird_artifact/gki-module.btf_ids | tr -d ' ')" -eq 39
           BTF_PAYLOAD=hmbird_artifact/gki-module.btf

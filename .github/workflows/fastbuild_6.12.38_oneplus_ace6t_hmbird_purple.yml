@@ -1003,6 +1003,14 @@ jobs:
           cp "$HMBIRD_KO" hmbird_artifact/
           modinfo "$HMBIRD_KO" > hmbird_artifact/modinfo.txt
           modprobe --dump-modversions "$HMBIRD_KO" > hmbird_artifact/modversions.txt
+          GENERATED_SRCVERSION="$(modinfo -F srcversion "$HMBIRD_KO")"
+          GENERATED_VERMAGIC="$(modinfo -F vermagic "$HMBIRD_KO")"
+          KERNEL_RELEASE="$(cat common/out/include/config/kernel.release)"
+          test -n "$GENERATED_SRCVERSION"
+          test -s hmbird_artifact/modversions.txt
+          [[ "$GENERATED_VERMAGIC" == "$KERNEL_RELEASE "* ]]
+          printf '%s\n' "$GENERATED_SRCVERSION" > hmbird_artifact/generated-srcversion.txt
+          printf '%s\n' "$GENERATED_VERMAGIC" > hmbird_artifact/generated-vermagic.txt
           readelf -SW "$HMBIRD_KO" > hmbird_artifact/sections.txt
           llvm-objcopy --dump-section .BTF=hmbird_artifact/gki-module.btf "$HMBIRD_KO"
           llvm-objcopy --dump-section .BTF_ids=hmbird_artifact/gki-module.btf_ids "$HMBIRD_KO"
