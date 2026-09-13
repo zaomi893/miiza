@@ -40,7 +40,7 @@ on:
         type: string
         default: '3B15A800Y5D00000'
       ksu_type:
-        description: 'KernelSU分支(ReSukiSU/SukiSU Ultra/KernelSU Next/KOWX Material/KSU(原版)/无内置KSU,默认ReSukiSU)'
+        description: 'KernelSU分支(ReSukiSU/SukiSU Ultra/KernelSU Next/KowSU/KSU(原版)/无内置KSU,默认ReSukiSU)'
         required: true
         type: choice
         default: 'resukisu'
@@ -48,7 +48,7 @@ on:
           - 'resukisu'
           - 'sukisu'
           - 'ksunext'
-          - 'kowx'
+          - 'kowsu'
           - 'ksu'
           - 'none'
       susfs_enable:
@@ -390,7 +390,7 @@ jobs:
         id: ksu_version
         run: |
           cd kernel_workspace
-          bash "$GITHUB_WORKSPACE/tools/setup-kernelsu.sh" "${{ github.event.inputs.ksu_type }}" "${{ inputs.self_config }}"
+          bash "$GITHUB_WORKSPACE/tools/setup-kernelsu.sh" "${{ github.event.inputs.ksu_type }}" "${{ inputs.self_config }}" "${{ inputs.susfs_enable }}"
 
       - name: 应用 KernelSU & SUSFS 补丁
         if: inputs.susfs_enable
@@ -437,11 +437,11 @@ jobs:
           else
             echo "已选择无内置KernelSU模式，跳过susfs配置..."
           fi
-          if [[ ${{ github.event.inputs.ksu_type }} == "ksu" || ${{ github.event.inputs.ksu_type }} == "kowx" ]]; then
+          if [[ ${{ github.event.inputs.ksu_type }} == "ksu" || ${{ github.event.inputs.ksu_type }} == "kowsu" ]]; then
             echo "正在为原版 KernelSU (tiann/KernelSU)添加补丁..."
             cp ./susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
             cd ./KernelSU
-            patch -p1 < 10_enable_susfs_for_ksu.patch || true
+            patch --batch --forward -p1 < 10_enable_susfs_for_ksu.patch
           fi
 
       - name: 应用lz4 1.10.0 & zstd 1.5.7补丁
@@ -1026,8 +1026,8 @@ jobs:
             KSU_TYPENAME="ReSukiSU"
           elif [[ ${{ github.event.inputs.ksu_type }} == "ksunext" ]]; then
             KSU_TYPENAME="KSUNext"
-          elif [[ ${{ github.event.inputs.ksu_type }} == "kowx" ]]; then
-            KSU_TYPENAME="KOWX-KSU"
+          elif [[ ${{ github.event.inputs.ksu_type }} == "kowsu" ]]; then
+            KSU_TYPENAME="KowSU"
           elif [[ ${{ github.event.inputs.ksu_type }} == "ksu" ]]; then
             KSU_TYPENAME="KSU"
           else
@@ -1241,8 +1241,8 @@ jobs:
             KSU_TYPENAME="ReSukiSU"
           elif [[ ${{ github.event.inputs.ksu_type }} == "ksunext" ]]; then
             KSU_TYPENAME="KernelSU Next"
-          elif [[ ${{ github.event.inputs.ksu_type }} == "kowx" ]]; then
-            KSU_TYPENAME="KOWX-KSU"
+          elif [[ ${{ github.event.inputs.ksu_type }} == "kowsu" ]]; then
+            KSU_TYPENAME="KowSU"
           elif [[ ${{ github.event.inputs.ksu_type }} == "ksu" ]]; then
             KSU_TYPENAME="KSU"
           else
@@ -1282,7 +1282,7 @@ jobs:
           - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
-          - KOWX Material 管理器下载：[KOWX712/KernelSU](https://github.com/KOWX712/KernelSU/releases)
+          - KowSU 管理器下载：[KOWX712/KernelSU](https://github.com/KOWX712/KernelSU/releases)
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
 
           ### ⏫️ 更新内容：

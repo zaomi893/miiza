@@ -3,6 +3,7 @@ set -euo pipefail
 
 KSU_TYPE="${1:?missing KernelSU type}"
 SELF_CONFIG="${2:-false}"
+SUSFS_ENABLE="${3:-false}"
 WORKSPACE="${GITHUB_WORKSPACE:?missing GITHUB_WORKSPACE}"
 
 write_version() {
@@ -62,11 +63,20 @@ case "$KSU_TYPE" in
     write_version "$version"
     ;;
 
-  kowx)
-    echo "正在配置 KOWX712/KernelSU Material 分支..."
+  kowsu|kowx)
+    # susfs4oki's KernelSU patch is generated against this upstream test
+    # snapshot.  KOWX712/master has since replaced the sucompat/supercall ABI;
+    # partially applying that patch corrupts the source and fails compilation.
+    if [[ "$SUSFS_ENABLE" == "true" ]]; then
+      kowsu_ref="9537542c6aabc169ab34c27d38ba3b97cc09c16c"
+      echo "正在配置 KowSU（SUSFS 兼容源码 $kowsu_ref）..."
+    else
+      kowsu_ref="master"
+      echo "正在配置 KowSU 最新源码..."
+    fi
     curl -fLSs --retry 3 \
       "https://raw.githubusercontent.com/KOWX712/KernelSU/refs/heads/master/kernel/setup.sh" |
-      bash -s master
+      bash -s "$kowsu_ref"
     add_absolute_include_paths KernelSU/kernel
     version="$(( $(git -C KernelSU rev-list --count HEAD) + 30000 ))"
     write_version "$version"
