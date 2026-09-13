@@ -6,7 +6,7 @@ env:
   ANDROID_VERSION: 'android16'
   KERNEL_VERSION: '6.12'
   SUB_VERSION: '23_mtk'
-  KERNEL_NAME: 'android16-5-ge7f2a9832757-ab13799791-4k'
+  KERNEL_NAME: 'android16-5-g82efd98459a2-ab14457512-4k'
   DEVICE_CODENAME: 'findx9'
   SOC_PLATFORM: 'mtk'
   SOC_ID: 'mt6993'
@@ -137,12 +137,12 @@ on:
         description: '内核后缀(留空默认,开头别加连字符,勿加空格等影响指令运行的保留字符)'
         required: false
         type: string
-        default: 'android16-5-ge7f2a9832757-ab13799791-4k'
+        default: 'android16-5-g82efd98459a2-ab14457512-4k'
       build_date:
-        description: '自定义内核构建时间戳(uname -v 显示格式,如 Mon Dec 1 03:28:37 UTC 2025;留空则使用当前UTC时间)'
+        description: '自定义内核构建时间戳(uname -v 显示格式,如 Tue Nov 18 18:08:47 UTC 2025;留空则使用当前UTC时间)'
         required: false
         type: string
-        default: 'Mon Dec 1 03:28:37 UTC 2025'
+        default: 'Tue Nov 18 18:08:47 UTC 2025'
       blacklist_modules:
         description: '内核模块加载黑名单(逗号分隔,内核加载阶段跳过;留空不屏蔽,默认屏蔽oplus_secure_guard_new以保证KSU兼容)'
         required: false
@@ -962,8 +962,8 @@ jobs:
           echo "Kernel banner: $BANNER"
           [[ "$BANNER" == *'Linux version 6.12.23-android16'* ]]
           grep -aFq 'based on r536225' "$IMAGE"
-          [[ "$BANNER" == *'6.12.23-android16-5-ge7f2a9832757-ab13799791-4k'* ]]
-          [[ "$BANNER" == *'Mon Dec 1 03:28:37 UTC 2025'* ]]
+          [[ "$BANNER" == *'6.12.23-android16-5-g82efd98459a2-ab14457512-4k'* ]]
+          [[ "$BANNER" == *'Tue Nov 18 18:08:47 UTC 2025'* ]]
           OUT=kernel_workspace/common/out
           grep -qx 'CONFIG_KSU=y' "$OUT/.config"
           grep -qx 'CONFIG_DEBUG_INFO_BTF=y' "$OUT/.config"
