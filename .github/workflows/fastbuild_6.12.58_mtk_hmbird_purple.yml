@@ -1,5 +1,5 @@
-name: 6.12.58 天玑 紫标风驰内核快速构建
-run-name: 6.12.58 天玑 紫标风驰 · ${{ inputs.device_serial || '手动构建' }}
+name: 6.12.58 Ace 6 Ultra 紫标风驰内核快速构建
+run-name: 6.12.58 Ace 6 Ultra 紫标风驰 · ${{ inputs.device_serial || '手动构建' }}
 
 env:
   TZ: Asia/Shanghai
@@ -7,15 +7,21 @@ env:
   KERNEL_VERSION: '6.12'
   SUB_VERSION: '58_mtk'
   KERNEL_NAME: 'android16-5-ge7f2a9832757-ab13799791-4k'
+  DEVICE_CODENAME: 'ace6ultra'
+  SOC_PLATFORM: 'mtk'
+  SOC_ID: 'mt6993'
   KERNEL_SOURCE_REPO: 'zaomi893/android_kernel_oneplus_mt6993'
   # The migrated MTK6993 branch contains the same selectable feature sources as
   # the proven 6.12.23 chain. Their code may be present in the tree; only the
   # workflow config switches decide whether it is built and enabled.
   KERNEL_SOURCE_BRANCH: 'oneplus/mt6993_b_16.0_ace_6_ultra'
+  KERNEL_SOURCE_COMMIT: 'c1f34d9c2159e1768555e9d5417c1463146c23ed'
   HMBIRD_SOURCE_REPO: 'OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_mt6993'
   HMBIRD_SOURCE_BRANCH: 'oneplus/mt6993_b_16.0_ace_6_ultra'
   # Purple HMBIRD source: PMB110 16.0.6.103 (CN01).
   HMBIRD_SOURCE_COMMIT: '366500c5f2c1b45764722d20b2d923b3816e7bda'
+  HMBIRD_MAKEFILE: 'hmbird_module/Makefile.mtk'
+  HMBIRD_TRACK: 'purple'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
   CCACHE_KEY: ccache-ecsv11-6.12.58-mtk-hmbird-purple
@@ -158,6 +164,21 @@ jobs:
       - name: 检出本仓库构建资源
         uses: actions/checkout@v4
 
+      - name: 验证机型、芯片平台与迁移源码
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/verify-device-platform.py --device "$DEVICE_CODENAME"
+
+      - name: 验证官方风驰源码版本
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/verify-hmbird-source.py \
+            --repo "$HMBIRD_SOURCE_REPO" \
+            --branch "$HMBIRD_SOURCE_BRANCH" \
+            --commit "$HMBIRD_SOURCE_COMMIT" \
+            --track "$HMBIRD_TRACK"
+
       - name: 验证 SUSFS / NoMount 互斥选项
         run: |
           if [[ "${{ inputs.susfs_enable }}" == "true" && "${{ inputs.nomount_enable }}" == "true" ]]; then
@@ -185,7 +206,7 @@ jobs:
           # 使用本仓库检出的固定 ccache，避免网络/Token 失效造成后台安装静默失败。
           sudo install -m 0755 "$GITHUB_WORKSPACE/lib/ccache-x86-64" /usr/local/bin/ccache
 
-          echo "正在克隆天玑 6.12.58 源码..."
+          echo "正在克隆 Ace 6 Ultra MTK6993 6.12.58 源码..."
           git clone --depth=1 --branch "$KERNEL_SOURCE_BRANCH" \
             "https://github.com/$KERNEL_SOURCE_REPO.git" common &
 
@@ -215,8 +236,9 @@ jobs:
 
           wait
           test -d common
+          test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT"
 
-      - name: 同步 OnePlus 官方内核构建环境
+      - name: 同步 Android GKI 通用构建环境
         shell: bash
         run: |
           set -euo pipefail
@@ -870,6 +892,10 @@ jobs:
           if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi
+          # MTK does not publish a stock .ko fingerprint. Gate substitution by
+          # the exact module name and generated .BTF_ids structure from the
+          # pinned official source commit.
+          KCFLAGS+=" -DOPLUS_HMBIRD_SOURCE_IDENTITY"
           KCPPFLAGS+=" -DCONFIG_OPTIMIZE_INLINING"
           export KCFLAGS
           export KCPPFLAGS
@@ -956,7 +982,7 @@ jobs:
           test "$(git -C oplus_modules rev-parse HEAD)" = "$HMBIRD_SOURCE_COMMIT"
 
           MODULE_DIR="$PWD/oplus_modules/vendor/oplus/kernel/cpu"
-          cp "$GITHUB_WORKSPACE/hmbird_module/Makefile.mtk" "$MODULE_DIR/Makefile"
+          cp "$GITHUB_WORKSPACE/$HMBIRD_MAKEFILE" "$MODULE_DIR/Makefile"
           find "$MODULE_DIR/sched_ext" -type f \( -name '*.c' -o -name '*.h' \) -print0 | \
             xargs -0 sed -i -E \
               -e 's#[<"]\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g' \
@@ -984,54 +1010,8 @@ jobs:
           IDS_PAYLOAD=hmbird_artifact/gki-module.btf_ids
           test "$(stat -c%s "$BTF_PAYLOAD")" -gt 0
           test "$(stat -c%s "$BTF_PAYLOAD")" -le 32768
-          test "$(stat -c%s "$IDS_PAYLOAD")" -eq 320
-
-          # Replace only the fixed metadata slots in the already linked Image.
-          # This keeps every code address and the donor module's BTF ID space in
-          # lockstep with this exact upstream-style build.
-          python3 - common/out/arch/arm64/boot/Image "$BTF_PAYLOAD" "$IDS_PAYLOAD" <<'PY'
-          from pathlib import Path
-          import sys
-
-          image_path = Path(sys.argv[1])
-          image = bytearray(image_path.read_bytes())
-          payloads = (
-              (b"HMBIRD_BTF_SLOT", Path(sys.argv[2]).read_bytes(), 32768, False),
-              (b"HMBIRD_IDS_SLOT", Path(sys.argv[3]).read_bytes(), 320, True),
-          )
-          offsets = {}
-          for marker, payload, capacity, exact in payloads:
-              if not payload or len(payload) > capacity or (exact and len(payload) != capacity):
-                  raise SystemExit(f"invalid payload for {marker!r}: {len(payload)}")
-              matches = []
-              start = 0
-              while True:
-                  offset = image.find(marker, start)
-                  if offset < 0:
-                      break
-                  if len(image) - offset >= capacity and not any(image[offset + len(marker):offset + capacity]):
-                      matches.append(offset)
-                  start = offset + 1
-              if len(matches) != 1:
-                  raise SystemExit(f"slot resolution failed for {marker!r}: {matches}")
-              offset = matches[0]
-              image[offset:offset + capacity] = payload + bytes(capacity - len(payload))
-              offsets[marker] = offset
-
-          size_marker = b"HMBIRD_LEN_SLOT"
-          size_offset = image.find(size_marker)
-          if size_offset < 0 or image.find(size_marker, size_offset + 1) >= 0:
-              raise SystemExit("BTF size slot is missing or ambiguous")
-          size_record = len(payloads[0][1]).to_bytes(4, "little") + b"BTFSIZEV001"
-          image[size_offset:size_offset + len(size_marker)] = size_record
-          image_path.write_bytes(image)
-
-          verify = image_path.read_bytes()
-          if verify[offsets[b"HMBIRD_BTF_SLOT"]:offsets[b"HMBIRD_BTF_SLOT"] + len(payloads[0][1])] != payloads[0][1]:
-              raise SystemExit("BTF payload readback failed")
-          if verify[offsets[b"HMBIRD_IDS_SLOT"]:offsets[b"HMBIRD_IDS_SLOT"] + len(payloads[1][1])] != payloads[1][1]:
-              raise SystemExit("BTF IDs payload readback failed")
-          PY
+          python3 "$GITHUB_WORKSPACE/tools/embed-hmbird-metadata.py" \
+            common/out/arch/arm64/boot/Image "$BTF_PAYLOAD" "$IDS_PAYLOAD"
           grep -aFq 'using embedded matching GKI BTF metadata' common/out/arch/arm64/boot/Image
           cp common/out/Module.symvers hmbird_artifact/gki-Module.symvers
           cp common/out/System.map hmbird_artifact/gki-System.map
@@ -1060,7 +1040,7 @@ jobs:
         run: |
           cd kernel_workspace
           git clone --depth=1 --branch master https://github.com/zaomi893/AnyKernel3_ZAOMI ak3_workspace
-          AK3_PREFIX="ak3_MTK6993_PurpleHmbird"
+          AK3_PREFIX="ak3_Ace6Ultra_MTK6993_PurpleHmbird"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
           grep -q '^clear_legacy_ksud_attrs()' anykernel.sh
@@ -1241,7 +1221,7 @@ jobs:
       - name: 上传匹配 GKI 的风驰驱动工件
         uses: actions/upload-artifact@v7
         with:
-          name: mtk6993-hmbird-purple-matching-module
+          name: ace6ultra-mtk6993-hmbird-purple-matching-module
           path: ${{ github.workspace }}/kernel_workspace/hmbird_artifact/*
 
   release:
@@ -1307,11 +1287,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat << 'EOF' > release_notes.md
-          ### 📱 天玑 专属 ${{ env.KSU_TYPENAME }} 内核 | 构建信息
+          ### 📱 OnePlus Ace 6 Ultra 专属 ${{ env.KSU_TYPENAME }} 内核 | 构建信息
           - 内核版本号: ${{ env.FULL_VERSION }}
           - 编译时间: ${{ env.TIME_FORM }}
           - 内核构建日期: ${{ needs.build.outputs.builddate }}
-          - 机型：天玑（PMB110）${{ env.KERNEL_VERSION }}.${{ env.SUB_VERSION }} 内核（基于已验证可启动的 MTK6993 基线）
+          - 机型：OnePlus Ace 6 Ultra（PMB110）${{ env.KERNEL_VERSION }}.${{ env.SUB_VERSION }} 内核
           - KSU分支：${{ env.KSU_TYPENAME }}
           - 绑定设备序列号：${{ inputs.device_serial }}
           - susfs支持：${{ github.event.inputs.susfs_enable }}
