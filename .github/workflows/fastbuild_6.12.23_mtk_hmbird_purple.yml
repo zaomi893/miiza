@@ -7,15 +7,20 @@ env:
   KERNEL_VERSION: '6.12'
   SUB_VERSION: '23_mtk'
   KERNEL_NAME: 'android16-5-ge7f2a9832757-ab13799791-4k'
+  DEVICE_CODENAME: 'findx9'
+  SOC_PLATFORM: 'mtk'
+  SOC_ID: 'mt6993'
   KERNEL_SOURCE_REPO: 'zaomi893/android_kernel_oppo_mt6993'
   # The migrated MTK6993 branch contains the same selectable feature sources as
   # the proven 6.12.23 chain. Their code may be present in the tree; only the
   # workflow config switches decide whether it is built and enabled.
   KERNEL_SOURCE_BRANCH: 'oppo/mt6993_b_16.0.0_find_x9'
+  KERNEL_SOURCE_COMMIT: '05b2cfbb13711a7ce39d62fca2e81a42a0e70de0'
   HMBIRD_SOURCE_REPO: 'oppo-source/android_kernel_modules_and_devicetree_oppo_mt6993'
   HMBIRD_SOURCE_BRANCH: 'oppo/mt6993_b_16.0.0_find_x9'
   # Latest Find X9 source below 16.0.7: 16.0.1.301/302.
   HMBIRD_SOURCE_COMMIT: '4d505a4292dab3176a45fec66dc85debc362e24c'
+  HMBIRD_MAKEFILE: 'hmbird_module/Makefile.mtk'
   HMBIRD_TRACK: 'purple'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
@@ -159,6 +164,11 @@ jobs:
       - name: 检出本仓库构建资源
         uses: actions/checkout@v4
 
+      - name: 验证机型、芯片平台与迁移源码
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/verify-device-platform.py --device "$DEVICE_CODENAME"
+
       - name: 验证官方风驰源码版本
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -226,8 +236,9 @@ jobs:
 
           wait
           test -d common
+          test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT"
 
-      - name: 同步 OnePlus 官方内核构建环境
+      - name: 同步 Android GKI 通用构建环境
         shell: bash
         run: |
           set -euo pipefail
@@ -971,7 +982,7 @@ jobs:
           test "$(git -C oplus_modules rev-parse HEAD)" = "$HMBIRD_SOURCE_COMMIT"
 
           MODULE_DIR="$PWD/oplus_modules/vendor/oplus/kernel/cpu"
-          cp "$GITHUB_WORKSPACE/hmbird_module/Makefile.mtk" "$MODULE_DIR/Makefile"
+          cp "$GITHUB_WORKSPACE/$HMBIRD_MAKEFILE" "$MODULE_DIR/Makefile"
           find "$MODULE_DIR/sched_ext" -type f \( -name '*.c' -o -name '*.h' \) -print0 | \
             xargs -0 sed -i -E \
               -e 's#[<"]\.\./kernel/sched/sched\.h[>"]#<kernel/sched/sched.h>#g' \
