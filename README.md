@@ -48,13 +48,22 @@
 
 Pad 3 Pro 的 SM8850 官方分支目前只有 `16.0.6.103`，因此仅保留紫标入口，不再复用 15T 的跨机型提交。Find X9 的 OPPO 官方 MT6993 分支目前只有 `16.0.1.301/302`，同样仅保留紫标入口。
 
+除一加 15/15T 外，各入口的底座均固定到 `zaomi893` 账号中对应迁移分支的当前完整提交，并在编译前通过 GitHub API 核对分支 HEAD、Linux 版本、SoC 与模块平台；任一项漂移或串线都会直接停止构建：
+
+| 机型 | SoC / 平台 | 迁移内核源码 | 风驰平台配置 |
+| --- | --- | --- | --- |
+| Ace 6T | SM8845 / 高通 | `zaomi893/android_kernel_common_oneplus_sm8845` | `Makefile.qcom` / `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM` |
+| Pad 3 Pro | SM8850 / 高通 | `zaomi893/android_kernel_common_oneplus_sm8850` | `Makefile.qcom` / `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM` |
+| Ace 6 Ultra | MT6993 / 天玑 | `zaomi893/android_kernel_oneplus_mt6993` | `Makefile.mtk` / `CONFIG_OPLUS_SYSTEM_KERNEL_MTK` |
+| Find X9 | MT6993 / 天玑 | `zaomi893/android_kernel_oppo_mt6993` | `Makefile.mtk` / `CONFIG_OPLUS_SYSTEM_KERNEL_MTK` |
+
 ## 风驰兼容方式
 
 手机继续加载原厂 `vendor_dlkm` 中的模块代码，本仓库不会用自编译 `.ko` 覆盖原厂模块。构建流程会使用同一次 GKI 编译的 BTF ID 空间编译官方风驰源码，只提取生成模块的 `.BTF` 和 `.BTF_ids` 元数据，再写入 Image 中预留的固定槽位；模块装载时仅对已核对身份的原厂风驰模块使用这份匹配元数据。
 
 另有 103 个国行固件模块携带与自定义 GKI 不兼容的旧式 split-BTF。内核只按仓库内固定名单忽略这些模块的错误 BTF，而不改模块代码、符号 CRC 或 KMI，也不会宽泛屏蔽所有模块的 BTF 检查。风险是名单与其他固件版本不一定一致，因此本仓库只声明支持 `PLK110_16.0.9.400(CN01)`；系统升级后必须重新验证。
 
-天玑入口使用 `hmbird_module/Makefile.mtk` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_MTK`，源码来自 OnePlusOSS 官方 MT6993 模块仓库。由于该仓库未提供可提取指纹的预编译 `.ko`，MTK 配置下的兼容层使用“精确模块名 + `.BTF_ids` 结构”校验；高通入口仍保留原有 BTF 哈希指纹校验，行为不变。
+天玑入口使用 `hmbird_module/Makefile.mtk` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_MTK`；Ace 6 Ultra 取 OnePlusOSS MT6993 模块仓库，Find X9 取 `oppo-source` MT6993 模块仓库，两者不会互换。由于这些仓库未提供可提取指纹的预编译 `.ko`，MTK 配置下的兼容层使用“精确模块名 + `.BTF_ids` 结构”校验。高通入口使用独立的 `hmbird_module/Makefile.qcom` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM`，并保留原有 BTF 哈希指纹校验。
 
 ## 原厂模块兼容日志
 
