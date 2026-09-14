@@ -31,7 +31,7 @@ case "$KSU_TYPE" in
       "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/refs/heads/main/kernel/setup.sh" |
       bash -s main
     if [[ "$SELF_CONFIG" == "true" ]]; then
-      echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%@ZAOMIN"' >> common/arch/arm64/configs/gki_defconfig
+      echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%"' >> common/arch/arm64/configs/gki_defconfig
     else
       echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%@ZAOMI"' >> common/arch/arm64/configs/gki_defconfig
     fi
@@ -67,7 +67,7 @@ case "$KSU_TYPE" in
     if [[ "$SUSFS_ENABLE" == "true" ]]; then
       # Repository-owned branch with the complete KernelSU-side SUSFS patch.
       kowsu_ref="susfs"
-      echo "正在配置 zaominn/KowSU SUSFS 分支..."
+      echo "正在配置 KowSU SUSFS 分支..."
     else
       kowsu_ref="master"
       echo "正在配置 KowSU 最新源码..."

@@ -1018,9 +1018,12 @@ jobs:
           AK3_PREFIX="ak3_FindX9_MTK6993_PurpleHmbird"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
-          grep -q '^clear_legacy_ksud_attrs()' anykernel.sh
-          grep -q 'chattr -ia' anykernel.sh
-          grep -q 'lsattr -d' anykernel.sh
+          test -s tools/installer-profile.sh
+          grep -q '^installer_clear_legacy_ksud_attrs()' tools/installer-profile.sh
+          grep -q 'chattr -ia' tools/installer-profile.sh
+          grep -q 'lsattr -d' tools/installer-profile.sh
+          grep -q '^installer_prepare_flash$' anykernel.sh
+          grep -q '^installer_install_bundled_modules$' anykernel.sh
           if true; then
             install -m 0644 "$GITHUB_WORKSPACE/serial_lock/build-token" ./serial_lock/build-token
             [[ -s ./serial_lock/install.sh && -s ./serial_lock/post-fs-data.sh && ! -e ./serial_lock/module.prop && $(wc -c < ./serial_lock/build-token) -eq 65 ]] || { echo "AK3 序列号锁资源、非模块化约束或构建令牌无效"; exit 1; }
@@ -1293,7 +1296,7 @@ jobs:
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
           - KowSU 管理器：[下载已验证构建](https://github.com/zaominn/KowSU/actions/workflows/build-kowsu-manager.yml)
-          - KowSU + SUSFS 必须安装 `zaominn/KowSU` 的 `Build Manager` 工作流产出的生产签名管理器，证书与内核配套
+          - KowSU + SUSFS 必须安装上述下载链接中 `Build Manager` 工作流产出的生产签名管理器，证书与内核配套
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
 
           ### ⏫️ 更新内容：
