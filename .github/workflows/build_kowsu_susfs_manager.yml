@@ -32,14 +32,28 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build matching manager APK
+      - name: Apply KowSU branding
+        run: |
+          find manager/app/src/main/res -type f -name 'strings.xml' -print0 | \
+            xargs -0 sed -i 's/KernelSU/KowSU/g'
+          grep -Rqs 'KowSU' manager/app/src/main/res
+
+      - name: Build matching KowSU manager APK
         working-directory: manager
-        run: ./gradlew --no-daemon assembleRelease -PIS_PR_BUILD=true
+        run: |
+          ./gradlew --no-daemon assembleRelease \
+            -PIS_PR_BUILD=true \
+            -PKSU_NAME=KowSU
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 \
+            -type f -name 'KowSU_*-release.apk' -print -quit)"
+          test -s "$APK"
+          cp "$APK" "$GITHUB_WORKSPACE/KowSU-Manager-${KOWSU_REF:0:8}.apk"
 
       - name: Record source identity
         run: |
           printf '%s\n' \
             "KowSU manager source: KOWX712/KernelSU@$KOWSU_REF" \
+            "App label and output name: KowSU" \
             "This APK matches miiza KowSU + SUSFS kernel builds." \
             > manager-source.txt
 
@@ -48,6 +62,6 @@ jobs:
         with:
           name: KowSU-SUSFS-Manager-${{ env.KOWSU_REF }}
           path: |
-            manager/app/build/outputs/apk/release/*.apk
+            KowSU-Manager-*.apk
             manager-source.txt
           if-no-files-found: error
