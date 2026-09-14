@@ -372,7 +372,7 @@ jobs:
         id: ksu_version
         run: |
           cd kernel_workspace
-          bash "$GITHUB_WORKSPACE/tools/setup-kernelsu.sh" "${{ github.event.inputs.ksu_type }}" "${{ inputs.self_config }}" "${{ inputs.susfs_enable }}"
+          bash "$GITHUB_WORKSPACE/tools/setup-kernelsu.sh" "${{ github.event.inputs.ksu_type }}" "false" "${{ inputs.susfs_enable }}"
 
       - name: 应用 KernelSU & SUSFS 补丁
         if: inputs.susfs_enable
