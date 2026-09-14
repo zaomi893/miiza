@@ -11,7 +11,7 @@ index f6efc62..24d9673 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,205 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,204 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -123,10 +123,12 @@ index f6efc62..24d9673 100644
 +	unsigned int ids_payload_size;
 +	void *ids;
 +
-+	/* Hide only the stock PLK110 legacy split-BTF modules verified bad. */
++	/* PLZ110 already supplies the correct base BTF; preserve that path. */
++	if (mod->btf_base_data)
++		return;
++
++	/* Hide only the stock PLZ110 legacy split-BTF modules verified bad. */
 +	if (strcmp(mod->name, "oplus_bsp_sched_ext")) {
-+		if (mod->btf_base_data)
-+			return;
 +		if (mod->btf_data && !mod->btf_base_data &&
 +		    oplus_is_known_bad_legacy_btf(mod->name)) {
 +			mod->btf_data = NULL;
@@ -203,9 +205,6 @@ index f6efc62..24d9673 100644
 +
 +	mod->btf_data = (void *)oplus_hmbird_gki_btf;
 +	mod->btf_data_size = btf_size;
-+	/* Always parse the generated split BTF against this Image's vmlinux BTF. */
-+	mod->btf_base_data = NULL;
-+	mod->btf_base_data_size = 0;
 +	memcpy(ids, oplus_hmbird_gki_btf_ids, ids_payload_size);
 +	pr_info("%s: using embedded matching GKI BTF metadata\n", mod->name);
 +}
@@ -217,7 +216,7 @@ index f6efc62..24d9673 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3597,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3596,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  
