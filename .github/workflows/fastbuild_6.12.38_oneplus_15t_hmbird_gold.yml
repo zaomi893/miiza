@@ -240,7 +240,7 @@ jobs:
       - name: 添加一加15T原厂风驰模块 BTF 兼容层
         run: |
           set -euxo pipefail
-          patch -d kernel_workspace/common -p1 < other_patch/hmbird-stock-module-btf.patch
+          patch -d kernel_workspace/common -p1 < other_patch/hmbird-stock-module-btf-oneplus15t.patch
           patch -d kernel_workspace/common -p1 < other_patch/rust-binder-symbol-alias.patch
           test -f kernel_workspace/common/kernel/module/oplus_hmbird_btf.inc
           test -f kernel_workspace/common/kernel/module/oplus_hmbird_btf_ids.inc

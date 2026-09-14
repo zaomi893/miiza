@@ -1,0 +1,356 @@
+diff --git a/kernel/module/main.c b/kernel/module/main.c
+index f6efc62..24d9673 100644
+--- a/kernel/module/main.c
++++ b/kernel/module/main.c
+@@ -58,6 +58,8 @@
+ #include <linux/cfi.h>
+ #include <linux/codetag.h>
+ #include <linux/debugfs.h>
++#include <crypto/sha2.h>
++#include <crypto/utils.h>
+ #include <linux/execmem.h>
+ #include <uapi/linux/module.h>
+ #include "internal.h"
+@@ -283,6 +285,205 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+ 	return (void *)info->sechdrs[sec].sh_addr;
+ }
+ 
++#ifdef CONFIG_DEBUG_INFO_BTF_MODULES
++/*
++ * The stock OnePlus HMBIRD module is a split-BTF module produced against the
++ * stock PLK110 vmlinux.  It does not carry .BTF.base, so an otherwise ABI-
++ * compatible custom GKI interprets its base type IDs against the wrong BTF.
++ *
++ * The build workflow replaces the zero-filled initializer below with .BTF
++ * and .BTF_ids generated from the same HMBIRD source against this exact GKI.
++ * Only metadata is substituted: executable code and all other sections still
++ * come from the signed stock module in vendor_dlkm.
++ */
++#define OPLUS_HMBIRD_STOCK_BTF_SIZE	26340U
++#define OPLUS_HMBIRD_15T_STOCK_BTF_SIZE	26046U
++#define OPLUS_HMBIRD_GKI_BTF_CAPACITY	32768U
++#define OPLUS_HMBIRD_BTF_IDS_CAPACITY	512U
++#define OPLUS_HMBIRD_LEGACY_IDS_SIZE	320U
++
++#ifdef OPLUS_DEVICE_SERIAL_LOCK_ENABLED
++extern bool oplus_device_serial_verified(void);
++#endif
++
++static bool oplus_hmbird_serial_gate_verified(void)
++{
++#ifdef OPLUS_DEVICE_SERIAL_LOCK_ENABLED
++	return oplus_device_serial_verified();
++#else
++	/* Diagnostic/unlocked builds have no device-binding gate. */
++	return true;
++#endif
++}
++
++static const u8 oplus_hmbird_stock_btf_sha256[SHA256_DIGEST_SIZE] = {
++	0x7f, 0x9a, 0x87, 0xf1, 0xc1, 0x7a, 0x37, 0xe0,
++	0xba, 0xc5, 0xb2, 0xb2, 0x3b, 0x54, 0x22, 0xe5,
++	0x54, 0xb7, 0x8d, 0x9a, 0x4f, 0x70, 0x15, 0x23,
++	0x21, 0x94, 0x2c, 0x2a, 0xf8, 0x0d, 0x6f, 0x87,
++};
++
++static const u8 oplus_hmbird_stock_ids_sha256[SHA256_DIGEST_SIZE] = {
++	0xa7, 0x10, 0xde, 0xfd, 0x11, 0xca, 0xf3, 0x8e,
++	0xc7, 0xbe, 0xdf, 0x45, 0xf8, 0x4f, 0x48, 0xf1,
++	0x03, 0x2d, 0x6a, 0x34, 0x72, 0x39, 0x73, 0x3f,
++	0x70, 0x0c, 0x62, 0xc8, 0x88, 0x1f, 0xf1, 0xfa,
++};
++
++/* PLZ110 / OnePlus 15T stock module fingerprints. */
++static const u8 oplus_hmbird_15t_stock_btf_sha256[SHA256_DIGEST_SIZE] = {
++	0xfe, 0x50, 0x72, 0x94, 0xae, 0x3d, 0x84, 0xb4,
++	0x7b, 0x73, 0x9c, 0x95, 0xaf, 0xd1, 0x20, 0x9f,
++	0x62, 0x30, 0x16, 0x28, 0xfa, 0x3f, 0x35, 0xc7,
++	0x1c, 0x5c, 0x8b, 0xa7, 0xab, 0x95, 0x14, 0x9c,
++};
++
++static const u8 oplus_hmbird_15t_stock_ids_sha256[SHA256_DIGEST_SIZE] = {
++	0xd5, 0xae, 0xa0, 0x75, 0xeb, 0xeb, 0x64, 0x75,
++	0x92, 0x96, 0x19, 0x8e, 0x37, 0x36, 0xa6, 0x17,
++	0x7e, 0x05, 0xea, 0x61, 0xaf, 0x96, 0xd5, 0x91,
++	0x09, 0xd2, 0x68, 0xfc, 0xe1, 0x08, 0x14, 0x67,
++};
++
++static const char * const oplus_known_bad_legacy_btf[] = {
++#include "oplus_legacy_btf_denylist.inc"
++};
++
++static const u8 oplus_hmbird_gki_btf[OPLUS_HMBIRD_GKI_BTF_CAPACITY] = {
++#include "oplus_hmbird_btf.inc"
++};
++
++/* The workflow replaces this marker with a little-endian payload length. */
++static const volatile u8 oplus_hmbird_gki_btf_size_slot[] = "HMBIRD_LEN_SLOT";
++
++static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_CAPACITY] = {
++#include "oplus_hmbird_btf_ids.inc"
++};
++
++/* The workflow also replaces this marker with the .BTF_ids payload length. */
++static const volatile u8 oplus_hmbird_gki_ids_size_slot[] = "HMBIRD_IDS_LEN";
++
++static bool oplus_btf_sha256_matches(const void *data, unsigned int size,
++				     const u8 expected[SHA256_DIGEST_SIZE])
++{
++	u8 actual[SHA256_DIGEST_SIZE];
++	bool matches;
++
++	sha256(data, size, actual);
++	matches = !crypto_memneq(actual, expected, sizeof(actual));
++	memzero_explicit(actual, sizeof(actual));
++	return matches;
++}
++
++static bool oplus_is_known_bad_legacy_btf(const char *name)
++{
++	unsigned int i;
++
++	for (i = 0; i < ARRAY_SIZE(oplus_known_bad_legacy_btf); i++)
++		if (!strcmp(name, oplus_known_bad_legacy_btf[i]))
++			return true;
++	return false;
++}
++
++static void oplus_hmbird_fix_stock_btf(struct module *mod,
++				       const struct load_info *info)
++{
++	unsigned int btf_size;
++	unsigned int ids_size;
++	unsigned int ids_payload_size;
++	void *ids;
++
++	/* Hide only the stock PLK110 legacy split-BTF modules verified bad. */
++	if (strcmp(mod->name, "oplus_bsp_sched_ext")) {
++		if (mod->btf_base_data)
++			return;
++		if (mod->btf_data && !mod->btf_base_data &&
++		    oplus_is_known_bad_legacy_btf(mod->name)) {
++			mod->btf_data = NULL;
++			mod->btf_data_size = 0;
++		}
++		return;
++	}
++	if (!oplus_hmbird_serial_gate_verified()) {
++		pr_err("%s: device binding rejected matching BTF metadata\n",
++		       mod->name);
++		return;
++	}
++	ids_payload_size = (unsigned int)oplus_hmbird_gki_ids_size_slot[0] |
++		((unsigned int)oplus_hmbird_gki_ids_size_slot[1] << 8) |
++		((unsigned int)oplus_hmbird_gki_ids_size_slot[2] << 16) |
++		((unsigned int)oplus_hmbird_gki_ids_size_slot[3] << 24);
++	if (ids_payload_size < 8 ||
++	    ids_payload_size > OPLUS_HMBIRD_BTF_IDS_CAPACITY ||
++	    (ids_payload_size - 8) % 8) {
++#if defined(CONFIG_OPLUS_SYSTEM_KERNEL_MTK) || \
++	defined(OPLUS_HMBIRD_SOURCE_IDENTITY)
++		pr_err("%s: embedded BTF ID size is invalid: %u\n",
++		       mod->name, ids_payload_size);
++		return;
++#else
++		/* Existing PLK110/PLZ110 workflows use the original fixed slot. */
++		ids_payload_size = OPLUS_HMBIRD_LEGACY_IDS_SIZE;
++#endif
++	}
++	ids = any_section_objs(info, ".BTF_ids", 1, &ids_size);
++	if (!ids || ids_size != ids_payload_size ||
++	    memcmp(ids, oplus_hmbird_gki_btf_ids, sizeof(u32))) {
++		pr_err("%s: stock/generated BTF ID layout mismatch: stock=%u embedded=%u\n",
++		       mod->name, ids_size, ids_payload_size);
++		return;
++	}
++	if (!mod->btf_data) {
++		pr_err("%s: stock module has no BTF payload\n", mod->name);
++		return;
++	}
++#if defined(CONFIG_OPLUS_SYSTEM_KERNEL_MTK) || \
++	defined(OPLUS_HMBIRD_SOURCE_IDENTITY)
++	/*
++	 * MediaTek does not publish a prebuilt stock module fingerprint. The
++	 * official module source and the exact module name remain sufficient to
++	 * identify the DDK target, while the BTF_ids structure check above still
++	 * prevents unrelated modules from entering this path.
++	 */
++#else
++	if (!((mod->btf_data_size == OPLUS_HMBIRD_STOCK_BTF_SIZE &&
++	       oplus_btf_sha256_matches(mod->btf_data, mod->btf_data_size,
++					oplus_hmbird_stock_btf_sha256) &&
++	       oplus_btf_sha256_matches(ids, ids_size,
++					oplus_hmbird_stock_ids_sha256)) ||
++	      (mod->btf_data_size == OPLUS_HMBIRD_15T_STOCK_BTF_SIZE &&
++	       oplus_btf_sha256_matches(mod->btf_data, mod->btf_data_size,
++					oplus_hmbird_15t_stock_btf_sha256) &&
++	       oplus_btf_sha256_matches(ids, ids_size,
++					oplus_hmbird_15t_stock_ids_sha256)))) {
++		pr_err("%s: stock BTF fingerprint mismatch; refusing substitution\n",
++		       mod->name);
++		return;
++	}
++#endif
++
++	btf_size = (unsigned int)oplus_hmbird_gki_btf_size_slot[0] |
++		((unsigned int)oplus_hmbird_gki_btf_size_slot[1] << 8) |
++		((unsigned int)oplus_hmbird_gki_btf_size_slot[2] << 16) |
++		((unsigned int)oplus_hmbird_gki_btf_size_slot[3] << 24);
++	if (!btf_size || btf_size > OPLUS_HMBIRD_GKI_BTF_CAPACITY) {
++		pr_err("%s: embedded matching BTF size is invalid\n", mod->name);
++		return;
++	}
++
++	mod->btf_data = (void *)oplus_hmbird_gki_btf;
++	mod->btf_data_size = btf_size;
++	/* Always parse the generated split BTF against this Image's vmlinux BTF. */
++	mod->btf_base_data = NULL;
++	mod->btf_base_data_size = 0;
++	memcpy(ids, oplus_hmbird_gki_btf_ids, ids_payload_size);
++	pr_info("%s: using embedded matching GKI BTF metadata\n", mod->name);
++}
++#else
++static inline void oplus_hmbird_fix_stock_btf(struct module *mod,
++					      const struct load_info *info) { }
++#endif
++
+ #ifndef CONFIG_MODVERSIONS
+ #define symversion(base, idx) NULL
+ #else
+@@ -3396,6 +3597,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+ 	if (err < 0)
+ 		goto free_modinfo;
+ 
++	/*
++	 * .BTF_ids is SHF_ALLOC and writable until complete_formation() applies
++	 * the module's final RO/NX permissions, so replace the metadata here.
++	 */
++	oplus_hmbird_fix_stock_btf(mod, info);
++
++
+ 	err = post_relocation(mod, info);
+ 	if (err < 0)
+ 		goto free_modinfo;
+diff --git a/kernel/module/oplus_hmbird_btf.inc b/kernel/module/oplus_hmbird_btf.inc
+new file mode 100644
+index 0000000..c881b8b
+--- /dev/null
++++ b/kernel/module/oplus_hmbird_btf.inc
+@@ -0,0 +1 @@
++0x48, 0x4d, 0x42, 0x49, 0x52, 0x44, 0x5f, 0x42, 0x54, 0x46, 0x5f, 0x53, 0x4c, 0x4f, 0x54
+diff --git a/kernel/module/oplus_hmbird_btf_ids.inc b/kernel/module/oplus_hmbird_btf_ids.inc
+new file mode 100644
+index 0000000..f04e987
+--- /dev/null
++++ b/kernel/module/oplus_hmbird_btf_ids.inc
+@@ -0,0 +1 @@
++0x48, 0x4d, 0x42, 0x49, 0x52, 0x44, 0x5f, 0x49, 0x44, 0x53, 0x5f, 0x53, 0x4c, 0x4f, 0x54
+diff --git a/kernel/module/oplus_legacy_btf_denylist.inc b/kernel/module/oplus_legacy_btf_denylist.inc
+new file mode 100644
+index 0000000..6fc3244
+--- /dev/null
++++ b/kernel/module/oplus_legacy_btf_denylist.inc
+@@ -0,0 +1,103 @@
++	"6lowpan",
++	"8021q",
++	"9pnet",
++	"9pnet_fd",
++	"aqc111",
++	"asix",
++	"ax88179_178a",
++	"bluetooth",
++	"bsd_comp",
++	"btbcm",
++	"btqca",
++	"btsdio",
++	"can",
++	"can_bcm",
++	"can_dev",
++	"can_gw",
++	"can_raw",
++	"cctrng",
++	"cdc_acm",
++	"cdc_eem",
++	"cdc_ether",
++	"cdc_ncm",
++	"clk_gate_test",
++	"clk_kunit_helpers",
++	"clk_test",
++	"dev_addr_lists_test",
++	"ext4_inode_test",
++	"fat_test",
++	"ftdi_sio",
++	"gnss",
++	"gzvm",
++	"hci_uart",
++	"hid_uclogic_test",
++	"hidp",
++	"ieee802154",
++	"ieee802154_6lowpan",
++	"ieee802154_socket",
++	"iio_test_format",
++	"input_test",
++	"kheaders",
++	"kunit",
++	"kunit_example_test",
++	"kunit_test",
++	"l2tp_core",
++	"l2tp_ppp",
++	"libarc4",
++	"lib_test",
++	"mac802154",
++	"macsec",
++	"mii",
++	"netfs",
++	"nfc",
++	"nhc_dest",
++	"nhc_fragment",
++	"nhc_hop",
++	"nhc_ipv6",
++	"nhc_mobility",
++	"nhc_routing",
++	"nhc_udp",
++	"of_kunit_helpers",
++	"open_dice",
++	"platform_test",
++	"ppp_deflate",
++	"ppp_generic",
++	"ppp_mppe",
++	"pppox",
++	"pps_core",
++	"pptp",
++	"ptp",
++	"ptp_kvm",
++	"pwrseq_core",
++	"r8152",
++	"r8153_ecm",
++	"regmap_kunit",
++	"regmap_ram",
++	"regmap_raw_ram",
++	"rfcomm",
++	"rfkill",
++	"rtl8150",
++	"rust_binder",
++	"slcan",
++	"slhc",
++	"soc_topology_test",
++	"soc_utils_test",
++	"time_test",
++	"tipc",
++	"tipc_diag",
++	"tls",
++	"usbmon",
++	"usbnet",
++	"usbserial",
++	"vcan",
++	"vcpu_stall_detector",
++	"virtio_balloon",
++	"virtio_blk",
++	"virtio_console",
++	"virtio_pci",
++	"virtio_pci_legacy_dev",
++	"virtio_pci_modern_dev",
++	"vmw_vsock_virtio_transport",
++	"wwan",
++	"zram",
++	"zsmalloc",
