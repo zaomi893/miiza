@@ -33,20 +33,13 @@ def replace_slot(image: bytearray, marker: bytes, payload: bytes, capacity: int)
             zero_filled_matches.append(offset)
         start = offset + 1
 
-    if len(zero_filled_matches) == 1:
-        offset = zero_filled_matches[0]
-    elif not zero_filled_matches and len(raw_matches) == 1:
-        # LTO/linker layout can place non-zero padding in a fixed-size rodata
-        # object even though the marker still uniquely identifies its start.
-        # The kernel declaration owns the full capacity, so the unique marker
-        # remains the authoritative slot boundary.
-        offset = raw_matches[0]
-    else:
+    if len(zero_filled_matches) != 1:
         raise SystemExit(
             f"slot resolution failed for {marker!r}: "
             f"zero={zero_filled_matches}, raw={raw_matches}"
         )
 
+    offset = zero_filled_matches[0]
     if len(image) - offset < capacity:
         raise SystemExit(f"truncated slot for {marker!r} at {offset:#x}")
     image[offset : offset + capacity] = payload + bytes(capacity - len(payload))

@@ -65,19 +65,19 @@ index f6efc62..24d9673 100644
 +#include "oplus_legacy_btf_denylist.inc"
 +};
 +
-+static const u8 oplus_hmbird_gki_btf[OPLUS_HMBIRD_GKI_BTF_CAPACITY] __used = {
++static u8 oplus_hmbird_gki_btf[OPLUS_HMBIRD_GKI_BTF_CAPACITY] __used = {
 +#include "oplus_hmbird_btf.inc"
 +};
 +
 +/* The workflow replaces this marker with a little-endian payload length. */
-+static const volatile u8 oplus_hmbird_gki_btf_size_slot[] = "HMBIRD_LEN_SLOT";
++static volatile u8 oplus_hmbird_gki_btf_size_slot[] = "HMBIRD_LEN_SLOT";
 +
-+static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_CAPACITY] __used = {
++static u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_CAPACITY] __used = {
 +#include "oplus_hmbird_btf_ids.inc"
 +};
 +
 +/* The workflow also replaces this marker with the .BTF_ids payload length. */
-+static const volatile u8 oplus_hmbird_gki_ids_size_slot[] = "HMBIRD_IDS_LEN";
++static volatile u8 oplus_hmbird_gki_ids_size_slot[] = "HMBIRD_IDS_LEN";
 +
 +static bool oplus_btf_sha256_matches(const void *data, unsigned int size,
 +				     const u8 expected[SHA256_DIGEST_SIZE])
