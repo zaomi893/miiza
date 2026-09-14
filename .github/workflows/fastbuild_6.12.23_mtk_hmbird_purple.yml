@@ -1292,7 +1292,8 @@ jobs:
           - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
-          - KowSU 管理器下载：[KOWX712/KernelSU](https://github.com/KOWX712/KernelSU/releases)
+          - KowSU 无 SUSFS 管理器：[KOWX712/KernelSU](https://github.com/KOWX712/KernelSU/releases)
+          - KowSU + SUSFS 必须安装本仓库 `Build KowSU SUSFS Manager` 产出的同提交管理器，不能使用 master 最新管理器
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
 
           ### ⏫️ 更新内容：

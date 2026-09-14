@@ -1,0 +1,53 @@
+name: Build KowSU SUSFS Manager
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KOWSU_REF: 9537542c6aabc169ab34c27d38ba3b97cc09c16c
+
+jobs:
+  manager:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout matching KowSU source
+        uses: actions/checkout@v6
+        with:
+          repository: KOWX712/KernelSU
+          ref: ${{ env.KOWSU_REF }}
+          fetch-depth: 1
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build matching manager APK
+        working-directory: manager
+        run: ./gradlew --no-daemon assembleRelease -PIS_PR_BUILD=true
+
+      - name: Record source identity
+        run: |
+          printf '%s\n' \
+            "KowSU manager source: KOWX712/KernelSU@$KOWSU_REF" \
+            "This APK matches miiza KowSU + SUSFS kernel builds." \
+            > manager-source.txt
+
+      - name: Upload matching KowSU manager
+        uses: actions/upload-artifact@v6
+        with:
+          name: KowSU-SUSFS-Manager-${{ env.KOWSU_REF }}
+          path: |
+            manager/app/build/outputs/apk/release/*.apk
+            manager-source.txt
+          if-no-files-found: error

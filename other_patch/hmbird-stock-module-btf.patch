@@ -11,7 +11,7 @@ index f6efc62..24d9673 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,205 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,193 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -31,20 +31,6 @@ index f6efc62..24d9673 100644
 +#define OPLUS_HMBIRD_GKI_BTF_CAPACITY	32768U
 +#define OPLUS_HMBIRD_BTF_IDS_CAPACITY	512U
 +#define OPLUS_HMBIRD_LEGACY_IDS_SIZE	320U
-+
-+#ifdef OPLUS_DEVICE_SERIAL_LOCK_ENABLED
-+extern bool oplus_device_serial_verified(void);
-+#endif
-+
-+static bool oplus_hmbird_serial_gate_verified(void)
-+{
-+#ifdef OPLUS_DEVICE_SERIAL_LOCK_ENABLED
-+	return oplus_device_serial_verified();
-+#else
-+	/* Diagnostic/unlocked builds have no device-binding gate. */
-+	return true;
-+#endif
-+}
 +
 +static const u8 oplus_hmbird_stock_btf_sha256[SHA256_DIGEST_SIZE] = {
 +	0x7f, 0x9a, 0x87, 0xf1, 0xc1, 0x7a, 0x37, 0xe0,
@@ -134,11 +120,13 @@ index f6efc62..24d9673 100644
 +		}
 +		return;
 +	}
-+	if (!oplus_hmbird_serial_gate_verified()) {
-+		pr_err("%s: device binding rejected matching BTF metadata\n",
-+		       mod->name);
-+		return;
-+	}
++	/*
++	 * Do not duplicate the device serial check here.  A bound Image already
++	 * fails closed in init/main.c when its boot serial does not match.  The
++	 * vendor HMBIRD module can be loaded before that state is observable to
++	 * every module-loader path, so gating metadata substitution a second time
++	 * can leave the stock split BTF installed and silently disable sched_ext.
++	 */
 +	ids_payload_size = (unsigned int)oplus_hmbird_gki_ids_size_slot[0] |
 +		((unsigned int)oplus_hmbird_gki_ids_size_slot[1] << 8) |
 +		((unsigned int)oplus_hmbird_gki_ids_size_slot[2] << 16) |
@@ -217,7 +205,7 @@ index f6efc62..24d9673 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3597,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3585,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  
