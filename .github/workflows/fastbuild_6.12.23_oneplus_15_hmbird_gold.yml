@@ -10,6 +10,7 @@ env:
   KERNEL_SOURCE_REPO: 'zaomi893/android_kernel_common_oneplus_sm8850'
   # Official OnePlus 15 history with the verified cctv18 boot-fix sequence.
   KERNEL_SOURCE_BRANCH: 'oneplus/sm8850_v_16.0.0_oneplus_15'
+  KERNEL_SOURCE_COMMIT: '6313a006d228a27bc33175f571f0561d93c2deb2'
   # Gold HMBIRD source: PLK110 16.0.9.400 (CN01).
   HMBIRD_SOURCE_COMMIT: '5ab2a689ff87d7d28c511f1762cf41c1b90d965a'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
@@ -189,14 +190,14 @@ jobs:
           sudo chmod +x /usr/bin/ccache &&
           rm -f ./ccache
 
-          echo "正在下载固定源码分支：${KERNEL_SOURCE_REPO}@${KERNEL_SOURCE_BRANCH}"
-          aria2c -s16 -x16 -k1M "https://github.com/${KERNEL_SOURCE_REPO}/archive/refs/heads/${KERNEL_SOURCE_BRANCH}.zip" -o common.zip &&
+          echo "正在下载固定源码提交：${KERNEL_SOURCE_REPO}@${KERNEL_SOURCE_COMMIT}"
+          aria2c -s16 -x16 -k1M "https://github.com/${KERNEL_SOURCE_REPO}/archive/${KERNEL_SOURCE_COMMIT}.zip" -o common.zip &&
           SOURCE_DIR="$(unzip -Z1 common.zip | head -n1 | cut -d/ -f1)" &&
           test -n "$SOURCE_DIR" &&
           unzip -q common.zip &&
           test -d "$SOURCE_DIR" &&
           mv "$SOURCE_DIR" common &&
-          printf '%s\n' "$KERNEL_SOURCE_BRANCH" > common/.source_commit &&
+          printf '%s\n' "$KERNEL_SOURCE_COMMIT" > common/.source_commit &&
           rm -f common.zip &
 
           echo "正在克隆llvm-clang19工具链..." &&

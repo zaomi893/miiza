@@ -11,7 +11,7 @@ index f6efc62..24d9673 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,193 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,196 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -33,17 +33,17 @@ index f6efc62..24d9673 100644
 +#define OPLUS_HMBIRD_LEGACY_IDS_SIZE	320U
 +
 +static const u8 oplus_hmbird_stock_btf_sha256[SHA256_DIGEST_SIZE] = {
-+	0x7f, 0x9a, 0x87, 0xf1, 0xc1, 0x7a, 0x37, 0xe0,
-+	0xba, 0xc5, 0xb2, 0xb2, 0x3b, 0x54, 0x22, 0xe5,
-+	0x54, 0xb7, 0x8d, 0x9a, 0x4f, 0x70, 0x15, 0x23,
-+	0x21, 0x94, 0x2c, 0x2a, 0xf8, 0x0d, 0x6f, 0x87,
++	0x57, 0x6c, 0xfa, 0x12, 0x17, 0x7c, 0xa3, 0x79,
++	0x70, 0x84, 0xde, 0x1a, 0xcd, 0xfa, 0x2d, 0x41,
++	0x7f, 0xfa, 0xc3, 0xb7, 0x7b, 0xcc, 0x39, 0x88,
++	0xe4, 0xcb, 0x8c, 0xa3, 0x5f, 0xb7, 0x2e, 0x6b,
 +};
 +
 +static const u8 oplus_hmbird_stock_ids_sha256[SHA256_DIGEST_SIZE] = {
-+	0xa7, 0x10, 0xde, 0xfd, 0x11, 0xca, 0xf3, 0x8e,
-+	0xc7, 0xbe, 0xdf, 0x45, 0xf8, 0x4f, 0x48, 0xf1,
-+	0x03, 0x2d, 0x6a, 0x34, 0x72, 0x39, 0x73, 0x3f,
-+	0x70, 0x0c, 0x62, 0xc8, 0x88, 0x1f, 0xf1, 0xfa,
++	0x97, 0xb9, 0x6f, 0x13, 0x01, 0xf2, 0xf0, 0x34,
++	0x28, 0xd4, 0x11, 0x2a, 0xea, 0x0d, 0x8f, 0x80,
++	0x93, 0xd6, 0xfc, 0x80, 0xd6, 0x7e, 0x93, 0x85,
++	0xcb, 0x95, 0x86, 0x11, 0xc9, 0x02, 0xee, 0x6d,
 +};
 +
 +/* PLZ110 / OnePlus 15T stock module fingerprints. */
@@ -145,8 +145,11 @@ index f6efc62..24d9673 100644
 +#endif
 +	}
 +	ids = any_section_objs(info, ".BTF_ids", 1, &ids_size);
-+	if (!ids || ids_size != ids_payload_size ||
-+	    memcmp(ids, oplus_hmbird_gki_btf_ids, sizeof(u32))) {
++	if (!ids || ids_size < ids_payload_size ||
++	    ids_size > OPLUS_HMBIRD_BTF_IDS_CAPACITY ||
++	    ((u32 *)ids)[0] != OPLUS_HMBIRD_LEGACY_IDS_SIZE / 8 - 1 ||
++	    ((u32 *)oplus_hmbird_gki_btf_ids)[0] !=
++		(ids_payload_size - 8) / 8) {
 +		pr_err("%s: stock/generated BTF ID layout mismatch: stock=%u embedded=%u\n",
 +		       mod->name, ids_size, ids_payload_size);
 +		return;
@@ -155,8 +158,7 @@ index f6efc62..24d9673 100644
 +		pr_err("%s: stock module has no BTF payload\n", mod->name);
 +		return;
 +	}
-+#if defined(CONFIG_OPLUS_SYSTEM_KERNEL_MTK) || \
-+	defined(OPLUS_HMBIRD_SOURCE_IDENTITY)
++#ifdef CONFIG_OPLUS_SYSTEM_KERNEL_MTK
 +	/*
 +	 * MediaTek does not publish a prebuilt stock module fingerprint. The
 +	 * official module source and the exact module name remain sufficient to
@@ -195,6 +197,7 @@ index f6efc62..24d9673 100644
 +	mod->btf_base_data = NULL;
 +	mod->btf_base_data_size = 0;
 +	memcpy(ids, oplus_hmbird_gki_btf_ids, ids_payload_size);
++	memset((u8 *)ids + ids_payload_size, 0, ids_size - ids_payload_size);
 +	pr_info("%s: using embedded matching GKI BTF metadata\n", mod->name);
 +}
 +#else
@@ -205,7 +208,7 @@ index f6efc62..24d9673 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3585,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3588,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  

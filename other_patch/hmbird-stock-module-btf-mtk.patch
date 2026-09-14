@@ -11,7 +11,7 @@ index f6efc62..24d9673 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,193 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,196 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -145,8 +145,10 @@ index f6efc62..24d9673 100644
 +#endif
 +	}
 +	ids = any_section_objs(info, ".BTF_ids", 1, &ids_size);
-+	if (!ids || ids_size != ids_payload_size ||
-+	    memcmp(ids, oplus_hmbird_gki_btf_ids, sizeof(u32))) {
++	if (!ids || ids_size < ids_payload_size ||
++	    ids_size > OPLUS_HMBIRD_BTF_IDS_CAPACITY ||
++	    ((u32 *)oplus_hmbird_gki_btf_ids)[0] !=
++		(ids_payload_size - 8) / 8) {
 +		pr_err("%s: stock/generated BTF ID layout mismatch: stock=%u embedded=%u\n",
 +		       mod->name, ids_size, ids_payload_size);
 +		return;
@@ -195,6 +197,7 @@ index f6efc62..24d9673 100644
 +	mod->btf_base_data = NULL;
 +	mod->btf_base_data_size = 0;
 +	memcpy(ids, oplus_hmbird_gki_btf_ids, ids_payload_size);
++	memset((u8 *)ids + ids_payload_size, 0, ids_size - ids_payload_size);
 +	pr_info("%s: using embedded matching GKI BTF metadata\n", mod->name);
 +}
 +#else
@@ -205,7 +208,7 @@ index f6efc62..24d9673 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3585,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3588,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  

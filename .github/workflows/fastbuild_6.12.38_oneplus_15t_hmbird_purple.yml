@@ -12,6 +12,7 @@ env:
   # the proven 6.12.23 chain. Their code may be present in the tree; only the
   # workflow config switches decide whether it is built and enabled.
   KERNEL_SOURCE_BRANCH: 'oneplus/sm8850_b_16.0_oneplus_15t'
+  KERNEL_SOURCE_COMMIT: '14ba6a5ab0ffe4d6a67d6365139323a2f8ae1479'
   HMBIRD_SOURCE_REPO: 'OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850'
   HMBIRD_SOURCE_BRANCH: 'oneplus/sm8850_b_16.0_oneplus_15t'
   # Purple HMBIRD source: PLZ110 16.0.4.603 (CN01).
@@ -187,8 +188,10 @@ jobs:
           sudo install -m 0755 "$GITHUB_WORKSPACE/lib/ccache-x86-64" /usr/local/bin/ccache
 
           echo "正在克隆一加 15T 6.12.38 源码..."
-          git clone --depth=1 --branch "$KERNEL_SOURCE_BRANCH" \
-            "https://github.com/$KERNEL_SOURCE_REPO.git" common &
+          ( git init -q common &&
+            git -C common remote add origin "https://github.com/$KERNEL_SOURCE_REPO.git" &&
+            git -C common fetch -q --depth=1 origin "$KERNEL_SOURCE_COMMIT" &&
+            git -C common checkout -q --detach FETCH_HEAD ) &
 
           echo "正在克隆与 NMS OP15T 发布包一致的 llvm-clang20 工具链..." &&
           mkdir -p clang19 &&
@@ -216,6 +219,7 @@ jobs:
 
           wait
           test -d common
+          test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT"
 
       - name: 同步 OnePlus 官方内核构建环境
         shell: bash

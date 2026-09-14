@@ -11,7 +11,7 @@ index f6efc62..24d9673 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,204 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,184 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -29,8 +29,8 @@ index f6efc62..24d9673 100644
 +#define OPLUS_HMBIRD_STOCK_BTF_SIZE	26340U
 +#define OPLUS_HMBIRD_15T_STOCK_BTF_SIZE	26046U
 +#define OPLUS_HMBIRD_GKI_BTF_CAPACITY	32768U
-+#define OPLUS_HMBIRD_BTF_IDS_CAPACITY	512U
-+#define OPLUS_HMBIRD_LEGACY_IDS_SIZE	320U
++#define OPLUS_HMBIRD_BTF_IDS_SIZE	320U
++#define OPLUS_HMBIRD_BTF_ID_COUNT	39U
 +
 +#ifdef OPLUS_DEVICE_SERIAL_LOCK_ENABLED
 +extern bool oplus_device_serial_verified(void);
@@ -86,12 +86,9 @@ index f6efc62..24d9673 100644
 +/* The workflow replaces this marker with a little-endian payload length. */
 +static const volatile u8 oplus_hmbird_gki_btf_size_slot[] = "HMBIRD_LEN_SLOT";
 +
-+static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_CAPACITY] = {
++static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_SIZE] = {
 +#include "oplus_hmbird_btf_ids.inc"
 +};
-+
-+/* The workflow also replaces this marker with the .BTF_ids payload length. */
-+static const volatile u8 oplus_hmbird_gki_ids_size_slot[] = "HMBIRD_IDS_LEN";
 +
 +static bool oplus_btf_sha256_matches(const void *data, unsigned int size,
 +				     const u8 expected[SHA256_DIGEST_SIZE])
@@ -120,7 +117,6 @@ index f6efc62..24d9673 100644
 +{
 +	unsigned int btf_size;
 +	unsigned int ids_size;
-+	unsigned int ids_payload_size;
 +	void *ids;
 +
 +	/* PLK110 already supplies the correct base BTF; preserve that path. */
@@ -141,28 +137,11 @@ index f6efc62..24d9673 100644
 +		       mod->name);
 +		return;
 +	}
-+	ids_payload_size = (unsigned int)oplus_hmbird_gki_ids_size_slot[0] |
-+		((unsigned int)oplus_hmbird_gki_ids_size_slot[1] << 8) |
-+		((unsigned int)oplus_hmbird_gki_ids_size_slot[2] << 16) |
-+		((unsigned int)oplus_hmbird_gki_ids_size_slot[3] << 24);
-+	if (ids_payload_size < 8 ||
-+	    ids_payload_size > OPLUS_HMBIRD_BTF_IDS_CAPACITY ||
-+	    (ids_payload_size - 8) % 8) {
-+#if defined(CONFIG_OPLUS_SYSTEM_KERNEL_MTK) || \
-+	defined(OPLUS_HMBIRD_SOURCE_IDENTITY)
-+		pr_err("%s: embedded BTF ID size is invalid: %u\n",
-+		       mod->name, ids_payload_size);
-+		return;
-+#else
-+		/* Existing PLK110/PLZ110 workflows use the original fixed slot. */
-+		ids_payload_size = OPLUS_HMBIRD_LEGACY_IDS_SIZE;
-+#endif
-+	}
 +	ids = any_section_objs(info, ".BTF_ids", 1, &ids_size);
-+	if (!ids || ids_size != ids_payload_size ||
-+	    memcmp(ids, oplus_hmbird_gki_btf_ids, sizeof(u32))) {
-+		pr_err("%s: stock/generated BTF ID layout mismatch: stock=%u embedded=%u\n",
-+		       mod->name, ids_size, ids_payload_size);
++	if (!ids || ids_size != OPLUS_HMBIRD_BTF_IDS_SIZE ||
++	    ((u32 *)ids)[0] != OPLUS_HMBIRD_BTF_ID_COUNT) {
++		pr_err("%s: stock BTF ID layout mismatch: size=%u\n",
++		       mod->name, ids_size);
 +		return;
 +	}
 +	if (!mod->btf_data) {
@@ -205,7 +184,8 @@ index f6efc62..24d9673 100644
 +
 +	mod->btf_data = (void *)oplus_hmbird_gki_btf;
 +	mod->btf_data_size = btf_size;
-+	memcpy(ids, oplus_hmbird_gki_btf_ids, ids_payload_size);
++	memcpy(ids, oplus_hmbird_gki_btf_ids,
++	       sizeof(oplus_hmbird_gki_btf_ids));
 +	pr_info("%s: using embedded matching GKI BTF metadata\n", mod->name);
 +}
 +#else
@@ -216,7 +196,7 @@ index f6efc62..24d9673 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3596,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3576,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  
