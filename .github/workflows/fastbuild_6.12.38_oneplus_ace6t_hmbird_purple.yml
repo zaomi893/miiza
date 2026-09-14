@@ -1058,7 +1058,7 @@ jobs:
           else
             AK3_NAME=${AK3_PREFIX}_${KSU_TYPENAME}_${{ env.KSUVER }}_${{ env.KERNEL_VERSION }}_${{ env.KERNEL_NAME }}_SN-${DEVICE_SERIAL_TAG}.zip
           fi
-          zip -r ../$AK3_NAME ./*
+          zip -r ../$AK3_NAME ./* -x 'README*'
           echo "ak3name=$AK3_NAME" >> $GITHUB_OUTPUT
 
           #为AK3添加注释（调试信息）
