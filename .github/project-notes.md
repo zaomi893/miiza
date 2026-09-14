@@ -49,14 +49,14 @@
 
 Pad 3 Pro 的 SM8850 官方分支目前只有 `16.0.6.103`，因此仅保留紫标入口，不再复用 15T 的跨机型提交。Find X9 的 OPPO 官方 MT6993 分支只到 `16.0.1.301/302`；紫标继续使用它，金标则使用与 `16.0.10.501` 实机模块 `srcversion` 和39项 kfunc 布局完全一致的官方同步点。
 
-除一加 15/15T 外，各入口的底座均固定到 `zaomi893` 账号中对应迁移分支的当前完整提交，并在编译前通过 GitHub API 核对分支 HEAD、Linux 版本、SoC 与模块平台；任一项漂移或串线都会直接停止构建：
+除一加 15/15T 外，各入口的底座均固定到 `zaominn` 账号中对应迁移分支的当前完整提交，并在编译前通过 GitHub API 核对分支 HEAD、Linux 版本、SoC 与模块平台；任一项漂移或串线都会直接停止构建：
 
 | 机型 | SoC / 平台 | 迁移内核源码 | 风驰平台配置 |
 | --- | --- | --- | --- |
-| Ace 6T | SM8845 / 高通 | `zaomi893/android_kernel_common_oneplus_sm8845` | `Makefile.qcom` / `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM` |
-| Pad 3 Pro | SM8850 / 高通 | `zaomi893/android_kernel_common_oneplus_sm8850` | `Makefile.qcom` / `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM` |
-| Ace 6 Ultra | MT6993 / 天玑 | `zaomi893/android_kernel_oneplus_mt6993` | `Makefile.mtk` / `CONFIG_OPLUS_SYSTEM_KERNEL_MTK` |
-| Find X9 | MT6993 / 天玑 | `zaomi893/android_kernel_oppo_mt6993` | `Makefile.mtk` / `CONFIG_OPLUS_SYSTEM_KERNEL_MTK` |
+| Ace 6T | SM8845 / 高通 | `zaominn/android_kernel_common_oneplus_sm8845` | `Makefile.qcom` / `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM` |
+| Pad 3 Pro | SM8850 / 高通 | `zaominn/android_kernel_common_oneplus_sm8850` | `Makefile.qcom` / `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM` |
+| Ace 6 Ultra | MT6993 / 天玑 | `zaominn/android_kernel_oneplus_mt6993` | `Makefile.mtk` / `CONFIG_OPLUS_SYSTEM_KERNEL_MTK` |
+| Find X9 | MT6993 / 天玑 | `zaominn/android_kernel_oppo_mt6993` | `Makefile.mtk` / `CONFIG_OPLUS_SYSTEM_KERNEL_MTK` |
 
 ## 风驰兼容方式
 
@@ -88,8 +88,8 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 同一仓库现在提供以下独立构建入口：
 
 - `fastbuild_6.12.23_oneplus_15_hmbird_gold.yml` / `fastbuild_6.12.23_oneplus_15_hmbird_purple.yml`：一加 15 金标、紫标风驰构建。
-- `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml`：一加 15T 金标、紫标风驰构建。源码使用 `zaomi893/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_oneplus_15t` 分支；TCP Brutal、ADIOS、Re-Kernel 源码随树提供，但仅由各自开关启用。版本号为 `android16-5-gbe6292a1543d-ab14525421-4k`，构建时间默认为 `Mon Dec 1 03:28:37 UTC 2025`，工具链为 Clang `r547379` / Rust 1.82。
-- `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml`：Ace6T 金标、紫标风驰构建，源码使用 `zaomi893/android_kernel_common_oneplus_sm8845` 的 `oneplus/sm8845_b_16.0.0_ace_6t` 分支。
+- `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml`：一加 15T 金标、紫标风驰构建。源码使用 `zaominn/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_oneplus_15t` 分支；TCP Brutal、ADIOS、Re-Kernel 源码随树提供，但仅由各自开关启用。版本号为 `android16-5-gbe6292a1543d-ab14525421-4k`，构建时间默认为 `Mon Dec 1 03:28:37 UTC 2025`，工具链为 Clang `r547379` / Rust 1.82。
+- `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml`：Ace6T 金标、紫标风驰构建，源码使用 `zaominn/android_kernel_common_oneplus_sm8845` 的 `oneplus/sm8845_b_16.0.0_ace_6t` 分支。
 - `fastbuild_6.12.58_hmbird_purple.yml`：OnePlus Pad 3 Pro 紫标风驰构建；官方分支没有金标同步版本，因此不提供金标入口。
 - `fastbuild_6.12.23_mtk_hmbird_gold.yml` / `fastbuild_6.12.23_mtk_hmbird_purple.yml`：OPPO Find X9 系列金标、紫标风驰构建；当前 `16.0.10.501` 使用金标。
 - `fastbuild_6.12.58_mtk_hmbird_gold.yml` / `fastbuild_6.12.58_mtk_hmbird_purple.yml`：OnePlus Ace 6 Ultra（PMB110）金标、紫标风驰构建。

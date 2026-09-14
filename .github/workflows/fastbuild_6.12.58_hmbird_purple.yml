@@ -10,7 +10,7 @@ env:
   DEVICE_CODENAME: 'pad3pro'
   SOC_PLATFORM: 'qcom'
   SOC_ID: 'sm8850'
-  KERNEL_SOURCE_REPO: 'zaomi893/android_kernel_common_oneplus_sm8850'
+  KERNEL_SOURCE_REPO: 'zaominn/android_kernel_common_oneplus_sm8850'
   # The migrated SM8850 branch contains the same selectable feature sources as
   # the proven 6.12.23 chain. Their code may be present in the tree; only the
   # workflow config switches decide whether it is built and enabled.
@@ -437,7 +437,7 @@ jobs:
           else
             echo "已选择无内置KernelSU模式，跳过susfs配置..."
           fi
-          if [[ ${{ github.event.inputs.ksu_type }} == "ksu" || ${{ github.event.inputs.ksu_type }} == "kowsu" ]]; then
+          if [[ ${{ github.event.inputs.ksu_type }} == "ksu" ]]; then
             echo "正在为原版 KernelSU (tiann/KernelSU)添加补丁..."
             cp ./susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
             cd ./KernelSU
@@ -1004,7 +1004,7 @@ jobs:
         id: create_zip
         run: |
           cd kernel_workspace
-          git clone --depth=1 --branch master https://github.com/zaomi893/AnyKernel3_ZAOMI ak3_workspace
+          git clone --depth=1 --branch master https://github.com/zaominn/AnyKernel3_ZAOMI ak3_workspace
           AK3_PREFIX="ak3_Pad3Pro_SM8850_PurpleHmbird"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
@@ -1279,11 +1279,11 @@ jobs:
           - NoMount Suite版本：v1.7.2（不修改 ksud/ksu_susfs）
           - 模块加载黑名单：${{ inputs.blacklist_modules }}
           - 风驰版本：紫标（OPD2513 16.0.6.103 CN01），固定注入与本次 GKI 匹配的 BTF/BTF_ids 元数据，继续加载原厂 vendor_dlkm 风驰模块
-          - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/cctv18/ReSukiSU_CI/releases)
+          - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/zaominn/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
-          - KowSU 无 SUSFS 管理器：[KOWX712/KernelSU](https://github.com/KOWX712/KernelSU/releases)
-          - KowSU + SUSFS 必须安装本仓库 `Build KowSU SUSFS Manager` 产出的同提交管理器，不能使用 master 最新管理器
+          - KowSU 管理器：[zaominn/KowSU](https://github.com/zaominn/KowSU/releases)
+          - KowSU + SUSFS 必须安装 `zaominn/KowSU` 的 `Build Manager` 工作流产出的生产签名管理器，证书与内核配套
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
 
           ### ⏫️ 更新内容：
