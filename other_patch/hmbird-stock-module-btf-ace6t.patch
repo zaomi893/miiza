@@ -65,14 +65,14 @@ index f6efc62..24d9673 100644
 +#include "oplus_legacy_btf_denylist.inc"
 +};
 +
-+static const u8 oplus_hmbird_gki_btf[OPLUS_HMBIRD_GKI_BTF_CAPACITY] = {
++static const u8 oplus_hmbird_gki_btf[OPLUS_HMBIRD_GKI_BTF_CAPACITY] __used = {
 +#include "oplus_hmbird_btf.inc"
 +};
 +
 +/* The workflow replaces this marker with a little-endian payload length. */
 +static const volatile u8 oplus_hmbird_gki_btf_size_slot[] = "HMBIRD_LEN_SLOT";
 +
-+static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_CAPACITY] = {
++static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_CAPACITY] __used = {
 +#include "oplus_hmbird_btf_ids.inc"
 +};
 +
