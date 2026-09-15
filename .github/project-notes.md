@@ -89,7 +89,7 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 
 - `fastbuild_6.12.23_oneplus_15_hmbird_gold.yml` / `fastbuild_6.12.23_oneplus_15_hmbird_purple.yml`：一加 15 金标、紫标风驰构建。
 - `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml`：一加 15T 金标、紫标风驰构建。源码使用 `zaominn/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_oneplus_15t` 分支；TCP Brutal、ADIOS、Re-Kernel 源码随树提供，但仅由各自开关启用。版本号为 `android16-5-gbe6292a1543d-ab14525421-4k`，构建时间默认为 `Mon Dec 1 03:28:37 UTC 2025`，工具链为 Clang `r547379` / Rust 1.82。
-- `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml`：Ace6T 金标、紫标风驰构建，源码使用 `zaominn/android_kernel_common_oneplus_sm8845` 的 `oneplus/sm8845_b_16.0.0_ace_6t` 分支。
+- `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml`：Ace6T 金标、紫标风驰构建，源码使用 `zaominn/android_kernel_common_oneplus_sm8845` 的 `oneplus/sm8845_b_16.0.0_ace_6t` 分支。该分支的 `scripts/Makefile.vmlinux` 会用仓库内预编译 GKI `vmlinux` 覆盖本地链接结果，导致 BTF 基准与实际 Image 不一致；两个工作流固定应用 `other_patch/ace6t-use-local-vmlinux.patch`，保留本地编译的 `vmlinux` 供模块 BTF 元数据匹配。
 - `fastbuild_6.12.58_hmbird_purple.yml`：OnePlus Pad 3 Pro 紫标风驰构建；官方分支没有金标同步版本，因此不提供金标入口。
 - `fastbuild_6.12.23_mtk_hmbird_gold.yml` / `fastbuild_6.12.23_mtk_hmbird_purple.yml`：OPPO Find X9 系列金标、紫标风驰构建；当前 `16.0.10.501` 使用金标。
 - `fastbuild_6.12.58_mtk_hmbird_gold.yml` / `fastbuild_6.12.58_mtk_hmbird_purple.yml`：OnePlus Ace 6 Ultra（PMB110）金标、紫标风驰构建。
