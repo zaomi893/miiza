@@ -178,7 +178,8 @@ jobs:
             --repo "$HMBIRD_SOURCE_REPO" \
             --branch "$HMBIRD_SOURCE_BRANCH" \
             --commit "$HMBIRD_SOURCE_COMMIT" \
-            --track "$HMBIRD_TRACK"
+            --track "$HMBIRD_TRACK" \
+            --allow-stale
 
       - name: 验证 SUSFS / NoMount 互斥选项
         run: |
