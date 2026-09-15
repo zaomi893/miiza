@@ -27,6 +27,11 @@ def main() -> None:
     parser.add_argument("--branch", required=True)
     parser.add_argument("--commit", required=True)
     parser.add_argument("--track", choices=("gold", "purple"), required=True)
+    parser.add_argument(
+        "--allow-stale",
+        action="store_true",
+        help="允许构建固定但已非最新的提交（降级为警告，不中断）",
+    )
     args = parser.parse_args()
 
     query = urllib.parse.urlencode({"sha": args.branch, "per_page": 100})
@@ -57,10 +62,16 @@ def main() -> None:
     latest_sha = latest["sha"]
     latest_title = latest["commit"]["message"].splitlines()[0]
     if latest_sha != args.commit:
-        raise SystemExit(
-            f"stale {args.track} commit: pinned={args.commit}, "
-            f"latest={latest_sha} ({latest_title})"
-        )
+        if args.allow_stale:
+            print(
+                f"WARNING: stale {args.track} commit: pinned={args.commit}, "
+                f"latest={latest_sha} ({latest_title}); continuing with pinned commit"
+            )
+        else:
+            raise SystemExit(
+                f"stale {args.track} commit: pinned={args.commit}, "
+                f"latest={latest_sha} ({latest_title})"
+            )
 
     print(f"verified latest {args.track} HMBIRD source: {latest_sha} {latest_title}")
 
