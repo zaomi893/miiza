@@ -18,8 +18,8 @@ env:
   KERNEL_SOURCE_COMMIT: '709b09b6ce9e1ac61af18b15aaf49cd93b9438d5'
   HMBIRD_SOURCE_REPO: 'OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845'
   HMBIRD_SOURCE_BRANCH: 'oneplus/sm8845_b_16.0.0_ace_6t'
-  # Gold HMBIRD source: PLR110 16.0.9.400 (CN01).
-  HMBIRD_SOURCE_COMMIT: 'c198db99380d7f268894229b8e3ab1deaff8ba79'
+  # Gold HMBIRD source: PLR110 16.0.10.500 (CN01).
+  HMBIRD_SOURCE_COMMIT: '6265826aa0a52ea9a3bb60a84c3164dd61e282c7'
   HMBIRD_MAKEFILE: 'hmbird_module/Makefile.qcom'
   HMBIRD_TRACK: 'gold'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
