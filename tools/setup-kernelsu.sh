@@ -65,16 +65,13 @@ case "$KSU_TYPE" in
 
   kowsu|kowx)
     if [[ "$SUSFS_ENABLE" == "true" ]]; then
-      # Repository-owned branch with the complete KernelSU-side SUSFS patch.
-      kowsu_ref="susfs"
-      echo "正在配置 KowSU SUSFS 分支..."
+      echo "正在配置 zaominn/KowSU master（启用 SUSFS 内核配置）..."
     else
-      kowsu_ref="master"
-      echo "正在配置 KowSU 最新源码..."
+      echo "正在配置 zaominn/KowSU master（普通内核配置）..."
     fi
     curl -fLSs --retry 3 \
       "https://raw.githubusercontent.com/zaominn/KowSU/refs/heads/master/kernel/setup.sh" |
-      bash -s "$kowsu_ref"
+      bash -s master
     add_absolute_include_paths KernelSU/kernel
     version="$(( $(git -C KernelSU rev-list --count HEAD) + 30000 ))"
     write_version "$version"
