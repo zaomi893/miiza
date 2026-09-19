@@ -1391,7 +1391,7 @@ jobs:
           - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/zaominn/ReSukiSU_CI/releases)
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
-          - KowSU 管理器：[下载已验证构建](https://github.com/zaominn/KowSU/actions/workflows/build-kowsu-manager.yml)
+          - KowSU 管理器 APK：[从 Releases 直接下载](https://github.com/zaominn/KowSU/releases/latest)
           - KowSU + SUSFS 必须安装上述下载链接中 `Build Manager` 工作流产出的生产签名管理器，证书与内核配套
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
 
