@@ -51,6 +51,8 @@ done
 NMDIR=/data/adb/nomount
 mkdir -p "$NMDIR"
 set_perm "$NMDIR" 0 0 0700
+[ -f "$NMDIR/my_hookless" ] || : > "$NMDIR/my_hookless"
+set_perm "$NMDIR/my_hookless" 0 0 0600
 CONF="$NMDIR/spoof.conf"
 [ -f "$CONF" ] || cat > "$CONF" <<'EOF'
 EOF
@@ -66,8 +68,10 @@ set_perm "$CONF" 0 0 0644
 [ -f "$MODPATH/spoof.sh" ] && set_perm "$MODPATH/spoof.sh" 0 0 0755
 ui_print "- Spoof add-on enabled: dynamic vbmeta.digest"
 ui_print "  config: $CONF"
+ui_print "- my_* partitions use mountless VFS injection"
 
 [ -f "$MODPATH/pathhide-apply.sh" ] && set_perm "$MODPATH/pathhide-apply.sh" 0 0 0755
+[ -f "$MODPATH/post-mount.sh" ] && set_perm "$MODPATH/post-mount.sh" 0 0 0755
 [ -f "$MODPATH/scene-debugfs-watch.sh" ] && set_perm "$MODPATH/scene-debugfs-watch.sh" 0 0 0755
 [ -f "$MODPATH/appcloak-sync.sh" ] && set_perm "$MODPATH/appcloak-sync.sh" 0 0 0755
 [ -f "$MODPATH/appcloak-pathhide-watch.sh" ] && set_perm "$MODPATH/appcloak-pathhide-watch.sh" 0 0 0755

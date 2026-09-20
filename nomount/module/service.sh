@@ -47,7 +47,14 @@ BIN="$MODDIR/bin/$ABI/nomount"
 export NM_BIN="$MODDIR/bin/$ABI/nm"
 
 if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ]; then
-    _ab=$("$BIN" absorb 2>&1 | tail -1)
+    _ab_all=$("$BIN" absorb 2>&1)
+    _ab_rc=$?
+    {
+        printf 'stage=settled time=%s\n' "$(date +%s 2>/dev/null)"
+        printf '%s\n' "$_ab_all"
+        printf 'status=%s\n' "$_ab_rc"
+    } >> "$NMDIR/absorb.log"
+    _ab=$(printf '%s\n' "$_ab_all" | tail -1)
     echo "nomount: $_ab" > /dev/kmsg 2>/dev/null
 fi
 
