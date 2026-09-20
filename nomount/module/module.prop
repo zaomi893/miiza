@@ -1,7 +1,7 @@
 id=meta-nomount
 name=NoMount Suite
-version=v1.7.4
-versionCode=10704
+version=v1.7.5
+versionCode=10705
 author=zaomi
 description=NoMount Suite — global PathMask plus scoped, one-way AppCloak package hiding. Root/su independent (sucompat). 🫥
 metamodule=1
