@@ -462,11 +462,15 @@ jobs:
           else
             echo "15T source already carries or conflicts with the LZ4 update; keeping its in-tree implementation"
           fi
-          awk '/^diff --git / { skip = (index($0, "diff --git a/lib/zstd/common/portability_macros.h " ) == 1) } !skip' 002-zstd.patch > 002-zstd.filtered.patch
-          if patch --dry-run --batch --forward -p1 < 002-zstd.filtered.patch >/dev/null 2>&1; then
-            patch --batch --forward --no-backup-if-mismatch -p1 < 002-zstd.filtered.patch
+          if grep -Eq 'zstd_custom_mem|zstd_create_cctx_advanced' drivers/block/zram/backend_zstd.c; then
+            echo "Ace6T ZRAM 字典后端依赖当前内核的 Zstd ABI，保留源码自带实现"
           else
-            echo "15T source already carries or conflicts with the Zstd update; keeping its in-tree implementation"
+            awk '/^diff --git / { skip = (index($0, "diff --git a/lib/zstd/common/portability_macros.h " ) == 1) } !skip' 002-zstd.patch > 002-zstd.filtered.patch
+            if patch --dry-run --batch --forward -p1 < 002-zstd.filtered.patch >/dev/null 2>&1; then
+              patch --batch --forward --no-backup-if-mismatch -p1 < 002-zstd.filtered.patch
+            else
+              echo "Ace6T 源码已包含或不兼容该 Zstd 更新，保留源码自带实现"
+            fi
           fi
           rm -f 001-lz4.patch 002-zstd.patch 001-lz4.filtered.patch 002-zstd.filtered.patch
 
