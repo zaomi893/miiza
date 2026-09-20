@@ -118,7 +118,7 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 
 ## NoMount Suite 与 PathMask
 
-选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.7.3.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
+选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.7.4.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
 - 2026-09-20 核对 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite) 后，上游已更新到 `61023e9`（Suite v1.3.184 / Prism engine v32）。当前内核仍是本仓库的 v14 PathHide 协议定制分支，不能把 v32 内核端和用户态直接替换进来；CI 引擎继续固定在已验证的 `36a4621`，只移植与协议无关、可以单独验证的事件监听和低开销改动。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。手动 `+` 规则仍按原来的 global/deny 语义全局生效；`&` 规则是 AppCloak 可选补充，只在 `@uid:` 白名单中的调用方 UID 下生效。
@@ -126,13 +126,13 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 - 路径遮罩默认使用 `global` 作用域，对全系统读取统一返回隐藏结果；它与 NoMount 的按 UID 注入屏蔽名单相互独立。写操作保留文件系统原生行为，避免用统一错误码形成额外指纹。
 - PathMask 热路径使用双哈希 2-Kbit inode 过滤器，避免隐藏规则较多时 64-bit Bloom 饱和、导致普通 `inode_permission/stat/readdir` 进入线性规则扫描；未启用规则时仍由 static key 直接跳过。
 - 包列表变化使用 `inotifyd` 事件同步；极简环境缺少 `inotifyd` 时完成一次启动同步后退出，不再保留每五分钟唤醒一次的常驻轮询进程。
-- 内核直接覆盖 inode 权限、stat、getdents、proc maps/fd，不加载常驻 syscall kprobe。官方 Scene（`com.omarea.vtools`）存在时，模块对 `/dev` 的创建、移入、移出和删除事件使用 `inotifyd` 阻塞监听，只在目录变化后扫描 mountinfo；只接受 `/dev` 下、SELinux 标签为 `u:object_r:debugfs:s0` 的 debugfs 挂载，路径出现、消失或重建都会自动重载规则。
+- 内核直接覆盖 inode 权限、stat、getdents、proc maps/fd，不加载常驻 syscall kprobe。官方 Scene（`com.omarea.vtools`）存在时，模块先用 `inotifyd` 响应 `/dev` 目录变化，同时用自适应低频校验覆盖“在既有目录上挂载”不会产生父目录事件的情况：启动后两分钟每 5 秒、未命中后每 30 秒、命中后每 120 秒。只接受 `/dev` 下、SELinux 标签为 `u:object_r:debugfs:s0` 的 debugfs 挂载，并记录 mount ID；路径出现、消失、同路径重新挂载都会自动重载规则。
 - 应用隐藏会缓存识别 Xposed 模块并读取 HMA 黑名单，默认勾选为隐藏目标；扫描只处理新增、变更和卸载的包，并发限制在最多 4 个 APK，避免 WebUI 刷新造成 CPU 峰值。PathMask 只保存用户手动输入的完整文件路径和 Scene 自动发现的 debugfs 路径。
 - WebUI 的“隐藏 APK 路径痕迹”默认关闭。开启后，模块用 `pm list packages -f -U` 把 `hidden_apps.conf` 映射为应用目录路径规则，把 `scope_apps.conf` 映射为调用方 UID 规则，并全量重建内核补充规则。`packages.list` 变化时由 inotify 事件触发同步；卸载、重装或 UID 复用后的旧规则会被清除，不会残留到新包。该功能只补充 AppCloak，不改变手动 PathMask。
 - NoMount 引擎在 CI 中从固定上游提交打上 `upstream-module-id-validation.patch` 后重新编译。核心扫描会要求模块目录名与 `module.prop` 的 `id=` 完全一致，并对启用模块的重复 ID 做确定性拒绝，避免元模块那种目录名与声明 ID 漂移导致的挂载与状态错配。
 - 挂载兼容性分两类处理：目录名/声明 ID 不一致或重复的模块会在核心扫描阶段被明确跳过并输出原因；第三方模块自己创建的 bind mount 会在开机完成后由 `nomount absorb` 转成无挂载注入。仍可见的 `my_*` mount 是上游故意保留的安全回退——这些路径的 hookless 注入可能触发 zygote FD 白名单导致开机循环，默认不开启 `my_hookless` 试验模式。
 
-v1.7.3 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
+v1.7.4 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
 
 AppCloak 的隐藏组内应用仍可以看到自己和所有其他应用；系统 UID 不过滤，未勾选的调用应用也不过滤。策略文件通过 inotify 事件即时更新，仅以 5 分钟低频检查兜底；列表未变化时不读取文件，调用方策略缓存最长 5 分钟，策略变更时立即失效。
 
