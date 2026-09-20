@@ -9,6 +9,7 @@ The SUSFS filesystem, mount, map, kstat and AVC-spoofing hunks remain intact.
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 
@@ -30,6 +31,15 @@ LEGACY_SYMBOLS = (
     "security_context_to_sid_with_policy",
     "security_sid_to_context_with_policy",
     "security_compute_av_user_with_policy",
+    "my_setprocattr",
+    "my_sel_open_handle_status",
+    "my_write_context",
+    "my_write_access",
+)
+
+
+HUNK_HEADER = re.compile(
+    r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$"
 )
 
 
@@ -46,6 +56,40 @@ def split_sections(lines: list[str]) -> tuple[list[str], list[list[str]]]:
         else:
             current.append(line)
     return preamble, sections
+
+
+def recalculate_hunk_header(hunk: list[str]) -> list[str]:
+    match = HUNK_HEADER.match(hunk[0].rstrip("\n"))
+    if match is None:
+        raise SystemExit(f"unsupported patch hunk header: {hunk[0].rstrip()}")
+
+    old_count = sum(line.startswith((" ", "-")) for line in hunk[1:])
+    new_count = sum(line.startswith((" ", "+")) for line in hunk[1:])
+    old_range = match.group(1) if old_count == 1 else f"{match.group(1)},{old_count}"
+    new_range = match.group(3) if new_count == 1 else f"{match.group(3)},{new_count}"
+    hunk[0] = f"@@ -{old_range} +{new_range} @@{match.group(5)}\n"
+    return hunk
+
+
+def preserve_stat_susfs_declarations(hunk: list[str]) -> list[str]:
+    """Keep the SUSFS declarations sharing a hunk with obsolete KSU hooks."""
+    output = [hunk[0]]
+    index = 1
+    while index < len(hunk):
+        if hunk[index].startswith("+#ifdef "):
+            end = index + 1
+            while end < len(hunk) and not hunk[end].startswith("+#endif"):
+                end += 1
+            if end >= len(hunk):
+                raise SystemExit("unterminated added preprocessor block in fs/stat.c patch")
+            block = hunk[index : end + 1]
+            if not any(symbol in line for line in block for symbol in LEGACY_SYMBOLS):
+                output.extend(block)
+            index = end + 1
+            continue
+        output.append(hunk[index])
+        index += 1
+    return recalculate_hunk_header(output)
 
 
 def filter_section(section: list[str]) -> list[str]:
@@ -66,11 +110,19 @@ def filter_section(section: list[str]) -> list[str]:
     if current:
         hunks.append(current)
 
-    kept = [
-        hunk
-        for hunk in hunks
-        if not any(symbol in line for line in hunk if line.startswith("+") for symbol in LEGACY_SYMBOLS)
-    ]
+    path = section[0].split()[3]
+    kept: list[list[str]] = []
+    for hunk in hunks:
+        has_legacy_hook = any(
+            symbol in line
+            for line in hunk
+            if line.startswith("+")
+            for symbol in LEGACY_SYMBOLS
+        )
+        if not has_legacy_hook:
+            kept.append(hunk)
+        elif path == "b/fs/stat.c" and "linux/susfs_def.h" in "".join(hunk):
+            kept.append(preserve_stat_susfs_declarations(hunk))
     if not kept:
         return []
     return header + [line for hunk in kept for line in hunk]
