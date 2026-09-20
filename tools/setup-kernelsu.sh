@@ -65,15 +65,13 @@ case "$KSU_TYPE" in
 
   kowsu|kowx)
     if [[ "$SUSFS_ENABLE" == "true" ]]; then
-      kowsu_ref="susfs"
-      echo "正在配置 KowSU SUSFS 兼容分支..."
+      echo "正在配置 KowSU master（启用 SUSFS 内核配置）..."
     else
-      kowsu_ref="master"
       echo "正在配置 KowSU master（普通内核配置）..."
     fi
     curl -fLSs --retry 3 \
       "https://raw.githubusercontent.com/${MIGRATED_REPO_OWNER:?MIGRATED_REPO_OWNER is required}/KowSU/refs/heads/master/kernel/setup.sh" |
-      bash -s "$kowsu_ref"
+      bash -s master
     add_absolute_include_paths KernelSU/kernel
     version="$(( $(git -C KernelSU rev-list --count HEAD) + 30000 ))"
     write_version "$version"

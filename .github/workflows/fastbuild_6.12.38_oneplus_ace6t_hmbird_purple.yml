@@ -416,6 +416,10 @@ jobs:
             sed -i 's/getname_flags(filename, lookup_flags, NULL)/getname_flags(filename, lookup_flags)/g' ./common/50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch
             grep -q 'getname_flags(filename, lookup_flags);' ./common/50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch
             fi
+            if [[ ${{ github.event.inputs.ksu_type }} == "kowsu" ]]; then
+              python3 "$GITHUB_WORKSPACE/tools/filter-kowsu-susfs-patch.py" \
+                "./common/50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch"
+            fi
             cd ./common
             patch -p1 < 50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
             if [[ ${{ github.event.inputs.ksu_type }} == "resukisu" || ${{ github.event.inputs.ksu_type }} == "sukisu" ]] && grep -q 'ksu_install_su_fd' fs/exec.c && \
