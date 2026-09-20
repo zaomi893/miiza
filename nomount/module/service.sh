@@ -25,10 +25,10 @@ else
     echo "nomount: boot_completed never set - leaving guard counter armed" > /dev/kmsg 2>/dev/null
 fi
 
-[ -f "$MODDIR/scene-debugfs-watch.sh" ] && \
-    sh "$MODDIR/scene-debugfs-watch.sh" --once >/dev/null 2>&1
-
 [ -f "$MODDIR/pathhide-apply.sh" ] && sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1
+
+[ -f "$MODDIR/scene-debugfs-watch.sh" ] && \
+    sh "$MODDIR/scene-debugfs-watch.sh" >/dev/null 2>&1 &
 
 [ -f "$MODDIR/scan.sh" ] && sh "$MODDIR/scan.sh" --apply >/dev/null 2>&1
 
