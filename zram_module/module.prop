@@ -1,0 +1,6 @@
+id=zram_manager
+name=ZRAM 压缩配置
+version=2.0
+versionCode=200
+author=ZAOMI
+description=从当前内核读取并切换其原生支持的 ZRAM 压缩算法

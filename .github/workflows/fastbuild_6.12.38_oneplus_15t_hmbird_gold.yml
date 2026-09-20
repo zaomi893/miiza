@@ -3,6 +3,7 @@ run-name: 6.12.38 一加15T 金标风驰 · ${{ inputs.device_serial || '手动�
 
 env:
   TZ: Asia/Shanghai
+  MIGRATED_REPO_OWNER: 'zaominn'
   ANDROID_VERSION: 'android16'
   KERNEL_VERSION: '6.12'
   SUB_VERSION: '38'
@@ -453,7 +454,18 @@ jobs:
           echo "正在添加lz4kd补丁…"
           cd kernel_workspace/common
           cp "$GITHUB_WORKSPACE/other_patch/lz4kd.patch" .
-          patch -p1 -F 3 < lz4kd.patch || true
+          if patch --dry-run --batch --forward -p1 -F 3 < lz4kd.patch >/dev/null 2>&1; then
+            patch --batch --forward --no-backup-if-mismatch -p1 -F 3 < lz4kd.patch
+          elif grep -Fq '&backend_lz4kd' drivers/block/zram/zcomp.c && grep -Eq '\.name[[:space:]]*=[[:space:]]*"lz4kd"' drivers/block/zram/backend_lz4kd.c; then
+            echo "lz4kd 已由源码提供，跳过重复应用"
+          else
+            echo "lz4kd 补丁无法完整应用，终止构建以免发布缺少算法的内核"
+            exit 1
+          fi
+          test -s drivers/block/zram/backend_lz4kd.c
+          grep -Fq '&backend_lz4kd' drivers/block/zram/zcomp.c
+          grep -Eq '\.name[[:space:]]*=[[:space:]]*"lz4kd"' drivers/block/zram/backend_lz4kd.c
+          rm -f lz4kd.patch
 
       - name: UNICODE_BYPASS补丁
         if: inputs.unicode_enable
@@ -494,12 +506,13 @@ jobs:
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/gki_defconfig
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+            ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM
             echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
-            #以下配置选项用于编译zram模块，开启与否不影响内核编译
+            # 将 ZRAM 与压缩后端直接编入 Image，供 Scene 等工具读取并切换
             echo "CONFIG_ZRAM_BACKEND_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_ZRAM_BACKEND_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_ZRAM_BACKEND_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -871,9 +884,18 @@ jobs:
           fi
           sudo rm -rf /opt/ghc &
           sudo rm -rf /opt/hostedtoolcache/CodeQL &
-          make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out gki_defconfig &&
+          make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out gki_defconfig
+          if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+            grep -qx "CONFIG_CRYPTO_LZ4KD=y" out/.config
+            grep -qx "CONFIG_ZRAM=y" out/.config
+            grep -qx "CONFIG_ZRAM_BACKEND_LZ4KD=y" out/.config
+          fi
           export CC="$(pwd)/cc-wrapper" && export LD="$(pwd)/ld-wrapper" &&
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="llvm-objcopy" PAHOLE="$PAHOLE" O=out Image
+          if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+            grep -Eq '[[:space:]]zram_init$' out/System.map
+            grep -Eq '[[:space:]]backend_lz4kd$' out/System.map
+          fi
           echo "内核编译完成！"
           if [[ "${{ github.event.inputs.ccache_debug }}" == "true" ]]; then
             echo "正在打包ccache日志及调试信息..."
@@ -1029,7 +1051,7 @@ jobs:
         id: create_zip
         run: |
           cd kernel_workspace
-          git clone --depth=1 --branch master https://github.com/zaominn/AnyKernel3_ZAOMI ak3_workspace
+          git clone --depth=1 --branch master https://github.com/${MIGRATED_REPO_OWNER}/AnyKernel3_ZAOMI ak3_workspace
           AK3_PREFIX="ak3_OP15T_GoldHmbird"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
@@ -1307,10 +1329,10 @@ jobs:
           - NoMount Suite版本：v1.7.2（不修改 ksud/ksu_susfs）
           - 模块加载黑名单：${{ inputs.blacklist_modules }}
           - 风驰版本：金标（PLZ110 16.0.8.300 CN01），固定注入与本次 GKI 匹配的 BTF/BTF_ids 元数据，继续加载原厂 vendor_dlkm 风驰模块
-          - ReSukiSU管理器下载：[ReSukiSU_CI](https://github.com/zaominn/ReSukiSU_CI/releases)
+          - ReSukiSU 管理器请从对应发布渠道下载
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
-          - KowSU 管理器 APK：[Releases 直链](https://github.com/zaominn/KowSU/releases/latest)｜[工作流产物](https://github.com/zaominn/KowSU/actions/workflows/build-kowsu-manager.yml)
+          - KowSU 管理器请从对应发布渠道下载
           - KowSU + SUSFS 必须安装上述下载链接中 `Build Manager` 工作流产出的生产签名管理器，证书与内核配套
           - KSU原版管理器下载：[KernelSU](https://github.com/tiann/KernelSU/releases)
 

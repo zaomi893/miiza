@@ -16,7 +16,7 @@ from pathlib import Path
 DEVICES = {
     "ace6t": {
         "platform": "qcom", "soc": "sm8845", "version": "6.12.38",
-        "kernel_repo": "zaominn/android_kernel_common_oneplus_sm8845",
+        "kernel_repo": "android_kernel_common_oneplus_sm8845",
         "kernel_branch": "oneplus/sm8845_b_16.0.0_ace_6t",
         "module_repo": "OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845",
         "module_branch": "oneplus/sm8845_b_16.0.0_ace_6t",
@@ -24,7 +24,7 @@ DEVICES = {
     },
     "pad3pro": {
         "platform": "qcom", "soc": "sm8850", "version": "6.12.58",
-        "kernel_repo": "zaominn/android_kernel_common_oneplus_sm8850",
+        "kernel_repo": "android_kernel_common_oneplus_sm8850",
         "kernel_branch": "oneplus/sm8850_b_16.0_pad_3_pro",
         "module_repo": "OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850",
         "module_branch": "oneplus/sm8850_b_16.0_pad_3_pro",
@@ -32,7 +32,7 @@ DEVICES = {
     },
     "ace6ultra": {
         "platform": "mtk", "soc": "mt6993", "version": "6.12.58",
-        "kernel_repo": "zaominn/android_kernel_oneplus_mt6993",
+        "kernel_repo": "android_kernel_oneplus_mt6993",
         "kernel_branch": "oneplus/mt6993_b_16.0_ace_6_ultra",
         "module_repo": "OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_mt6993",
         "module_branch": "oneplus/mt6993_b_16.0_ace_6_ultra",
@@ -40,7 +40,7 @@ DEVICES = {
     },
     "findx9": {
         "platform": "mtk", "soc": "mt6993", "version": "6.12.23",
-        "kernel_repo": "zaominn/android_kernel_oppo_mt6993",
+        "kernel_repo": "android_kernel_oppo_mt6993",
         "kernel_branch": "oppo/mt6993_b_16.0.0_find_x9",
         "module_repo": "oppo-source/android_kernel_modules_and_devicetree_oppo_mt6993",
         "module_branch": "oppo/mt6993_b_16.0.0_find_x9",
@@ -73,6 +73,10 @@ def main() -> None:
     parser.add_argument("--device", required=True, choices=DEVICES)
     args = parser.parse_args()
     expected = dict(DEVICES[args.device])
+    migrated_owner = os.environ.get("MIGRATED_REPO_OWNER", "").strip()
+    if not migrated_owner:
+        raise SystemExit("MIGRATED_REPO_OWNER is required")
+    expected["kernel_repo"] = f'{migrated_owner}/{expected["kernel_repo"]}'
     # OPPO has not published the PLG110 16.0.10.501 MT6993 module tree. Its
     # stock sched_ext module has the same CAD3... source version and 39-kfunc
     # layout as this official Ace6T sync point; compile those sources with the
