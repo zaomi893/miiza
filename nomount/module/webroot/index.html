@@ -879,6 +879,207 @@
     background: none;
   }
 
+  /* Page composition */
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    min-height: 48px;
+    margin: 4px 4px 18px;
+  }
+  .page-head h2 {
+    margin: 0;
+    color: var(--txt);
+    font-size: 30px;
+    font-weight: 560;
+    line-height: 1.1;
+    letter-spacing: -.7px;
+  }
+  .page-kicker {
+    max-width: 48%;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #tab-tools > .page-head { order: -20; }
+
+  .overview-panel {
+    padding: 20px;
+    margin-bottom: 28px;
+    color: var(--on-secondary-container);
+    background: var(--secondary-container);
+    border-radius: 26px;
+  }
+  .overview-state {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .state-mark {
+    display: grid;
+    width: 48px;
+    height: 48px;
+    flex: none;
+    place-items: center;
+    background: color-mix(in srgb, var(--on-secondary-container) 10%, transparent);
+    border-radius: 16px;
+  }
+  .state-mark .dot { width: 12px; height: 12px; }
+  .state-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+  .state-label {
+    color: color-mix(in srgb, var(--on-secondary-container) 72%, transparent);
+    font-size: 12px;
+    font-weight: 550;
+  }
+  .state-copy .st { font-size: 20px; font-weight: 620; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 20px;
+  }
+  .stat-item {
+    min-width: 0;
+    padding: 12px;
+    background: color-mix(in srgb, var(--on-secondary-container) 7%, transparent);
+    border-radius: 15px;
+  }
+  .stat-item .k {
+    overflow: hidden;
+    color: color-mix(in srgb, var(--on-secondary-container) 68%, transparent);
+    font-size: 10.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .stat-item .v { margin-top: 5px; font-size: 19px; font-weight: 650; }
+  .overview-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .overview-actions .act.primary {
+    color: var(--on-acc-container);
+    background: var(--acc-container);
+  }
+  .overview-actions .act.danger {
+    color: var(--on-secondary-container);
+    background: color-mix(in srgb, var(--on-secondary-container) 9%, transparent);
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    min-height: 28px;
+    margin: 0 6px 9px;
+    color: var(--acc);
+  }
+  .section-head:not(:first-child) { margin-top: 26px; }
+  .section-head h3 { margin: 0; font-size: 13px; font-weight: 600; }
+  .section-head .chip { margin-left: auto; }
+
+  .info-group,
+  .guard-panel,
+  .posture-panel,
+  .expand-panel {
+    overflow: hidden;
+    background: var(--surface);
+    border-radius: 22px;
+  }
+  .info-row {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 13px;
+    min-height: 74px;
+    padding: 11px 16px;
+  }
+  .info-row + .info-row { border-top: 2px solid var(--bg); }
+  .info-icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    color: var(--acc);
+    background: var(--surface-raised);
+    border-radius: 13px;
+    place-items: center;
+  }
+  .info-icon svg { width: 20px; height: 20px; }
+  .info-copy,
+  .info-trailing { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+  .info-copy .k,
+  .info-trailing .k { color: var(--muted); font-size: 11px; }
+  .info-copy .v,
+  .info-trailing .v { overflow: hidden; color: var(--txt); font-size: 14px; font-weight: 550; text-overflow: ellipsis; }
+  .info-trailing { align-items: flex-end; padding-left: 12px; }
+  .mono-value { font-family: var(--mono); font-size: 11px !important; line-height: 1.45; white-space: normal; word-break: break-all; }
+
+  .guard-panel {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 13px;
+    min-height: 76px;
+    padding: 12px 16px;
+  }
+  .guard-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+  .guard-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 580; }
+  .guard-title .dot { width: 8px; height: 8px; }
+  .guard-note { color: var(--muted); font-size: 11.5px; }
+  .compact-action { grid-column: 1 / -1; width: 100%; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    padding: 3px 9px;
+    color: var(--muted);
+    background: var(--surface-raised);
+    border: 0;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .chip.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .chip.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+  .chip.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+
+  .posture-panel { padding: 18px; }
+  .posture-summary { display: flex; align-items: center; gap: 14px; }
+  .posture-summary .t { font-size: 16px; font-weight: 600; }
+  .posture-summary .d { margin-top: 3px; color: var(--muted); font-size: 12px; }
+  .posture-panel > .list { margin-top: 14px; }
+
+  .rules-stack { display: flex; flex-direction: column; gap: 8px; }
+  .expand-trigger {
+    appearance: none;
+    display: grid;
+    width: 100%;
+    min-height: 74px;
+    grid-template-columns: 42px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 13px;
+    padding: 11px 16px;
+    color: var(--txt);
+    background: transparent;
+    border: 0;
+    font: 580 15px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif;
+    text-align: left;
+  }
+  .expand-trigger:active { background: var(--surface-raised); }
+  .expand-trigger .chev { color: var(--muted); font-size: 20px; transition: transform .2s; }
+  .expand-trigger.open .chev { transform: rotate(90deg); }
+  .expand-body,
+  .inset-list { padding: 0 16px 14px; }
+  .expand-body:empty,
+  .inset-list:empty { display: none; }
+
+  @media (max-width: 560px) {
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+    .page-head h2 { font-size: 28px; }
+  }
+
   html[data-theme="light"] {
     --bg: #fbf8fc;
     --bg2: #fbf8fc;
@@ -932,11 +1133,6 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#08101c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 7l8-4 8 4v6c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/>
-      </svg>
-    </div>
     <div class="brand">
       <h1 data-i18n="brand_title">NoMount Suite</h1>
       <p data-i18n="brand_sub">hookless VFS · RRO overlays · sucompat root</p>
@@ -956,121 +1152,141 @@
     </div>
   </header>
   <section class="tab on" id="tab-status">
-  <div class="banner" id="banner" data-i18n="banner_tip">Open this page from the KernelSU / APatch manager's WebUI to control the module.</div>
+    <div class="page-head">
+      <h2 data-i18n="nav_status">Status</h2>
+      <span class="page-kicker" id="substate"></span>
+    </div>
+    <div class="banner" id="banner" data-i18n="banner_tip">Open this page from the KernelSU / APatch manager's WebUI to control the module.</div>
 
-  <div class="card hero">
-    <div class="statusline">
-      <span class="dot off" id="dot"></span>
-      <span class="st" id="state" data-i18n="state_checking">Checking…</span>
-      <span class="sub" id="substate"></span>
+    <div class="overview-panel">
+      <div class="overview-state">
+        <span class="state-mark"><span class="dot off" id="dot"></span></span>
+        <div class="state-copy">
+          <span class="state-label">NoMount</span>
+          <span class="st" id="state" data-i18n="state_checking">Checking…</span>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-item"><div class="k" data-i18n="metric_rules">Injection rules</div><div class="v" id="mRules">—</div></div>
+        <div class="stat-item"><div class="k" data-i18n="metric_ov">RRO overlays</div><div class="v" id="mOv">—</div></div>
+        <div class="stat-item"><div class="k" data-i18n="metric_su">Root · su</div><div class="v" id="mSu">—</div></div>
+        <div class="stat-item"><div class="k" data-i18n="metric_mod">Modules served</div><div class="v" id="mMod">—</div></div>
+      </div>
+      <div class="overview-actions">
+        <button class="act primary" onclick="reloadRules(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+          <span data-i18n="btn_reload">Reload</span>
+        </button>
+        <button class="act danger" onclick="clearRules(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+          <span data-i18n="btn_clear_rules">Clear rules</span>
+        </button>
+      </div>
     </div>
-    <div class="metrics">
-      <div class="metric"><div class="k" data-i18n="metric_rules">Injection rules</div><div class="v" id="mRules">—</div></div>
-      <div class="metric"><div class="k" data-i18n="metric_ov">RRO overlays</div><div class="v" id="mOv">—</div></div>
-      <div class="metric"><div class="k" data-i18n="metric_su">Root · su</div><div class="v" id="mSu">—</div></div>
-      <div class="metric"><div class="k" data-i18n="metric_mod">Modules served</div><div class="v" id="mMod">—</div></div>
-    </div>
-    <div class="btns">
-      <button class="act primary" onclick="reloadRules(this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
-        <span data-i18n="btn_reload">Reload</span>
-      </button>
-      <button class="act danger" onclick="clearRules(this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
-        <span data-i18n="btn_clear_rules">Clear rules</span>
-      </button>
-    </div>
-  </div>
 
-  <div class="card">
-    <div class="card-h">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
-      <h2 data-i18n="h2_device">Device</h2>
+    <div class="section-head">
+      <h3 data-i18n="h2_device">Device</h3>
     </div>
-    <div class="metrics">
-      <div class="metric"><div class="k" data-i18n="k_model">Model</div><div class="v" id="dModel" style="font-size:15px">—</div></div>
-      <div class="metric"><div class="k" data-i18n="k_android">Android</div><div class="v" id="dAndroid" style="font-size:15px">—</div></div>
-      <div class="metric"><div class="k" data-i18n="k_api">API level</div><div class="v" id="dApi" style="font-size:15px">—</div></div>
-      <div class="metric"><div class="k" data-i18n="k_kernel">Kernel</div><div class="v" id="dKernel" style="font-size:11px;word-break:break-all;line-height:1.35">—</div></div>
+    <div class="info-group">
+      <div class="info-row">
+        <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></span>
+        <div class="info-copy"><span class="k" data-i18n="k_model">Model</span><span class="v" id="dModel">—</span></div>
+      </div>
+      <div class="info-row">
+        <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></span>
+        <div class="info-copy"><span class="k" data-i18n="k_android">Android</span><span class="v" id="dAndroid">—</span></div>
+        <div class="info-trailing"><span class="k" data-i18n="k_api">API level</span><span class="v" id="dApi">—</span></div>
+      </div>
+      <div class="info-row">
+        <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M19 9h4M1 15h4M19 15h4"/></svg></span>
+        <div class="info-copy"><span class="k" data-i18n="k_kernel">Kernel</span><span class="v mono-value" id="dKernel">—</span></div>
+      </div>
     </div>
-  </div>
 
-  <div class="card">
-    <div class="card-h">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/></svg>
-      <h2 data-i18n="h2_bootguard">Bootloop guard</h2><span class="chip" id="gchip">—</span>
+    <div class="section-head">
+      <h3 data-i18n="h2_bootguard">Bootloop guard</h3>
     </div>
-    <div class="statusline">
-      <span class="dot ok" id="gdot"></span><span class="st" id="gstate" style="font-size:16px" data-i18n="guard_armed">Armed</span>
-      <span class="sub" data-i18n="guard_trips">trips at boot #3</span>
+    <div class="guard-panel">
+      <span class="info-icon guard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/></svg></span>
+      <div class="guard-copy">
+        <div class="guard-title"><span class="dot ok" id="gdot"></span><span id="gstate" data-i18n="guard_armed">Armed</span></div>
+        <span class="guard-note" data-i18n="guard_trips">trips at boot #3</span>
+      </div>
+      <span class="chip" id="gchip">—</span>
+      <button class="act danger compact-action" id="rearm" onclick="rearm(this)" style="display:none" data-i18n="btn_rearm">Re-arm & enable</button>
     </div>
-    <div class="btns"><button class="act danger" id="rearm" onclick="rearm(this)" style="display:none" data-i18n="btn_rearm">Re-arm & enable</button></div>
-  </div>
   </section>
+
   <section class="tab" id="tab-modules">
-
-  <div class="card">
-    <div class="stealth-head">
-      <div class="shield clean" id="shield">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+    <div class="page-head"><h2 data-i18n="nav_modules">Modules</h2></div>
+    <div class="posture-panel">
+      <div class="posture-summary">
+        <div class="shield clean" id="shield">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div><div class="t" id="stealthT" data-i18n="stealth_title">Detection posture</div><div class="d" id="stealthD" data-i18n="stealth_checking">Checking what apps can see…</div></div>
       </div>
-      <div>
-        <div class="t" id="stealthT" data-i18n="stealth_title">Detection posture</div>
-        <div class="d" id="stealthD" data-i18n="stealth_checking">Checking what apps can see…</div>
-      </div>
+      <div class="list" id="posture"></div>
+      <p class="note" id="stealthNote"></p>
     </div>
-    <div class="list" id="posture"></div>
-    <p class="note" id="stealthNote"></p>
-  </div>
-  <div class="card">
-    <div class="card-h clp" onclick="toggleModules(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-      <h2 data-i18n="h2_modules">Modules</h2><span class="chip" id="modcount">0</span><span class="chev">›</span>
+    <div class="section-head"><h3 data-i18n="h2_modules">Modules</h3><span class="chip" id="modcount">0</span></div>
+    <div class="expand-panel">
+      <button class="expand-trigger" onclick="toggleModules(this)">
+        <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        <span data-i18n="h2_modules">Modules</span><span class="chev">›</span>
+      </button>
+      <div class="list inset-list" id="modules" style="display:none"></div>
     </div>
-    <div class="list" id="modules" style="display:none"></div>
-  </div>
   </section>
-  <section class="tab" id="tab-rules">
-  <div class="card">
-    <div class="card-h clp" onclick="toggleRules(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-      <h2 data-i18n="h2_active_rules">Active rules</h2><span class="chip" id="rulechip">—</span><span class="chev">›</span>
-    </div>
-    <p class="note" id="rulebreak" style="margin-top:0">—</p>
-    <div id="ruleModuleBar" style="display:none"></div>
-    <div class="uidbar" id="rulefilterbar" style="display:none">
-      <input id="rulefilter" type="text" data-i18n-placeholder="ph_filter_rule" placeholder="Filter by path or module…" oninput="filterRules()" />
-      <button class="act" id="rulegroupBtn" style="flex:1 1 0" onclick="toggleRuleGroup(this)" data-i18n="btn_group_mod">Group by module</button>
-      <button class="act" style="flex:1 1 0" onclick="document.getElementById('rulefilter').value='';filterRules()" data-i18n="btn_clear">Clear</button>
-    </div>
-    <pre class="rules" id="ruleslist" style="display:none">…</pre>
-    <p class="note" id="rulecount" style="display:none"></p>
-  </div>
 
-  <div class="card">
-    <div class="card-h clp" onclick="toggleVfsFull(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
-      <h2 data-i18n="h2_file_redirects">File redirects</h2><span class="chip" id="vfscount">0</span><span class="chev">›</span>
+  <section class="tab" id="tab-rules">
+    <div class="page-head"><h2 data-i18n="nav_rules">Rules</h2></div>
+    <div class="rules-stack">
+      <div class="expand-panel">
+        <button class="expand-trigger" onclick="toggleRules(this)">
+          <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
+          <span data-i18n="h2_active_rules">Active rules</span><span class="chip" id="rulechip">—</span><span class="chev">›</span>
+        </button>
+        <div class="expand-body">
+          <p class="note" id="rulebreak">—</p>
+          <div id="ruleModuleBar" style="display:none"></div>
+          <div class="uidbar" id="rulefilterbar" style="display:none">
+            <input id="rulefilter" type="text" data-i18n-placeholder="ph_filter_rule" placeholder="Filter by path or module…" oninput="filterRules()" />
+            <button class="act" id="rulegroupBtn" style="flex:1 1 0" onclick="toggleRuleGroup(this)" data-i18n="btn_group_mod">Group by module</button>
+            <button class="act" style="flex:1 1 0" onclick="document.getElementById('rulefilter').value='';filterRules()" data-i18n="btn_clear">Clear</button>
+          </div>
+          <pre class="rules" id="ruleslist" style="display:none">…</pre>
+          <p class="note" id="rulecount" style="display:none"></p>
+        </div>
+      </div>
+
+      <div class="expand-panel">
+        <button class="expand-trigger" onclick="toggleVfsFull(this)">
+          <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
+          <span data-i18n="h2_file_redirects">File redirects</span><span class="chip" id="vfscount">0</span><span class="chev">›</span>
+        </button>
+        <div class="expand-body">
+          <div class="uidbar" id="vfsfilterbar" style="display:none;margin-bottom:11px"><input id="vfsfilter" type="text" data-i18n-placeholder="ph_filter_files" placeholder="Filter files…" oninput="renderVfsFull()" /></div>
+          <div class="list" id="vfsdirs" style="display:none"></div>
+          <div class="list" id="vfsfull" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="expand-panel">
+        <button class="expand-trigger" onclick="toggleOvFull(this)">
+          <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
+          <span data-i18n="h2_rro_overlays">RRO overlays</span><span class="chip" id="ovcount">0</span><span class="chev">›</span>
+        </button>
+        <div class="expand-body">
+          <div class="uidbar" id="ovfilterbar" style="display:none;margin-bottom:11px"><input id="ovfilter" type="text" data-i18n-placeholder="ph_filter_overlays" placeholder="Filter overlays…" oninput="renderOvFull()" /></div>
+          <div class="list" id="overlays" style="display:none"></div>
+          <div class="list" id="overlaysfull" style="display:none"></div>
+        </div>
+      </div>
     </div>
-    <div class="uidbar" id="vfsfilterbar" style="display:none;margin-bottom:11px">
-      <input id="vfsfilter" type="text" data-i18n-placeholder="ph_filter_files" placeholder="Filter files…" oninput="renderVfsFull()" />
-    </div>
-    <div class="list" id="vfsdirs" style="display:none"></div>
-    <div class="list" id="vfsfull" style="display:none"></div>
-  </div>
-  <div class="card">
-    <div class="card-h clp" onclick="toggleOvFull(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
-      <h2 data-i18n="h2_rro_overlays">RRO overlays</h2><span class="chip" id="ovcount">0</span><span class="chev">›</span>
-    </div>
-    <div class="uidbar" id="ovfilterbar" style="display:none;margin-bottom:11px">
-      <input id="ovfilter" type="text" data-i18n-placeholder="ph_filter_overlays" placeholder="Filter overlays…" oninput="renderOvFull()" />
-    </div>
-    <div class="list" id="overlays" style="display:none"></div>
-    <div class="list" id="overlaysfull" style="display:none"></div>
-  </div>
   </section>
   <section class="tab" id="tab-tools">
+  <div class="page-head"><h2 data-i18n="nav_tools">Tools</h2></div>
   <div class="group-label" data-i18n="gl_spoofing">Spoofing</div>
 
   <div class="card collapsed" id="cardSpoof">
