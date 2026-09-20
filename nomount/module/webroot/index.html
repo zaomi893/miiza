@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ui="miuix">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -1121,6 +1121,223 @@
   html[data-theme="light"] pre.rules { color: var(--muted); background: var(--surface-soft); }
   html[data-theme="light"] #toast { color: #f5eef8; background: #302b32; border-color: transparent; }
 
+  /* Material 3 */
+  html[data-ui="material"] {
+    --bg: #121015;
+    --bg2: #121015;
+    --surface: #201d24;
+    --surface-raised: #2b2730;
+    --surface-soft: #19171c;
+    --card: var(--surface);
+    --card2: var(--surface-soft);
+    --brd: #38333d;
+    --brd2: #302c35;
+    --txt: #eee8f0;
+    --muted: #c8c0cb;
+    --faint: #958d99;
+    --acc: #d4baff;
+    --acc2: #d4baff;
+    --acc-container: #4b3868;
+    --on-acc-container: #f0ddff;
+    --secondary-container: #4a4350;
+    --on-secondary-container: #ece1ee;
+    --ok: #93d5b0;
+    --warn: #e7c178;
+    --bad: #ffb2b8;
+    --shadow: 0 10px 28px rgba(0, 0, 0, .22);
+  }
+  html[data-ui="material"][data-theme="light"] {
+    --bg: #fbf8fc;
+    --bg2: #fbf8fc;
+    --surface: #f1ebf3;
+    --surface-raised: #e9e2ec;
+    --surface-soft: #f7f2f8;
+    --card: var(--surface);
+    --card2: var(--surface-soft);
+    --brd: #ddd5e0;
+    --brd2: #e6dee8;
+    --txt: #211d23;
+    --muted: #665f69;
+    --faint: #817983;
+    --acc: #76559f;
+    --acc2: #76559f;
+    --acc-container: #eadcff;
+    --on-acc-container: #321653;
+    --secondary-container: #eee2f0;
+    --on-secondary-container: #302a32;
+    --ok: #28764f;
+    --warn: #815b17;
+    --bad: #b33d4b;
+    --shadow: 0 10px 26px rgba(54, 43, 60, .10);
+  }
+  html[data-ui="material"] .stylebtn { color: var(--on-acc-container); background: var(--acc-container); }
+  html[data-ui="material"] .overview-panel { background: var(--secondary-container); box-shadow: none; }
+  html[data-ui="material"] .info-group,
+  html[data-ui="material"] .guard-panel,
+  html[data-ui="material"] .posture-panel,
+  html[data-ui="material"] .expand-panel,
+  html[data-ui="material"] .tool-panel { box-shadow: none; }
+  html[data-ui="material"] .tool-panel {
+    padding: 18px;
+    background: var(--surface);
+    border: 0;
+    border-radius: 22px;
+  }
+  html[data-ui="material"] .tool-panel .card-h {
+    min-height: 42px;
+    padding: 0;
+  }
+  html[data-ui="material"] .navwrap {
+    bottom: 0;
+    padding: 4px 12px calc(4px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+  }
+  html[data-ui="material"] .nav {
+    width: min(100%, 720px);
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* MIUIX */
+  html[data-ui="miuix"] {
+    --bg: #08090b;
+    --bg2: #08090b;
+    --surface: #17181b;
+    --surface-raised: #24262b;
+    --surface-soft: #111216;
+    --card: var(--surface);
+    --card2: var(--surface-soft);
+    --brd: rgba(255, 255, 255, .08);
+    --brd2: rgba(255, 255, 255, .055);
+    --txt: #f5f5f7;
+    --muted: #a7a8ad;
+    --faint: #777980;
+    --acc: #73a9ff;
+    --acc2: #73a9ff;
+    --acc-container: #173d70;
+    --on-acc-container: #e5f0ff;
+    --secondary-container: #17181b;
+    --on-secondary-container: #f5f5f7;
+    --ok: #57c989;
+    --warn: #e8b85f;
+    --bad: #ff7f8b;
+    --shadow: 0 14px 34px rgba(0, 0, 0, .34);
+  }
+  html[data-ui="miuix"][data-theme="light"] {
+    --bg: #f4f4f6;
+    --bg2: #f4f4f6;
+    --surface: #ffffff;
+    --surface-raised: #f0f1f4;
+    --surface-soft: #f8f8fa;
+    --card: var(--surface);
+    --card2: var(--surface-soft);
+    --brd: rgba(25, 27, 32, .08);
+    --brd2: rgba(25, 27, 32, .055);
+    --txt: #1d1e21;
+    --muted: #6f7178;
+    --faint: #92949b;
+    --acc: #1677e8;
+    --acc2: #1677e8;
+    --acc-container: #dceaff;
+    --on-acc-container: #064787;
+    --secondary-container: #ffffff;
+    --on-secondary-container: #1d1e21;
+    --ok: #198653;
+    --warn: #946313;
+    --bad: #d83f50;
+    --shadow: 0 10px 28px rgba(27, 34, 46, .09);
+  }
+  html[data-ui="miuix"] body { background: var(--bg); }
+  html[data-ui="miuix"] header {
+    margin-bottom: 8px;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    border: 0;
+  }
+  html[data-ui="miuix"] .brand h1 { font-weight: 720; letter-spacing: -.55px; }
+  html[data-ui="miuix"] .stylebtn { color: #fff; background: var(--acc); }
+  html[data-ui="miuix"] .iconbtn { border-radius: 12px; }
+  html[data-ui="miuix"] .page-head { min-height: 58px; margin-bottom: 16px; }
+  html[data-ui="miuix"] .page-head h2 { font-size: 32px; font-weight: 720; letter-spacing: -1px; }
+  html[data-ui="miuix"] .overview-panel {
+    padding: 18px;
+    color: var(--txt);
+    background: var(--surface);
+    border: 1px solid var(--brd);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+  }
+  html[data-ui="miuix"] .state-mark { color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, transparent); }
+  html[data-ui="miuix"] .state-label,
+  html[data-ui="miuix"] .stat-item .k { color: var(--muted); }
+  html[data-ui="miuix"] .stat-grid { gap: 8px; }
+  html[data-ui="miuix"] .stat-item { background: var(--surface-raised); border-radius: 14px; }
+  html[data-ui="miuix"] .overview-actions .act.primary { color: #fff; background: var(--acc); }
+  html[data-ui="miuix"] .overview-actions .act.danger { color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); }
+  html[data-ui="miuix"] button.act { min-height: 42px; border-radius: 13px; }
+  html[data-ui="miuix"] .section-head { color: var(--muted); }
+  html[data-ui="miuix"] .section-head h3,
+  html[data-ui="miuix"] .group-label { font-size: 12px; font-weight: 650; }
+  html[data-ui="miuix"] .info-group,
+  html[data-ui="miuix"] .guard-panel,
+  html[data-ui="miuix"] .posture-panel,
+  html[data-ui="miuix"] .expand-panel,
+  html[data-ui="miuix"] .tool-panel {
+    background: var(--surface);
+    border: 1px solid var(--brd);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+  }
+  html[data-ui="miuix"] .info-row + .info-row { border-top: 1px solid var(--brd2); }
+  html[data-ui="miuix"] .info-icon { color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, var(--surface-raised)); }
+  html[data-ui="miuix"] .chip { color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
+  html[data-ui="miuix"] .tool-panel {
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  html[data-ui="miuix"] .tool-panel .card-h {
+    min-height: 46px;
+    padding: 0;
+    margin-bottom: 12px;
+  }
+  html[data-ui="miuix"] .tool-panel.collapsed > .card-h { margin-bottom: 0; }
+  html[data-ui="miuix"] .tool-panel .card-h .ic {
+    box-sizing: content-box;
+    width: 19px;
+    height: 19px;
+    padding: 9px;
+    color: var(--acc);
+    background: color-mix(in srgb, var(--acc) 12%, transparent);
+    border-radius: 12px;
+  }
+  html[data-ui="miuix"] .txin,
+  html[data-ui="miuix"] .uidbar input { background: var(--surface-raised); }
+  html[data-ui="miuix"] .navwrap {
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    padding: 0 14px;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  html[data-ui="miuix"] .nav {
+    width: min(100%, 560px);
+    height: 66px;
+    padding: 5px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    border: 1px solid var(--brd);
+    border-radius: 23px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+  }
+  html[data-ui="miuix"] .navb { height: 54px; border-radius: 18px; }
+  html[data-ui="miuix"] .navb svg,
+  html[data-ui="miuix"][data-theme="light"] .navb svg { padding: 3px 14px; }
+  html[data-ui="miuix"] .navb.on { color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
+  html[data-ui="miuix"] .navb.on svg,
+  html[data-ui="miuix"][data-theme="light"] .navb.on svg { color: var(--acc); stroke: var(--acc); background: transparent; }
+  html[data-ui="miuix"] .navb.on span:not(.nbdot) { color: var(--acc); }
+
   @media (max-width: 520px) {
     body { padding-left: 12px; padding-right: 12px; }
     header { margin-left: -12px; margin-right: -12px; padding-left: 16px; padding-right: 16px; }
@@ -1139,6 +1356,9 @@
     </div>
     <div class="hbtns">
       <span class="ver" id="ver">v…</span>
+      <button class="iconbtn stylebtn" id="styleBtn" onclick="toggleUiStyle()" data-i18n-title="title_ui_style" data-i18n-aria="title_ui_style" title="Switch UI style" aria-label="Switch UI style">
+        <span id="styleGlyph">MX</span>
+      </button>
       <button class="iconbtn" id="langBtn" onclick="toggleLang()" data-i18n-title="title_language" data-i18n-aria="title_language" title="Switch language" aria-label="Switch language">
         <span data-i18n="lang_btn">中</span>
       </button>
@@ -1289,7 +1509,7 @@
   <div class="page-head"><h2 data-i18n="nav_tools">Tools</h2></div>
   <div class="group-label" data-i18n="gl_spoofing">Spoofing</div>
 
-  <div class="card collapsed" id="cardSpoof">
+  <div class="card tool-panel collapsed" id="cardSpoof">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg>
       <h2 data-i18n="h2_spoofing">Spoofing</h2><span class="chip" id="spchip">—</span><span class="chev">›</span>
@@ -1335,7 +1555,7 @@
   </div>
   <div class="group-label" data-i18n="gl_diagnostics">Diagnostics</div>
 
-  <div class="card collapsed" id="cardHealth">
+  <div class="card tool-panel collapsed" id="cardHealth">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
       <h2 data-i18n="h2_health_check">Health check</h2><span class="chip" id="dchip">—</span><span class="chev">›</span>
@@ -1345,7 +1565,7 @@
     <pre class="rules" id="doctorout" style="display:none">…</pre>
   </div>
 
-  <div class="card collapsed" id="cardRuntime">
+  <div class="card tool-panel collapsed" id="cardRuntime">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>
       <h2 data-i18n="h2_runtime_health">Runtime health</h2><span class="chip" id="hchip">—</span><span class="chev">›</span>
@@ -1360,7 +1580,7 @@
     <pre class="rules" id="healthout" style="display:none">…</pre>
   </div>
 
-  <div class="card collapsed" id="incidentcard" style="display:none">
+  <div class="card tool-panel collapsed" id="incidentcard" style="display:none">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v5"/><path d="M12 17.5v.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
       <h2 data-i18n="h2_last_incident">Last incident</h2><span class="chip bad" data-i18n="chip_guard_tripped">guard tripped</span><span class="chev">›</span>
@@ -1371,7 +1591,7 @@
   </div>
   <div class="group-label" id="groupPathMask" data-i18n="gl_hiding">Hiding</div>
 
-  <div class="card" id="cardGlobalHide">
+  <div class="card tool-panel" id="cardGlobalHide">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
       <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
@@ -1389,7 +1609,7 @@
       <div class="list" id="ghList"></div>
     </div>
   </div>
-  <div class="card" id="cardGlobalScope">
+  <div class="card tool-panel" id="cardGlobalScope">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v2"/></svg>
       <h2 data-i18n="h3_hide_scope">Effective applications</h2><span class="chip" id="gschip">—</span><span class="chev">›</span>
@@ -1405,7 +1625,7 @@
       <div class="list" id="gsList"></div>
     </div>
   </div>
-  <div class="card" id="cardCloak">
+  <div class="card tool-panel" id="cardCloak">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
       <h2 data-i18n="h2_cloak">Path masking</h2><span class="chip" id="phchip">—</span><span class="chev">›</span>
@@ -1474,6 +1694,7 @@
       lang_btn: "中",
       title_language: "Switch language",
       title_theme: "Light / dark theme",
+      title_ui_style: "Switch MIUIX / Material style",
       title_refresh: "Refresh",
       banner_tip: "Open this page from the KernelSU / APatch manager's WebUI to control the module.",
       state_checking: "Checking…",
@@ -1556,7 +1777,7 @@
       nav_status: "Status",
       nav_modules: "Modules",
       nav_rules: "Rules",
-      nav_tools: "Hiding"
+      nav_tools: "Tools"
     },
     zh: {
       brand_title: "NoMount Suite",
@@ -1564,6 +1785,7 @@
       lang_btn: "EN",
       title_language: "切换语言",
       title_theme: "切换浅色 / 深色主题",
+      title_ui_style: "切换 MIUIX / Material 风格",
       title_refresh: "刷新",
       banner_tip: "请从 KernelSU / APatch 管理器的 WebUI 中打开此页面以控制模块。",
       state_checking: "检查中…",
@@ -1646,7 +1868,7 @@
       nav_status: "状态",
       nav_modules: "模块",
       nav_rules: "规则",
-      nav_tools: "隐藏"
+      nav_tools: "工具"
     }
   };
 
@@ -1880,6 +2102,24 @@
       $("gdot").className = "dot ok"; $("rearm").style.display = "none";
     }
   }
+  function applyUiStyle(style) {
+    const next = style === "material" ? "material" : "miuix";
+    document.documentElement.setAttribute("data-ui", next);
+    const glyph = document.getElementById("styleGlyph");
+    if (glyph) glyph.textContent = next === "material" ? "M3" : "MX";
+    try { localStorage.setItem("nm_ui_style", next); } catch (e) {}
+  }
+  function toggleUiStyle() {
+    const current = document.documentElement.getAttribute("data-ui") === "material" ? "material" : "miuix";
+    applyUiStyle(current === "material" ? "miuix" : "material");
+    movePill(false);
+  }
+  (function initUiStyle() {
+    let style = null;
+    try { style = localStorage.getItem("nm_ui_style"); } catch (e) {}
+    applyUiStyle(style === "material" ? "material" : "miuix");
+  })();
+
   function applyTheme(t) {
     document.documentElement.setAttribute("data-theme", t);
     try { localStorage.setItem("nm_theme", t); } catch (e) {}
