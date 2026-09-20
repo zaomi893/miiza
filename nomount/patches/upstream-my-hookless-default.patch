@@ -1,0 +1,109 @@
+diff --git a/src/absorb.rs b/src/absorb.rs
+index 599984e..c60cf12 100644
+--- a/src/absorb.rs
++++ b/src/absorb.rs
+@@ -2498,7 +2498,7 @@ pub fn run_absorb(dry_run: bool, include_dirs: bool, early: bool) -> Result<()>
+                 s.target.display()
+             ),
+             Disposition::Declined(Declined::MustBind) => println!(
+-                "skipping {} (my_* is served by a real bind; injecting one bootloops zygote)",
++                "skipping {} (my_* bind compatibility mode is active; restore /data/adb/nomount/my_hookless and reboot for VFS injection)",
+                 s.target.display()
+             ),
+             Disposition::Leaking(why) => {
+@@ -2559,9 +2559,8 @@ pub fn run_absorb(dry_run: bool, include_dirs: bool, early: bool) -> Result<()>
+     // it in the declined bucket would be a different claim from the true one.
+     if deferred > 0 {
+         println!(
+-            "nomount absorb: {deferred} my_* mount(s) deferred to the pre-zygote pass \
+-             (absorbing them on a live system has rebooted a device); they are taken at the \
+-             next boot if the my_hookless trial is enabled"
++            "nomount absorb: {deferred} my_* mount(s) deferred to the pre-zygote pass; \
++             restore /data/adb/nomount/my_hookless and reboot to convert them to VFS injection"
+         );
+     }
+     if cands.is_empty() {
+diff --git a/src/audit.rs b/src/audit.rs
+index 1c5e10b..9b71e4c 100644
+--- a/src/audit.rs
++++ b/src/audit.rs
+@@ -628,29 +628,19 @@ fn check_zero_mount() -> Check {
+                 crate::bind::BINDS_LIST
+             )
+         } else if mine == leaked.len() {
+-            // Lead with "nothing is wrong", the same way the hook-framework arm
+-            // above does, because this is the DEFAULT state of a OnePlus device
+-            // with any my_* module installed -- `my_hookless` is the opt-in. The
+-            // honest content is all still here: these are real mounts, any app
+-            // reading its own mountinfo sees them, and the per-app remedy that
+-            // actually works is named. What is gone is the implication that the
+-            // reader is in a broken state.
+             format!(
+-                "Nothing is wrong here. All {} of these mount(s) are the Suite's own: a my_* \
+-                 target is served by a real bind unless the `my_hookless` opt-in is set, because \
+-                 a leaf my_* injection can trip zygote's FD allowlist. They serve content from \
+-                 {owner}. They are real mounts, so an app that reads /proc/self/mountinfo sees \
+-                 them — worth knowing only if you are hiding from one specific app, and there \
+-                 your manager's \"umount modules\" for that app does take them out of its view. \
+-                 To have no mount at all, set /data/adb/nomount/my_hookless and reboot; the same \
+-                 files are then served by injection.",
++                "All {} mount(s) are from my_* bind compatibility mode and serve content from \
++                 {owner}. They remain visible in /proc/self/mountinfo. Restore \
++                 /data/adb/nomount/my_hookless and reboot to serve the same files through VFS \
++                 injection without a mount.",
+                 leaked.len()
+             )
+         } else if mine > 0 {
+             format!(
+                 "{} mount(s) laid over the ROM are readable by any app in its own mount table. \
+-                 {mine} of them the Suite made itself (a my_* target is served by bind; set \
+-                 /data/adb/nomount/my_hookless to inject instead). The rest come from {owner}.",
++                 {mine} of them come from my_* bind compatibility mode; restore \
++                 /data/adb/nomount/my_hookless and reboot to use VFS injection. The rest come \
++                 from {owner}.",
+                 leaked.len()
+             )
+         } else {
+diff --git a/src/doctor.rs b/src/doctor.rs
+index ac94b15..b0177d1 100644
+--- a/src/doctor.rs
++++ b/src/doctor.rs
+@@ -2003,10 +2003,10 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
+                     let binds = v.len();
+                     format!(
+                         "your manager's \"Kernel umount\" is ON, and this device has {binds} \
+-                         bind mount(s) of ours — my_* is served by a real bind unless the \
+-                         my_hookless trial is on. The switch DOES hide those from an app's \
+-                         mount table, and it is the only thing that does; it cannot touch the \
+-                         injections, which are not mounts."
++                         my_* bind compatibility mount(s). Restore \
++                         /data/adb/nomount/my_hookless and reboot to use VFS injection. Kernel \
++                         umount can hide the current binds from an app but does not affect VFS \
++                         injections."
+                     )
+                 }
+                 Err(e) => format!(
+@@ -2065,9 +2065,9 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
+                     format!(
+                         "your manager's \"Kernel umount\" could not be read, so it is UNKNOWN \
+                          rather than off — and this device has {binds} bind mount(s) of ours \
+-                         (my_* is served by a real bind unless the my_hookless trial is on). \
+-                         That switch is the only thing that hides those from an app's mount \
+-                         table, so it is worth checking in your manager."
++                         because my_* bind compatibility mode is active. Restore \
++                         /data/adb/nomount/my_hookless and reboot to use VFS injection without \
++                         these mounts."
+                     )
+                 }
+                 Err(e) => format!(
+@@ -2677,8 +2677,8 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
+                 Level::Info,
+                 "module mount left by design",
+                 format!(
+-                    "{} <- {} stays mounted: a my_* target is served by a real bind, so \
+-                     absorbing it into an injection would bootloop zygote",
++                    "{} <- {} stays mounted because my_* bind compatibility mode is active; \
++                     restore /data/adb/nomount/my_hookless and reboot to use VFS injection",
+                     s.target.display(),
+                     s.source.display()
+                 ),

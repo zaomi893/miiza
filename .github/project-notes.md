@@ -118,7 +118,7 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 
 ## NoMount Suite 与 PathMask
 
-选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.7.6.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
+选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.7.7.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
 - 2026-09-20 核对 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite) 后，上游已更新到 `61023e9`（Suite v1.3.184 / Prism engine v32）。当前内核仍是本仓库的 v14 PathHide 协议定制分支，不能把 v32 内核端和用户态直接替换进来；CI 引擎继续固定在已验证的 `36a4621`，只移植与协议无关、可以单独验证的低开销改动。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。手动 `+` 规则仍按原来的 global/deny 语义全局生效；`&` 规则是 AppCloak 可选补充，只在 `@uid:` 白名单中的调用方 UID 下生效。
@@ -129,12 +129,12 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 - 内核直接覆盖 inode 权限、stat、getdents、proc maps/fd，不加载常驻 syscall kprobe。开机完成后一次性匹配 `/dev/*/scene_mode_category` 并隐藏匹配项的父目录，同时加入 `/dev/cpuset/scene-daemon`；这一条父目录规则同时覆盖 Scene 8 的固定 `/dev/scene` 和 Scene 9.3 及以上的随机目录。它不依赖 Scene 包名、WebUI、挂载表、目录事件或定时轮询，也不保留常驻检测进程。
 - 应用隐藏会缓存识别 Xposed 模块并读取 HMA 黑名单，默认勾选为隐藏目标；扫描只处理新增、变更和卸载的包，并发限制在最多 4 个 APK，避免 WebUI 刷新造成 CPU 峰值。PathMask 只保存用户手动输入的完整文件路径和 Scene 自动发现的 debugfs 路径。
 - WebUI 的“隐藏 APK 路径痕迹”默认关闭。开启后，模块用 `pm list packages -f -U` 把 `hidden_apps.conf` 映射为应用目录路径规则，把 `scope_apps.conf` 映射为调用方 UID 规则，并全量重建内核补充规则。`packages.list` 变化时由 inotify 事件触发同步；卸载、重装或 UID 复用后的旧规则会被清除，不会残留到新包。该功能只补充 AppCloak，不改变手动 PathMask。
-- NoMount 引擎在 CI 中从固定上游提交打上 `upstream-module-id-validation.patch` 后重新编译。核心扫描会要求模块目录名与 `module.prop` 的 `id=` 完全一致，并对启用模块的重复 ID 做确定性拒绝，避免元模块那种目录名与声明 ID 漂移导致的挂载与状态错配。
+- NoMount 引擎在 CI 中从固定上游提交打上 `upstream-module-id-validation.patch` 和 `upstream-my-hookless-default.patch` 后重新编译。核心扫描会要求模块目录名与 `module.prop` 的 `id=` 完全一致，并对启用模块的重复 ID 做确定性拒绝；诊断信息把缺少 `my_hookless` 明确标为 bind 兼容回退，不再显示与默认配置冲突的试验模式和开机循环旧提示。
 - 挂载兼容性分两类处理：目录名/声明 ID 不一致或重复的模块会在核心扫描阶段被明确跳过并输出原因；第三方模块自己创建的 bind mount 会先在 zygote 前、再在开机完成后由 `nomount absorb` 转成无挂载注入。安装时默认创建 `my_hookless` 标记，让 `my_product`、`my_company`、`my_region` 等 `my_*` 分区直接使用 VFS 注入，不再保留这些分区的 bind mount；删除 `/data/adb/nomount/my_hookless` 后重启可恢复 bind 兼容模式。
 - 对照 Hybrid Mount 的分区规划后，`my_*` 与 `product`、`vendor` 一样按独立受管分区处理，不把 `system/my_*` 误当成普通 system 子目录。Hybrid Mount 会按模块和路径在 VFS、OverlayFS、Magic Mount 间选择；本项目保持单一 NoMount VFS 注入路径，避免为了兼容这些分区重新产生真实挂载。
 - KernelSU/APatch 的 `post-mount.sh` 会在所有模块的 `post-fs-data.sh` 之后、zygote 之前运行一次 `absorb --early`，先接管启动阶段产生的可安全转换挂载；开机完成后再执行一次普通吸收处理晚创建挂载。两次完整结果写入 `/data/adb/nomount/absorb.log`，保留具体目标、来源和拒绝原因。
 
-v1.7.6 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
+v1.7.7 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
 
 AppCloak 的隐藏组内应用仍可以看到自己和所有其他应用；系统 UID 不过滤，未勾选的调用应用也不过滤。策略文件通过 inotify 事件即时更新，仅以 5 分钟低频检查兜底；列表未变化时不读取文件，调用方策略缓存最长 5 分钟，策略变更时立即失效。
 

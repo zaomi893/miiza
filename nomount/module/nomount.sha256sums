@@ -5,7 +5,7 @@ faccdc12f30337de6e3a680f7e1ab807e1b942cd3d363abfbcd9136d969d4251  ./bin/arm64-v8
 8a15e711c51d558c60bff29450af251ebc0e0fcea5b92d4a91f8a7f28d8e9969  ./customize.sh
 6ba9b1f475a712bbf525de0e70ed0afb4af70aa94e4efa446447e3e1b720e734  ./metamount.sh
 e956f257cae8ecd1e532dfd485d0fde8b187d0f1c2027ab249bf3c5803ff6dcb  ./migrate-state.sh
-e0a6e865ff8b0d918555f62a966b4c5a0b815017e9738325dfbc6a84c0100f82  ./module.prop
+64f5a580a242589cccee99d0abd87f5e64f6a4069d77bc91e97574ff39670d84  ./module.prop
 5b80baf45fdf95abb85cf095a89e0a6bc49f8e4271b3792d276a46d0b18b800a  ./pathhide-apply.sh
 c21ae91bf046c0fca94e5ae191694054470efced9cb1abff31333104fbbde0a0  ./post-fs-data.sh
 ef4a8e3ba9d176ebed2a4a4641605040fea6ed17da44ccd7ce4b17ac611d0618  ./post-mount.sh

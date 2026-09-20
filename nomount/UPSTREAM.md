@@ -35,6 +35,10 @@ Backported independently from the primary upstream:
   `module.prop` `id=` and rejects duplicate enabled IDs deterministically. The
   workflows build the arm64 engine from this patched fixed upstream revision;
   they do not silently rely on the unpatched prebuilt binary.
+- Local behavior patch `upstream-my-hookless-default.patch`: diagnostics describe
+  `my_*` bind handling as an explicit compatibility fallback and direct the user
+  to restore the default `my_hookless` marker. Obsolete trial and boot-loop text
+  is not compiled into the released engine.
 
 PathMask uses compile-time VFS call sites; the old arm64 syscall kretprobe
 fallback is compiled out because it duplicated those checks on system-wide hot
