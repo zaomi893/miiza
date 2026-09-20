@@ -25,7 +25,8 @@ else
     echo "nomount: boot_completed never set - leaving guard counter armed" > /dev/kmsg 2>/dev/null
 fi
 
-: > "$NMDIR/scene_debugfs_paths"
+[ -f "$MODDIR/scene-debugfs-watch.sh" ] && \
+    sh "$MODDIR/scene-debugfs-watch.sh" --once >/dev/null 2>&1
 
 [ -f "$MODDIR/pathhide-apply.sh" ] && sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1
 
@@ -37,9 +38,6 @@ if [ -f "$MODDIR/appcloak-pathhide-watch.sh" ] && \
     sh "$MODDIR/appcloak-pathhide-watch.sh" >/dev/null 2>&1 &
     echo $! > "$WATCH_PID"
 fi
-
-[ -f "$MODDIR/scene-debugfs-watch.sh" ] && \
-    sh "$MODDIR/scene-debugfs-watch.sh" >/dev/null 2>&1 &
 
 [ -f /data/adb/modules/meta-nomount/spoof.sh ] && \
     sh /data/adb/modules/meta-nomount/spoof.sh shell-tmp >/dev/null 2>&1

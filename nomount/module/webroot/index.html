@@ -2062,8 +2062,8 @@
     const path = ((raw.match(/^path=(.*)$/m) || [])[1] || "").trim();
     const el = document.getElementById("phSceneStatus");
     const map = currentLang === "zh"
-      ? { applied: "已识别并应用", found: "已识别", "no-package": "未安装 Scene", "not-found": "尚未发现随机挂载", "apply-failed": "已识别但应用失败", unknown: "等待首次检测" }
-      : { applied: "detected and applied", found: "detected", "no-package": "Scene is not installed", "not-found": "random mount not found yet", "apply-failed": "detected but apply failed", unknown: "waiting for first detection" };
+      ? { applied: "已识别并应用", found: "已识别", retained: "已保留上次识别路径", "not-found": "尚未发现 Scene 路径", "apply-failed": "已识别但应用失败", unknown: "等待首次检测" }
+      : { applied: "detected and applied", found: "detected", retained: "previously detected path retained", "not-found": "Scene path not found yet", "apply-failed": "detected but apply failed", unknown: "waiting for first detection" };
     el.textContent = (currentLang === "zh" ? "Scene 自动隐藏：" : "Scene auto-hide: ") + (map[status] || status) + (Number(count) ? (currentLang === "zh" ? ` · ${count} 个目标` : ` · ${count} target(s)`) : "");
     const value = document.getElementById("phScenePath"), sw = document.getElementById("phSceneSwitch");
     const active = status === "applied" && path[0] === "/";
