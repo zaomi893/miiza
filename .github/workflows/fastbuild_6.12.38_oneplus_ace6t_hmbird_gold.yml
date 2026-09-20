@@ -1177,7 +1177,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$NOMOUNT_UPSTREAM_COMMIT"
           grep -q '^version=v1.3.176$' module/module.prop
 
-      - name: 构建并打包 NoMount Suite v1.7.2
+      - name: 构建并打包 NoMount Suite v1.7.3
         if: inputs.nomount_enable
         run: |
           set -euo pipefail
@@ -1204,7 +1204,7 @@ jobs:
           cd "$DEST"
           find . -type f ! -name nomount.sha256sums ! -path './META-INF/*' -print0 | sort -z | xargs -0 sha256sum > nomount.sha256sums
           sha256sum -c nomount.sha256sums
-          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.7.2.zip" . -x '*.git*'
+          zip -r "$GITHUB_WORKSPACE/kernel_workspace/NoMount-Suite-v1.7.3.zip" . -x '*.git*'
 
       - name: 上传 ZIP 工件
         uses: actions/upload-artifact@v7
@@ -1216,8 +1216,8 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/upload-artifact@v7
         with:
-          name: NoMount-Suite-v1.7.2
-          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.7.2.zip
+          name: NoMount-Suite-v1.7.3
+          path: ${{ github.workspace }}/kernel_workspace/NoMount-Suite-v1.7.3.zip
           archive: false
 
       - name: 上传匹配 GKI 的风驰驱动工件
@@ -1247,7 +1247,7 @@ jobs:
         if: inputs.nomount_enable
         uses: actions/download-artifact@v8
         with:
-          name: NoMount-Suite-v1.7.2.zip
+          name: NoMount-Suite-v1.7.3.zip
           path: ./release_zips
           skip-decompress: true
 
@@ -1311,7 +1311,7 @@ jobs:
           - Re-Kernel支持：${{ github.event.inputs.rekernel_enable }}
           - 内核级基带保护支持：${{ github.event.inputs.baseband_guard }}
           - NoMount/PathMask/AppCloak支持：${{ inputs.nomount_enable }}
-          - NoMount Suite版本：v1.7.2（不修改 ksud/ksu_susfs）
+          - NoMount Suite版本：v1.7.3（不修改 ksud/ksu_susfs）
           - 模块加载黑名单：${{ inputs.blacklist_modules }}
           - 风驰版本：金标（PLR110 16.0.9.400 CN01），固定注入与本次 GKI 匹配的 BTF/BTF_ids 元数据，继续加载原厂 vendor_dlkm 风驰模块
           - ReSukiSU 管理器请从对应发布渠道下载

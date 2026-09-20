@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>NoMount Suite</title>
-<!-- WebUI shortcut icon is driven by webroot/config.json + icon.png (KernelSU/MMRL WebUI) -->
+
 <link rel="icon" type="image/png" href="icon.png" />
 <style>
   :root {
@@ -41,7 +41,7 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 660px; margin: 0 auto; }
-  /* ---------- header ---------- */
+
   header {
     position: sticky; top: 0; z-index: 20;
     display: flex; align-items: center; gap: 13px;
@@ -74,14 +74,14 @@
   }
   .iconbtn:active { transform: scale(0.92); }
   .iconbtn svg { width: 19px; height: 19px; }
-  /* ---------- cards ---------- */
+
   .card {
     position: relative;
     background:
       linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.012) 42%, rgba(0,0,0,.05)),
       var(--card);
     border: 1px solid var(--brd); border-radius: var(--radius);
-    /* layered: ambient drop, contact shadow, lit top bevel, dark bottom bevel */
+
     box-shadow:
       var(--shadow),
       0 2px 6px rgba(0,0,0,.28),
@@ -89,7 +89,7 @@
       inset 0 -1px 0 rgba(0,0,0,.30);
     padding: 17px 17px 18px; margin-bottom: 13px; backdrop-filter: blur(10px);
   }
-  /* catch-light along the top edge — the cue that sells a raised surface */
+
   .card::before {
     content: ""; position: absolute; left: 12%; right: 12%; top: 0; height: 1px;
     pointer-events: none; border-radius: 1px;
@@ -114,7 +114,7 @@
   .card-h .chip.ok   { background-color: rgba(53,210,154,0.15);  color: var(--ok); }
   .card-h .chip.warn { background-color: rgba(251,191,36,0.15);  color: var(--warn); }
   .card-h .chip.bad  { background-color: rgba(248,113,122,0.15); color: var(--bad); }
-  /* domed 3D — same treatment as .tag pills, so chips and pills read alike */
+
   .card-h .chip {
     margin-left: auto; font-size: 11px; font-weight: 680; letter-spacing: 0.2px; white-space: nowrap;
     color: var(--muted); background-color: var(--card2); border: 1px solid rgba(255,255,255,.10);
@@ -135,7 +135,7 @@
       0 1px 2px rgba(20,32,64,.12);
     text-shadow: none;
   }
-  /* collapsible cards (Tools accordion) */
+
   .card-h.clp { cursor: pointer; user-select: none; transition: transform .1s ease; }
   .card-h.clp:active { transform: scale(0.985); }
   .card-h .chev { margin-left: auto; flex: none; color: var(--muted); font-size: 17px; line-height: 1; transition: transform .2s; }
@@ -148,7 +148,7 @@
     color: var(--faint); margin: 20px 6px 9px;
   }
   .group-label:first-of-type { margin-top: 2px; }
-  /* hero */
+
   .hero { padding: 20px 18px; position: relative; overflow: hidden; }
   .hero::after {
     content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -167,7 +167,7 @@
   .metric .k { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; }
   .metric .v { font-size: 21px; font-weight: 750; margin-top: 4px; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
   .metric .v small { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
-  /* actions */
+
   .btns { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 16px; }
   button.act {
     appearance: none; border: 1px solid var(--brd); cursor: pointer; color: var(--txt);
@@ -180,7 +180,7 @@
   button.act.primary { background: linear-gradient(135deg, var(--acc), var(--acc2)); border-color: transparent; color: #08101c; }
   button.act.danger { border-color: rgba(248,113,122,0.34); color: #ffd7d9; background: rgba(248,113,122,0.10); }
   button.act:disabled { opacity: 0.45; cursor: default; }
-  /* rows / lists */
+
   .list { margin-top: 2px; }
   .row { display: flex; align-items: center; gap: 10px; padding: 11px 2px; border-top: 1px solid rgba(255,255,255,0.055); font-size: 13.5px; }
   .row:first-child { border-top: none; }
@@ -190,7 +190,7 @@
     font-size: 10.5px; padding: 4px 10px; border-radius: 999px; font-weight: 680;
     letter-spacing: 0.2px; white-space: nowrap;
     border: 1px solid rgba(255,255,255,.10);
-    /* domed: light from above, seated by a soft contact shadow */
+
     background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 62%);
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,.26),
@@ -215,7 +215,7 @@
   .tag.warn  { background: rgba(251,191,36,0.15);  color: var(--warn); }
   .tag.ok    { background: rgba(53,210,154,0.15);  color: var(--ok); }
   .empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
-  /* module list: name on its own line so it is never truncated */
+
   .mrow {
     display: block; padding: 11px 12px; margin: 8px 0; border-radius: 14px;
     border: 1px solid var(--brd2);
@@ -247,7 +247,7 @@
     font-family: var(--mono); color: #c8d2ea; background: rgba(0,0,0,0.28);
     border: 1px solid var(--brd2); border-radius: 13px; padding: 13px; white-space: pre; word-break: break-all;
   }
-  /* stealth readout */
+
   .stealth-head { display: flex; align-items: center; gap: 11px; }
   .shield { width: 40px; height: 40px; border-radius: 12px; flex: none; display: grid; place-items: center; border: 1px solid var(--brd2); }
   .shield.clean { background: rgba(53,210,154,0.12); color: var(--ok); }
@@ -255,7 +255,7 @@
   .shield svg { width: 21px; height: 21px; }
   .stealth-head .t { font-size: 15px; font-weight: 700; }
   .stealth-head .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  /* uid */
+
   .uidbar { display: flex; flex-wrap: wrap; gap: 9px; }
   .uidbar input {
     flex: 1 1 100%; min-width: 0; background: rgba(0,0,0,0.26); border: 1px solid var(--brd2);
@@ -263,9 +263,7 @@
   }
   .uidbar input:focus { border-color: var(--acc); }
   .uidbar .act { flex: 1 1 0; }
-  /* custom app-picker dropdown — replaces the native <datalist> (which the WebView
-     renders as a mispositioned overlay that bleeds over the page). Solid bg, capped
-     height, absolutely positioned inside its own relative wrapper so it can't leak. */
+
   .pkgwrap { position: relative; flex: 1 1 100%; min-width: 0; }
   .pkgwrap input { width: 100%; }
   .pkgdd {
@@ -317,17 +315,13 @@
   .blk .bx:hover { background: rgba(255,90,90,0.16); color: #ff6b6b; }
   .blk .bx.save:hover { background: rgba(90,220,150,0.16); color: #57e6c3; }
   .blk .bx:disabled { opacity: 0.4; }
-  /* toggle switch (spoofing controls) */
+
   .swrow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-top: 1px solid rgba(255,255,255,0.055); }
   .swrow:first-child { border-top: none; }
   .swrow .swi { flex: 1; min-width: 0; }
   .swrow .swi .lbl { font-size: 13.5px; font-weight: 640; }
   .swrow .swi .val { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* The verify status is a full sentence, not a hash — let it wrap in full.
-     NB: do NOT call this modifier `.wrap` — that is the page wrapper, which
-     carries `padding-bottom: 108px` to clear the floating nav; reusing the name
-     injected 108px of dead space into the card (the old `overflow:hidden` had
-     been hiding it). */
+
   .swrow .swi .val.multiline { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.45; }
   .switch { position: relative; width: 46px; height: 27px; flex: none; }
   .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
@@ -342,7 +336,7 @@
   html[data-theme="light"] .txin { background: rgba(16,26,48,0.05); }
   .banner { background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.3); color: #ffe6a8; padding: 12px 14px; border-radius: 13px; font-size: 12.5px; margin-bottom: 13px; display: none; line-height: 1.5; }
   .foot { text-align: center; color: var(--faint); font-size: 11px; margin-top: 16px; line-height: 1.7; }
-  /* ---- rules-by-module breakdown bar (Rules tab) ------------------------- */
+
   .rmbar {
     position: relative;
     display: flex; height: 13px; border-radius: 7px; overflow: hidden;
@@ -350,11 +344,7 @@
     box-shadow: 0 1px 2px rgba(0,0,0,.30);
   }
   .rmbar span { display: block; height: 100%; }
-  /* Domed 3D, the same treatment as the .chip capsules so the bar reads as the
-     same material. It has to be an OVERLAY: the segments are children that fill
-     the bar, so an inset shadow on .rmbar itself would be painted underneath
-     them and never show. One gloss across the whole bar, not per segment, so it
-     domes as a single capsule rather than looking like separate beads. */
+
   .rmbar::after {
     content: ""; position: absolute; inset: 0; pointer-events: none;
     border-radius: inherit;
@@ -364,8 +354,7 @@
       inset 0 -1px 2px rgba(0,0,0,.22);
   }
   html[data-theme="light"] .rmbar { box-shadow: 0 1px 2px rgba(20,32,64,.12); }
-  /* Lighter gloss than the capsule's .75: that value is tuned for a near-white
-     chip, and over saturated segment colours it goes chalky and eats the hue. */
+
   html[data-theme="light"] .rmbar::after {
     background-image: linear-gradient(180deg, rgba(255,255,255,.50), rgba(255,255,255,0) 65%);
     box-shadow:
@@ -377,10 +366,7 @@
   .rmleg .rmname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
   .rmleg b { color: var(--txt); font-weight: 680; font-variant-numeric: tabular-nums; }
   .rmsw { width: 9px; height: 9px; border-radius: 2px; flex: none; }
-  /* The surface is themed, not hardcoded: it used to be a fixed dark #141926 with
-     color:var(--txt), so in light mode it became near-black text on a near-black
-     box — an unreadable black rectangle. It also has to clear the floating nav
-     capsule (same z-index, bottom:24px) instead of landing on top of it. */
+
   #toast {
     position: fixed; left: 50%;
     bottom: calc(96px + env(safe-area-inset-bottom));
@@ -402,10 +388,7 @@
   .spin { animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
-  /* ---- tabbed panes + floating capsule bar ------------------------------
-     Visual language mirrors the ReSukiSU manager's liquid-glass capsule:
-     24px radius, hairline white gradient border, soft elevation, and a
-     backdrop blur where the WebView supports it. */
+
   .wrap { padding-bottom: 108px; }
   .tab { display: none; }
   .tab.on { display: block; animation: tabin .18s ease both; }
@@ -448,7 +431,7 @@
         linear-gradient(180deg, rgba(14,18,32,.62), rgba(8,10,17,.72));
     }
   }
-  /* top edge catch-light — sells the glass as a raised surface */
+
   .nav::before {
     content: ""; position: absolute; inset: 0 14% auto 14%; height: 1px;
     border-radius: 1px; pointer-events: none;
@@ -471,15 +454,13 @@
   .navb svg {
     width: 21px; height: 21px;
     stroke: currentColor;
-    /* engraved look when idle: a dark bottom edge under the stroke */
+
     filter: drop-shadow(0 1.5px 0 rgba(0,0,0,.55));
     transition: transform .2s cubic-bezier(.2,.7,.3,1), filter .2s ease;
   }
   .navb:active { transform: scale(.93); }
   .navb:not(.on):hover { color: #b7c0d4; }
-  /* ACTIVE: the bounding capsule is a separate element that SLIDES between tabs.
-     Keeping it out of the button lets one pill animate across, instead of the
-     highlight blinking off one button and on to the next. */
+
   .navpill {
     position: absolute; left: 0; top: 7px; z-index: 0;
     width: 0; height: 58px; border-radius: 19px;
@@ -493,11 +474,7 @@
       0 2px 6px rgba(0,0,0,.42),
       inset 0 1px 0 rgba(255,255,255,.38),
       inset 0 -2px 7px rgba(0,0,0,.30);
-    /* Springy overshoot: the y1 term is what makes it rebound past the target
-       and settle back. 1.55 lands between a flat slide (1.0) and the bouncy
-       1.9 — enough to feel elastic without drawing attention to itself.
-       Transform leads, width trails slightly, so the pill stretches into the
-       move rather than both properties animating in lockstep. */
+
     transition:
       transform .42s cubic-bezier(.22,1.55,.36,1),
       width .46s cubic-bezier(.22,1.62,.38,1),
@@ -517,7 +494,7 @@
   @media (prefers-reduced-motion: reduce) {
     .navb, .navb svg { transition: none; }
     .navb.on { transform: none; }
-    /* the overshoot is the point of the pill, so drop it entirely here */
+
     .navpill { transition: opacity .2s ease; }
   }
   .navb .nbdot { display: none; }
@@ -527,10 +504,7 @@
     background: var(--bad);
     box-shadow: 0 0 0 2px rgba(8,10,17,.9), 0 0 8px rgba(248,113,122,.8);
   }
-  /* ---- light theme -------------------------------------------------------
-     Same hues, re-weighted for a light ground: the accents are darkened so they
-     still pass as readable text/!icon colour on white, which the dark-theme
-     values (#7c9cff / #57e6c3) do not. */
+
   html[data-theme="light"] {
     --bg:      #eef1f8;
     --bg2:     #ffffff;
@@ -603,7 +577,7 @@
   }
   html[data-theme="light"] button.act.primary { color: #ffffff; }
   html[data-theme="light"] .logo svg { stroke: #ffffff; }
-  /* theme toggle icon swap */
+
   .iconbtn .ico-moon { display: none; }
   html[data-theme="light"] .iconbtn .ico-moon { display: block; }
   html[data-theme="light"] .iconbtn .ico-sun  { display: none; }
@@ -637,7 +611,7 @@
   </header>
   <section class="tab on" id="tab-status">
   <div class="banner" id="banner" data-i18n="banner_tip">Open this page from the KernelSU / APatch manager's WebUI to control the module.</div>
-  <!-- HERO: engine status -->
+
   <div class="card hero">
     <div class="statusline">
       <span class="dot off" id="dot"></span>
@@ -661,7 +635,7 @@
       </button>
     </div>
   </div>
-  <!-- DEVICE -->
+
   <div class="card">
     <div class="card-h">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
@@ -674,7 +648,7 @@
       <div class="metric"><div class="k" data-i18n="k_kernel">Kernel</div><div class="v" id="dKernel" style="font-size:11px;word-break:break-all;line-height:1.35">—</div></div>
     </div>
   </div>
-  <!-- BOOTGUARD -->
+
   <div class="card">
     <div class="card-h">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/></svg>
@@ -688,7 +662,7 @@
   </div>
   </section>
   <section class="tab" id="tab-modules">
-  <!-- DETECTION POSTURE (moved from Status) -->
+
   <div class="card">
     <div class="stealth-head">
       <div class="shield clean" id="shield">
@@ -726,7 +700,7 @@
     <pre class="rules" id="ruleslist" style="display:none">…</pre>
     <p class="note" id="rulecount" style="display:none"></p>
   </div>
-  <!-- OVERLAYS -->
+
   <div class="card">
     <div class="card-h clp" onclick="toggleVfsFull(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
@@ -752,7 +726,7 @@
   </section>
   <section class="tab" id="tab-tools">
   <div class="group-label" data-i18n="gl_spoofing">Spoofing</div>
-  <!-- SPOOFING -->
+
   <div class="card collapsed" id="cardSpoof">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg>
@@ -798,7 +772,7 @@
     <p class="note" id="spNote" data-i18n="note_spoof">Verified boot recomputes <code>ro.boot.vbmeta.digest</code> and <code>.size</code> from the real AVB chain on-device. Boot-state normalizes the lock-state/warranty/debuggable props and, where the kernel exposes it, the raw <code>/proc/cmdline</code> + <code>/proc/bootconfig</code> boot-state to match — only ever changing a prop that already exists, and skipping procfs if the kernel has no nomount knobs. Kernel uname keeps the running kernel's base and swaps the tail + build date so <code>uname</code> matches the ROM; blank keeps the current values, or paste them from a stock device. <b>Apply now</b> runs it immediately.</p>
   </div>
   <div class="group-label" data-i18n="gl_diagnostics">Diagnostics</div>
-  <!-- HEALTH CHECK -->
+
   <div class="card collapsed" id="cardHealth">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
@@ -808,7 +782,7 @@
     <div class="btns"><button class="act primary" onclick="runDoctor(this)" data-i18n="btn_run_health">Run health check</button></div>
     <pre class="rules" id="doctorout" style="display:none">…</pre>
   </div>
-  <!-- RUNTIME HEALTH -->
+
   <div class="card collapsed" id="cardRuntime">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>
@@ -823,7 +797,7 @@
     </div>
     <pre class="rules" id="healthout" style="display:none">…</pre>
   </div>
-  <!-- LAST INCIDENT -->
+
   <div class="card collapsed" id="incidentcard" style="display:none">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v5"/><path d="M12 17.5v.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
@@ -834,7 +808,7 @@
     <div class="btns"><button class="act danger" onclick="clearIncident(this)" data-i18n="btn_clear_incident">Clear incident</button></div>
   </div>
   <div class="group-label" id="groupPathMask" data-i18n="gl_hiding">Hiding</div>
-  <!-- PathMask is built into NoMount's VFS engine; no separate .ko is needed. -->
+
   <div class="card" id="cardGlobalHide">
     <div class="card-h clp" onclick="toggleCard(this)">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
@@ -931,7 +905,6 @@
 <script>
   "use strict";
 
-  // ========== 国际化语言字典 ==========
   const i18n = {
     en: {
       brand_title: "NoMount Suite",
@@ -1122,13 +1095,11 @@
     const dict = i18n[lang];
     if (!dict) return;
 
-    // 文本内容
     document.querySelectorAll("[data-i18n]").forEach(el => {
       const key = el.getAttribute("data-i18n");
       if (dict[key] !== undefined) el.innerHTML = dict[key];
     });
 
-    // placeholder
     document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
       const key = el.getAttribute("data-i18n-placeholder");
       if (dict[key] !== undefined) el.placeholder = dict[key];
@@ -1142,13 +1113,10 @@
       if (dict[key] !== undefined) el.setAttribute("aria-label", dict[key]);
     });
 
-    // 更新页面标题
     document.title = "NoMount Suite";
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
 
     try { localStorage.setItem("nm_lang", lang); } catch (e) {}
-    // Dynamic status rows and generated lists are not data-i18n nodes. Rebuild
-    // them after a language switch so no stale Chinese/English fragments remain.
     window.setTimeout(function () {
       try { if (typeof renderCloak === "function") renderCloak(); } catch (e) {}
       try {
@@ -1184,7 +1152,6 @@
     applyLang(t);
   })();
 
-  // ========== 原有逻辑 ==========
   let execId = 0;
   const KSU = window.ksu;
   const $ = (id) => document.getElementById(id);
@@ -1218,7 +1185,6 @@
     NMBIN = `/data/adb/modules/meta-nomount/bin/${abi}/nomount`;
     return NMBIN;
   }
-  // The Suite binary shells to the `nm` netlink client beside it.
   async function nm(args) {
     const b = await bin();
     const nmClient = b.replace(/nomount$/, "nm");
@@ -1229,7 +1195,6 @@
     t.textContent = msg; t.className = "show " + kind;
     clearTimeout(t._t); t._t = setTimeout(() => { t.className = ""; }, 2400);
   }
-  // ---- status ----
   async function refreshStatus() {
     const list = await nm("vfs list");
     const dot = $("dot");
@@ -1243,8 +1208,6 @@
     const ruleLines = list.stdout.split("\n").map(s => s.trim()).filter(Boolean);
     const rules = ruleLines.length;
     $("mRules").textContent = rules;
-    // RRO overlays are now hookless rules (virtual path under */overlay/ ending .apk),
-    // not overlayfs mounts — count them from the rule list.
     const rro = ruleLines.filter(l => /\/overlay\/[^\s]*\.apk$/.test((l.split(" ->")[0] || "").trim())).length;
     $("mOv").textContent = rro;
     $("state").textContent = rules > 0
@@ -1256,7 +1219,6 @@
     dot.className = "dot " + (rules > 0 ? "ok" : "warn");
     return rules;
   }
-  // ---- detection posture (live root-view vs non-root app-view) ----
   async function refreshDevice() {
     const r = await exec('echo "$(getprop ro.product.marketname)|$(getprop ro.product.manufacturer)|$(getprop ro.product.model)|$(getprop ro.build.version.release)|$(getprop ro.build.version.sdk)|$(uname -r)"');
     const p = (r.stdout || "").trim().split("|");
@@ -1267,7 +1229,6 @@
     $("dKernel").textContent = p[5] || "—";
   }
   async function refreshStealth() {
-    // root view (ksu.exec runs as root -> sees every mount)
     const r = await exec(
       'echo "sucompat=$(/data/adb/ksud feature list 2>/dev/null | grep su_compat | grep -q ENABLED && echo 1 || echo 0)"; ' +
       'echo "root_ov=$(grep -c \'^nomount_ov \' /proc/self/mounts 2>/dev/null)"; ' +
@@ -1283,14 +1244,9 @@
     const sucompat = kv.sucompat === "1";
     const rootOv = parseInt(kv.root_ov || "0", 10);
     const rootNm = parseInt(kv.root_nm || "0", 10);
-    // app view: drop to a non-root uid and count nomount_* mounts. If the kernel
-    // mount-hide hook is active, non-root readers get them filtered out (-> 0).
-    // NB: grep -c exits 1 when the count is 0 (the hidden case!), so don't gate on
-    // errno — parse stdout as a number instead.
     const appR = await exec('su 2000 -c "grep -c \'^nomount_\' /proc/self/mounts"');
     const appOut = (appR.stdout || "").trim();
     const appNm = /^\d+$/.test(appOut) ? parseInt(appOut, 10) : -1;
-    // Residual tells a scanner can still read even when the mount surface is clean.
     const vbs = (kv.vbs || "").toLowerCase();
     const fp = kv.fp || "";
     const se = (kv.se || "").trim();
@@ -1300,7 +1256,6 @@
     $("mSu").innerHTML = sucompat
       ? (currentLang === "zh" ? 'sucompat <small>内核 · 无挂载</small>' : 'sucompat <small>kernel · mountless</small>')
       : (currentLang === "zh" ? '外部 <small>不受管理</small>' : 'external <small>unmanaged</small>');
-    // posture rows (label | value | tag)
     const rows = [
       { k: currentLang === "zh" ? "文件注入" : "File injections", v: currentLang === "zh" ? "无挂载" : "mountless", t: "vfs" },
       { k: currentLang === "zh" ? "Root · su" : "Root · su", v: sucompat ? (currentLang === "zh" ? "sucompat · 无挂载" : "sucompat · mountless") : (currentLang === "zh" ? "外部" : "external"), t: sucompat ? "vfs" : "off" },
@@ -1337,7 +1292,6 @@
       $("stealthT").textContent = currentLang === "zh" ? "检测态势" : "Detection posture";
       $("stealthD").textContent = currentLang === "zh" ? "应用视角检查不可用" : "app-view check unavailable";
     }
-    // Residual tells override
     const extraTells = [];
     if (vbTell) extraTells.push("verified-boot=" + vbs);
     if (keyTell) extraTells.push(currentLang === "zh" ? "编译密钥" : "build keys");
@@ -1352,7 +1306,6 @@
       }
     }
   }
-  // ---- guard ----
   async function refreshGuard() {
     const c = (await exec("cat /data/adb/nomount/bootcount 2>/dev/null")).stdout.trim();
     const disabled = (await exec("[ -f /data/adb/nomount/disabled ] && echo 1 || echo 0")).stdout.trim() === "1";
@@ -1365,7 +1318,6 @@
       $("gdot").className = "dot ok"; $("rearm").style.display = "none";
     }
   }
-  // ---- theme ----
   function applyTheme(t) {
     document.documentElement.setAttribute("data-theme", t);
     try { localStorage.setItem("nm_theme", t); } catch (e) {}
@@ -1382,7 +1334,6 @@
     }
     document.documentElement.setAttribute("data-theme", t);
   })();
-  // Slide the capsule to whichever tab is active.
   function movePill(animate) {
     const pill = document.getElementById("navpill");
     const btn = document.querySelector(".navb.on");
@@ -1399,7 +1350,6 @@
     }
   }
   window.addEventListener("resize", function () { movePill(false); });
-  // ---- tabs ----
   function showTab(name, btn) {
     document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("on"); });
     var pane = document.getElementById("tab-" + name);
@@ -1412,7 +1362,6 @@
     try { sessionStorage.setItem("nm_tab", name); } catch (e) {}
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
-  // ---- rules filter ----
   let _rulesRaw = "";
   var _ruleGroup = false;
   function _ruleModule(line) {
@@ -1448,7 +1397,6 @@
       ? keep.length + " / " + lines.length + (currentLang === "zh" ? " 条匹配" : " rules match")
       : lines.length + (currentLang === "zh" ? " 条规则" : " rules");
   }
-  // ---- health check ----
   async function runDoctor(btn) {
     if (btn) { btn.disabled = true; btn.textContent = currentLang === "zh" ? "检查中…" : "Checking…"; }
     const out = $("doctorout");
@@ -1474,7 +1422,6 @@
     }
     if (btn) { btn.disabled = false; btn.textContent = currentLang === "zh" ? "运行健康检查" : "Run health check"; }
   }
-  // ---- runtime health ----
   function _healthShow(txt) { const o = $("healthout"); o.style.display = ""; o.textContent = txt.trim() || "(no output)"; }
   async function runSelfcheck(btn) {
     const t = btn.textContent; btn.disabled = true; btn.textContent = "…";
@@ -1522,7 +1469,6 @@
       path ? "ok" : "bad");
     btn.disabled = false; btn.textContent = t;
   }
-  // ---- last incident ----
   async function refreshIncident() {
     const r = await exec("cat /data/adb/nomount/incident.log 2>/dev/null");
     const txt = (r.stdout || "").trim();
@@ -1539,7 +1485,6 @@
     toast(currentLang === "zh" ? "事件记录已清除" : "Incident record cleared", "ok");
     btn.disabled = false; refreshIncident();
   }
-  // ---- modules ----
   async function refreshModules() {
     const box = $("modules");
     const out = (await exec(
@@ -1606,7 +1551,6 @@
     }).join("");
     $("mMod").textContent = served;
   }
-  // ---- rule summary ----
   async function refreshRuleSummary() {
     const r = await nm("vfs list");
     const lines = (r.errno === 0 ? r.stdout : "").split("\n").map(x => x.trim()).filter(Boolean);
@@ -1618,7 +1562,6 @@
       : (currentLang === "zh" ? "无活跃规则。" : "No rules active.");
     _paintRuleModuleBar(lines);
   }
-  // ---- rules-by-module bar ----
   const _RM_PALETTE = ["#57e6c3", "#7c9cff", "#c792ea", "#fbbf24", "#f8717a", "#4fd1e0", "#9ccc65"];
   function _paintRuleModuleBar(lines) {
     const box = $("ruleModuleBar"); if (!box) return;
@@ -1644,7 +1587,6 @@
     box.style.display = "";
     box.innerHTML = `<div class="rmbar">${seg}</div><div class="rmlegend">${legend}</div>`;
   }
-  // ---- VFS ----
   var _vfsFiles = [], _ovFiles = [];
   async function refreshVfs() {
     const box = $("vfsdirs");
@@ -1695,7 +1637,6 @@
     $("vfsfilterbar").style.display = on ? "" : "none";
     if (on) renderVfsFull();
   }
-  // ---- overlays ----
   async function refreshOverlays() {
     const box = $("overlays");
     const list = await nm("vfs list");
@@ -1732,7 +1673,6 @@
     $("ovfilterbar").style.display = on ? "" : "none";
     if (on) renderOvFull();
   }
-  // ---- rules ----
   let rulesShown = false;
   async function loadRules() {
     const r = await nm("vfs list");
@@ -1754,7 +1694,6 @@
       loadRules();
     }
   }
-  // ---- actions ----
   async function reloadRules(btn) {
     const svg = btn.querySelector("svg");
     btn.disabled = true; if (svg) svg.classList.add("spin");
@@ -1777,7 +1716,6 @@
     toast(currentLang === "zh" ? "保护已重置 — 重启后重新启用" : "Guard re-armed — reboot to re-enable", "ok");
     btn.disabled = false; refreshGuard(); refreshIncident();
   }
-  // ---- package list ----
   var _pkgsLoaded = false, _pkgs = [], _pkgByName = new Map();
   async function loadPkgList() {
     if (_pkgsLoaded) return;
@@ -1811,7 +1749,6 @@
     _pkgByName = new Map(_pkgs.map(function (p) { return [p.name, p]; }));
     if (_pkgs.length) _pkgsLoaded = true;
   }
-  // ---- spoofing ----
   async function refreshSpoof() {
     const conf = (await exec("cat /data/adb/nomount/spoof.conf 2>/dev/null")).stdout;
     const get = (k, d) => {
@@ -1930,7 +1867,6 @@
     toast(currentLang === "zh" ? "已恢复内核默认值" : "Reset to kernel default", "ok");
     refreshSpoof();
   }
-  // ---- Tools accordion ----
   const CARD_STATE_PREFIX = "nmcol:v15:";
   function toggleCard(h) {
     const card = h.closest(".card");
@@ -1966,7 +1902,6 @@
     loadPkgList();
     if (ic) ic.classList.remove("spin");
   }
-  // ---- Cloak ----
   const PH_CONF = "/data/adb/nomount/pathhide.conf";
   const PH_EXCLUDE = "/data/adb/nomount/.cloak_exclude";
   const GH_CONF = "/data/adb/nomount/hidden_apps.conf";
@@ -2063,9 +1998,9 @@
   async function writeGlobalHide() {
     const pkgs=[...GH.entries()].filter(function(x){return x[1].hidden;}).map(function(x){return x[0];}).sort();
     const excluded=[...GH.entries()].filter(function(x){return x[1].auto && !x[1].hidden;}).map(function(x){return x[0];}).sort();
-    let cmd="mkdir -p /data/adb/nomount; { echo '# NoMount global hidden packages'; ";
-    pkgs.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_CONF+"; { ";
-    excluded.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_EXCLUDE+"; { echo '# NoMount AppCloak caller scope'; ";
+    let cmd="mkdir -p /data/adb/nomount; { :; ";
+    pkgs.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_CONF+"; { :; ";
+    excluded.forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GH_EXCLUDE+"; { :; ";
     [...GS].sort().forEach(function(p){cmd += "echo '"+p+"'; ";}); cmd += "} > "+GS_CONF+"; printf '%s\\n' " + (((document.getElementById("ghPathHide") || {}).checked) ? "1" : "0") + " > "+GH_PATHHIDE+"; chmod 0600 "+GH_CONF+" "+GS_CONF+" "+GH_EXCLUDE+" "+GH_PATHHIDE+"; sh /data/adb/modules/meta-nomount/appcloak-sync.sh 2>/dev/null";
     return await exec(cmd);
   }
@@ -2200,7 +2135,7 @@
   async function doApplyCloak() {
     const rules = [...PH.entries()].filter(function (x) { return x[1].hidden && !x[1].scene; })
       .map(function (x) { return phClean(x[0]); }).filter(function (x) { return x[0] === "/"; });
-    let cmd = "mkdir -p /data/adb/nomount; { echo '# NoMount Cloak — pathhide rule list (managed by WebUI)'; ";
+    let cmd = "mkdir -p /data/adb/nomount; { :; ";
     rules.forEach(function (r) { cmd += "echo '" + r + "'; "; });
     cmd += "} > " + PH_CONF + "; sh /data/adb/modules/meta-nomount/pathhide-apply.sh 2>/dev/null; echo OK";
     const r = await exec(cmd);
@@ -2230,7 +2165,6 @@
       : (currentLang === "zh" ? "失败" : "Failed"),
       ok ? "ok" : "bad");
   }
-  // ---- init ----
   (function restoreTab() {
     let t = null;
     try { t = sessionStorage.getItem("nm_tab"); } catch (e) {}

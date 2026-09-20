@@ -1,24 +1,23 @@
 #!/system/bin/sh
-# Bootloop-guard reset: once the system finishes booting, the last boot was
-# healthy, so clear the boot counter (re-arms the guard for next time).
 NMDIR=/data/adb/nomount
 MODDIR="${0%/*}"
 i=0
 booted=0
-while [ "$i" -lt 48 ]; do
-    if [ "$(getprop sys.boot_completed)" = "1" ]; then booted=1; break; fi
-    sleep 5
-    i=$((i + 1))
-done
+if [ "$(getprop sys.boot_completed)" = "1" ]; then
+    booted=1
+elif getprop --help 2>&1 | grep -q -- '-w'; then
+    getprop -w sys.boot_completed 1 >/dev/null 2>&1
+    [ "$(getprop sys.boot_completed)" = "1" ] && booted=1
+else
+    while [ "$i" -lt 48 ]; do
+        if [ "$(getprop sys.boot_completed)" = "1" ]; then booted=1; break; fi
+        sleep 5
+        i=$((i + 1))
+    done
+fi
 
-# NB: unlike the old build we do NOT re-assert kernel_umount here — forcing that
-# feature on breaks root for other modules on OP15. Hiding of the Suite's real
-# mounts is handled by the manager's per-app-profile default-umount instead.
 
-sleep 10
-# Only re-arm when the boot really finished. Clearing the counter after the wait
-# merely TIMED OUT disarms the bootloop guard on exactly the hanging boots it
-# exists to catch, so it could never reach GUARD_MAX.
+sleep 3
 if [ "$booted" = "1" ]; then
     rm -f "$NMDIR/bootcount"
     echo "nomount: boot completed, guard counter reset" > /dev/kmsg 2>/dev/null
@@ -26,21 +25,12 @@ else
     echo "nomount: boot_completed never set - leaving guard counter armed" > /dev/kmsg 2>/dev/null
 fi
 
-# Runtime Scene paths are boot-specific random mount points. Never publish a
-# stale path from the previous boot while waiting for the current one.
 : > "$NMDIR/scene_debugfs_paths"
 
-# --- Cloak / PathMask: publish saved rules without rescanning packages. ---
 [ -f "$MODDIR/pathhide-apply.sh" ] && sh "$MODDIR/pathhide-apply.sh" >/dev/null 2>&1
 
-# Refresh changed APK/HMA inventories, auto-select their packages unless the
-# user explicitly unchecked them, then publish AppCloak policy.
 [ -f "$MODDIR/scan.sh" ] && sh "$MODDIR/scan.sh" --apply >/dev/null 2>&1
-# scan.sh --apply already publishes the AppCloak policy. Do not write and
-# restorecon the same files a second time during every boot.
 
-# Package install/remove events can reassign an app UID. Watch packages.list so
-# the optional kernel supplement is rebuilt without polling in the common case.
 WATCH_PID="$NMDIR/.appcloak_pathhide_watch.pid"
 if [ -f "$MODDIR/appcloak-pathhide-watch.sh" ] && \
    { [ ! -f "$WATCH_PID" ] || ! kill -0 "$(cat "$WATCH_PID" 2>/dev/null)" 2>/dev/null; }; then
@@ -48,63 +38,31 @@ if [ -f "$MODDIR/appcloak-pathhide-watch.sh" ] && \
     echo $! > "$WATCH_PID"
 fi
 
-# Scene creates a randomized debugfs mount only after its service/game path is
-# active. The watcher starts fast, then backs off and remains available for a
-# late game launch instead of expiring after ten minutes.
 [ -f "$MODDIR/scene-debugfs-watch.sh" ] && \
-    (sh "$MODDIR/scene-debugfs-watch.sh" >/dev/null 2>&1 &)
+    sh "$MODDIR/scene-debugfs-watch.sh" >/dev/null 2>&1 &
 
-# --- /data/local/tmp: re-assert after boot ---
-# spoof.sh already normalized it at post-fs-data, but ksud and adbd stage files
-# there for the whole of boot and can put the mode/owner back.
 [ -f /data/adb/modules/meta-nomount/spoof.sh ] && \
     sh /data/adb/modules/meta-nomount/spoof.sh shell-tmp >/dev/null 2>&1
 
-# --- refresh the manager card with the settled state ---
-# metamount.sh tags the card in post-fs-data, when the mount table is not final and
-# health cannot be judged yet. Now that boot is complete both are knowable, so restate
-# the card with the real mount count and the health-check verdict — that turns the
-# module list into a status readout you can trust without opening the WebUI.
 ABI=$(getprop ro.product.cpu.abi)
 BIN="$MODDIR/bin/$ABI/nomount"
 export NM_BIN="$MODDIR/bin/$ABI/nm"
 
-# --- absorb any bind mounts other modules made ---
-# Module boot scripts have all run by now. Anything that bind-mounted its own
-# content is visible in every app's mountinfo, which defeats the zero-mount
-# posture no matter how mountless the Suite itself is. Re-serve each as an
-# injection and drop the mount. No-op when nothing mounted anything.
 if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ]; then
     _ab=$("$BIN" absorb 2>&1 | tail -1)
     echo "nomount: $_ab" > /dev/kmsg 2>/dev/null
 fi
 
-# --- re-apply persistent whiteouts ---
-# Whiteouts live in kernel memory and are empty after every reboot; the list on
-# disk is the durable record.
 if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ] && [ -s "$NMDIR/whiteouts.txt" ]; then
     _wo=$("$BIN" whiteout apply 2>&1 | tail -1)
     echo "nomount: $_wo" > /dev/kmsg 2>/dev/null
 fi
 
-# --- re-apply the persistent per-app block list ---
-# Per-UID hiding lives in kernel memory and is empty after every reboot; the
-# block list on disk (package names / UIDs) is the durable record. Now that boot
-# is complete, packages.list is populated and app UIDs are stable, so resolve the
-# list and re-block each app. Runs only when the guard hasn't tripped.
 if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ] && [ -s "$NMDIR/uidhide" ]; then
     _bl=$("$BIN" uid apply 2>/dev/null)
     echo "nomount: block list re-applied ($_bl)" > /dev/kmsg 2>/dev/null
 fi
 
-# --- runtime health audit (writes health.txt; complements the plan check) ---
-# Runs the per-UID self-consistency probe that the d_drop regression would have
-# failed on the first boot: does a normal app see the same injected files as root?
-# The probe can transiently disagree right after boot, before every app UID has
-# launched and materialised its per-UID injection, so retry across a settle window
-# and keep the *settled* verdict — a boot-time blip must not stamp a scary
-# "inconsistency" on the card. Only a verdict that PERSISTS through the whole
-# window is a real d_drop-style regression. Non-fatal; surfaced on the card / WebUI.
 if [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" ]; then
     _try=0
     while [ "$_try" -lt 2 ]; do
@@ -125,8 +83,6 @@ if command -v ksud >/dev/null 2>&1 && [ -x "$BIN" ] && [ ! -f "$NMDIR/disabled" 
     _doc=$(timeout 30 "$BIN" check --plan 2>/dev/null | sed -n 's/^summary: \([0-9]*\) failed,.* \([0-9]*\) warnings.*$/\1 \2/p')
     _err=$(echo "$_doc" | awk '{print $1+0}')
     _wrn=$(echo "$_doc" | awk '{print $2+0}')
-    # runtime consistency canary trumps plan-time doctor for card health: a
-    # per-UID inconsistency is a live regression, not a plan hazard.
     _cons=$(sed -n 's/^consistency=//p' "$NMDIR/health.txt" 2>/dev/null)
     case "$_cons" in ok|unchecked*|'') _cons_bad=0 ;; *) _cons_bad=1 ;; esac
     if [ "$_cons_bad" = 1 ]; then

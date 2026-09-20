@@ -1,6 +1,4 @@
 #!/system/bin/sh
-# Refresh auto-selected application-hide sources on demand from the WebUI.
-# APKs are rescanned only when the installed package/path inventory changes.
 NMDIR=/data/adb/nomount
 CACHE="$NMDIR/xposed_cache"
 INDEX="$NMDIR/xposed_packages"
@@ -97,7 +95,6 @@ if [ "$1" = "--apply" ]; then
         cat "$HMA_CACHE" 2>/dev/null
     } | sort -u > "$NEW_AUTO"
     {
-        echo '# NoMount global hidden packages'
         awk 'FILENAME==ARGV[1] { old[$0]=1; next }
              FILENAME==ARGV[2] { excluded[$0]=1; next }
              FILENAME==ARGV[3] { if ($0 !~ /^#/ && $0 != "" && !old[$0]) print; next }

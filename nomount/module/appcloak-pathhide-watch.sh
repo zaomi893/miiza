@@ -1,5 +1,4 @@
 #!/system/bin/sh
-# Keep the optional AppCloak PathHide supplement aligned with package changes.
 MODDIR="${0%/*}"
 PKG_LIST=/data/system/packages.list
 
@@ -18,8 +17,5 @@ while [ ! -f "$PKG_LIST" ]; do
 done
 sync_once
 
-# Modern KSU/Magisk BusyBox provides inotifyd. If a minimal environment does
-# not, keep the boot-time sync and exit instead of waking the device forever
-# for a five-minute polling fallback; the next boot/WebUI apply refreshes it.
 command -v inotifyd >/dev/null 2>&1 || exit 0
 exec inotifyd "$MODDIR/appcloak-pathhide-watch.sh --event" "$PKG_LIST:e"

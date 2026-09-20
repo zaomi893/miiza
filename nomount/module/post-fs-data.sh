@@ -1,5 +1,4 @@
 #!/system/bin/sh
-# Magisk fallback (no metamodule hook). KSU/APatch use metamount.sh instead.
 [ -n "$KSU" ] && exit 0
 [ -n "$APATCH" ] && exit 0
 MODDIR="${0%/*}"
@@ -9,8 +8,6 @@ mkdir -p "$NMDIR" && chmod 0700 "$NMDIR"
 ABI=$(getprop ro.product.cpu.abi)
 BIN="$MODDIR/bin/$ABI/nomount"
 
-# --- spoof add-on (dynamic vbmeta.digest) ---
-# Same stage as the KSU/APatch metamount hook, but for the Magisk path.
 [ -f "$MODDIR/spoof.sh" ] && sh "$MODDIR/spoof.sh" 2>/dev/null
 
 GUARD_MAX=3

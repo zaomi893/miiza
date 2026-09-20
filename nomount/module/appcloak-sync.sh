@@ -1,5 +1,4 @@
 #!/system/bin/sh
-# Publish NoMount's package list for the built-in AppCloak system-server filter.
 
 SRC=/data/adb/nomount/hidden_apps.conf
 SCOPE_SRC=/data/adb/nomount/scope_apps.conf

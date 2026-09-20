@@ -1,8 +1,4 @@
 #!/system/bin/sh
-# Atomically rebuild the built-in PathHide table from durable user paths and
-# the current boot's randomized Scene debugfs paths. Global scope makes every
-# process see these file paths as absent; it is independent of NoMount's UID
-# injection blocklist.
 NMDIR=/data/adb/nomount
 [ -e /proc/pathhide ] || exit 0
 
@@ -14,12 +10,6 @@ for _conf in "$NMDIR/pathhide.conf" "$NMDIR/scene_debugfs_paths"; do
         case "$_path" in /*) printf '%s' "+$_path" > /proc/pathhide 2>/dev/null ;; esac
     done < "$_conf"
 done
-# Set the scope after adding rules. An empty in-kernel table has no scope field
-# to update; writing this last also supports kernels whose first-rule default
-# predates global PathMask.
 printf %s @global > /proc/pathhide 2>/dev/null || true
 
-# Rebuilding manual PathMask rules clears the optional AppCloak supplement too.
-# Publish it again from the durable package policy so saving one card does not
-# silently turn off the other.
 [ -f "${0%/*}/appcloak-sync.sh" ] && sh "${0%/*}/appcloak-sync.sh" >/dev/null 2>&1

@@ -3,8 +3,9 @@
 Primary NoMount upstream:
 
 - Repository: `Bouteillepleine/NoMount-Suite`
-- Reviewed revision: `36a462132102e49ed868c88cceb390aadd39f3d5`
-- Upstream state at that revision: Suite `v1.3.176`, Prism engine `v32`
+- Engine build revision: `36a462132102e49ed868c88cceb390aadd39f3d5`
+- Latest reviewed revision: `61023e960eb1db1ee6f582ab2e44f1c176b6722a`
+- Latest reviewed state: Suite `v1.3.184`, Prism engine `v32`
 - License: GPL-3.0
 
 `maxsteeel/nomount` is the historical project from which NoMount Suite was
@@ -13,7 +14,7 @@ incorrectly named it as the current upstream.
 
 Other reviewed sources:
 
-- LKM-PathMask: `Andrea-lyz/LKM-PathMask@98274c85ba41442c35b05ed316b16308551240f9` (`2.7.2`).
+- LKM-PathMask: `Andrea-lyz/LKM-PathMask@259e7bab9a416589605bfd0840df2136a173259a` (`2.8.0`; WebUI and Android 17/6.18 build updates only).
 - Original local module baseline: user-supplied `NoMount-Module-v1.3.0.zip`, SHA-256 `2e60374091ae8d8f8b013fb61a851d94a30a0d890c8c9e0e0c70d8bb37e8fea3`.
 
 The current local kernel half is a v14 PathHide protocol derivative with the
