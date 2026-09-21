@@ -543,6 +543,7 @@ jobs:
             ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM
             echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
+            echo "CONFIG_CRYPTO_ZSTD=y" >> ./common/arch/arm64/configs/gki_defconfig
             # 保留原厂算法列表，并额外加入 lz4kd；不设置 ZRAM_DEF_COMP
             echo "CONFIG_ZRAM_BACKEND_ZSTD=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_ZRAM_BACKEND_ZSTDN=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -922,6 +923,7 @@ jobs:
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
             grep -qx "CONFIG_ZRAM=y" out/.config
             grep -qx "CONFIG_CRYPTO_LZ4KD=y" out/.config
+            grep -qx "CONFIG_CRYPTO_ZSTD=y" out/.config
             grep -qx "CONFIG_ZRAM_BACKEND_ZSTD=y" out/.config
             grep -qx "CONFIG_ZRAM_BACKEND_ZSTDN=y" out/.config
             grep -qx "CONFIG_ZRAM_BACKEND_LZ4KD=y" out/.config

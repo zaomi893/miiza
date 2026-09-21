@@ -357,7 +357,8 @@ index 0fdefd576691..4d61e3e354f7 100644
 +	zram-y += backend_lz4kd.o
 +endif
 +zram-$(CONFIG_ZRAM_BACKEND_ZSTDN)		+= backend_zstdn.o
- zram-$(CONFIG_ZRAM_BACKEND_ZSTD)	+= backend_zstd.o
+-zram-$(CONFIG_ZRAM_BACKEND_ZSTD)	+= backend_zstd.o
++zram-$(CONFIG_ZRAM_BACKEND_ZSTD)	+= backend_zstd_compat.o
  zram-$(CONFIG_ZRAM_BACKEND_DEFLATE)	+= backend_deflate.o
  zram-$(CONFIG_ZRAM_BACKEND_842)		+= backend_842.o
 diff --git a/drivers/block/zram/backend_lz4kd.c b/drivers/block/zram/backend_lz4kd.c
@@ -4419,3 +4420,98 @@ new file mode 100644
 +extern const struct zcomp_ops backend_zstdn;
 +
 +#endif /* __BACKEND_ZSTDN_H__ */
+diff --git a/drivers/block/zram/backend_zstd_compat.c b/drivers/block/zram/backend_zstd_compat.c
+new file mode 100644
+index 000000000000..60d106b8ff13
+--- /dev/null
++++ b/drivers/block/zram/backend_zstd_compat.c
+@@ -0,0 +1,89 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++
++#include <linux/crypto.h>
++#include <linux/err.h>
++#include <linux/slab.h>
++
++#include "backend_zstd.h"
++
++struct zstd_compat_ctx {
++	struct crypto_comp *tfm;
++};
++
++static void zstd_compat_release_params(struct zcomp_params *params)
++{
++}
++
++static int zstd_compat_setup_params(struct zcomp_params *params)
++{
++	return 0;
++}
++
++static int zstd_compat_create(struct zcomp_params *params,
++			      struct zcomp_ctx *ctx)
++{
++	struct zstd_compat_ctx *zctx;
++
++	zctx = kzalloc(sizeof(*zctx), GFP_KERNEL);
++	if (!zctx)
++		return -ENOMEM;
++
++	zctx->tfm = crypto_alloc_comp("zstd", 0, 0);
++	if (IS_ERR(zctx->tfm)) {
++		int ret = PTR_ERR(zctx->tfm);
++
++		kfree(zctx);
++		return ret;
++	}
++
++	ctx->context = zctx;
++	return 0;
++}
++
++static void zstd_compat_destroy(struct zcomp_ctx *ctx)
++{
++	struct zstd_compat_ctx *zctx = ctx->context;
++
++	crypto_free_comp(zctx->tfm);
++	kfree(zctx);
++}
++
++static int zstd_compat_compress(struct zcomp_params *params,
++				struct zcomp_ctx *ctx,
++				struct zcomp_req *req)
++{
++	struct zstd_compat_ctx *zctx = ctx->context;
++	unsigned int dlen = req->dst_len;
++	int ret;
++
++	ret = crypto_comp_compress(zctx->tfm, req->src, req->src_len,
++				   req->dst, &dlen);
++	if (!ret)
++		req->dst_len = dlen;
++	return ret;
++}
++
++static int zstd_compat_decompress(struct zcomp_params *params,
++				  struct zcomp_ctx *ctx,
++				  struct zcomp_req *req)
++{
++	struct zstd_compat_ctx *zctx = ctx->context;
++	unsigned int dlen = req->dst_len;
++	int ret;
++
++	ret = crypto_comp_decompress(zctx->tfm, req->src, req->src_len,
++				     req->dst, &dlen);
++	if (!ret)
++		req->dst_len = dlen;
++	return ret;
++}
++
++const struct zcomp_ops backend_zstd = {
++	.compress	= zstd_compat_compress,
++	.decompress	= zstd_compat_decompress,
++	.create_ctx	= zstd_compat_create,
++	.destroy_ctx	= zstd_compat_destroy,
++	.setup_params	= zstd_compat_setup_params,
++	.release_params	= zstd_compat_release_params,
++	.name		= "zstd",
++};
