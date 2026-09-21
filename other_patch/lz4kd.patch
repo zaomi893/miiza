@@ -286,7 +286,7 @@ diff --git a/drivers/block/zram/Kconfig b/drivers/block/zram/Kconfig
 index 402b7b175863..96a3bed06b9b 100644
 --- a/drivers/block/zram/Kconfig
 +++ b/drivers/block/zram/Kconfig
-@@ -26,6 +26,18 @@ config ZRAM_BACKEND_LZ4HC
+@@ -26,6 +26,24 @@ config ZRAM_BACKEND_LZ4HC
  	select LZ4HC_COMPRESS
  	select LZ4_DECOMPRESS
  
@@ -302,27 +302,25 @@ index 402b7b175863..96a3bed06b9b 100644
 +	select LZ4_COMPRESS
 +	select LZ4_DECOMPRESS
 +
++config ZRAM_BACKEND_ZSTDN
++	bool "zstdn compression support"
++	depends on ZRAM
++	help
++	  Use the original vendor crypto-zstdn provider as a ZRAM backend.
++
  config ZRAM_BACKEND_ZSTD
  	bool "zstd compression support"
  	depends on ZRAM
-@@ -48,7 +60,7 @@ config ZRAM_BACKEND_FORCE_LZO
+@@ -48,7 +66,8 @@ config ZRAM_BACKEND_FORCE_LZO
  	depends on ZRAM
  	def_bool !ZRAM_BACKEND_LZ4 && !ZRAM_BACKEND_LZ4HC && \
  		!ZRAM_BACKEND_ZSTD && !ZRAM_BACKEND_DEFLATE && \
 -		!ZRAM_BACKEND_842
-+		!ZRAM_BACKEND_842 && !ZRAM_BACKEND_LZ4K && !ZRAM_BACKEND_LZ4KD
++		!ZRAM_BACKEND_842 && !ZRAM_BACKEND_LZ4K && !ZRAM_BACKEND_LZ4KD && \
++		!ZRAM_BACKEND_ZSTDN
  
  config ZRAM_BACKEND_LZO
  	bool "lzo and lzo-rle compression support" if !ZRAM_BACKEND_FORCE_LZO
-@@ -59,7 +71,7 @@ config ZRAM_BACKEND_LZO
- 
- choice
- 	prompt "Default zram compressor"
--	default ZRAM_DEF_COMP_LZORLE
-+	default ZRAM_DEF_COMP_LZ4KD
- 	depends on ZRAM
- 
- config ZRAM_DEF_COMP_LZORLE
 @@ -78,6 +90,14 @@ config ZRAM_DEF_COMP_LZ4HC
  	bool "lz4hc"
  	depends on ZRAM_BACKEND_LZ4HC
@@ -333,7 +331,7 @@ index 402b7b175863..96a3bed06b9b 100644
 +
 +config ZRAM_DEF_COMP_LZ4KD
 +	bool "lz4kd"
-+	depends on CRYPTO_LZ4KD
++	depends on ZRAM_BACKEND_LZ4KD
 +
  config ZRAM_DEF_COMP_ZSTD
  	bool "zstd"
@@ -351,13 +349,14 @@ diff --git a/drivers/block/zram/Makefile b/drivers/block/zram/Makefile
 index 0fdefd576691..4d61e3e354f7 100644
 --- a/drivers/block/zram/Makefile
 +++ b/drivers/block/zram/Makefile
-@@ -5,6 +5,9 @@ zram-y	:=	zcomp.o zram_drv.o
+@@ -5,6 +5,10 @@ zram-y	:=	zcomp.o zram_drv.o
  zram-$(CONFIG_ZRAM_BACKEND_LZO)		+= backend_lzorle.o backend_lzo.o
  zram-$(CONFIG_ZRAM_BACKEND_LZ4)		+= backend_lz4.o
  zram-$(CONFIG_ZRAM_BACKEND_LZ4HC)	+= backend_lz4hc.o
 +ifneq ($(CONFIG_ZRAM_BACKEND_LZ4K)$(CONFIG_ZRAM_BACKEND_LZ4KD),)
 +	zram-y += backend_lz4kd.o
 +endif
++zram-$(CONFIG_ZRAM_BACKEND_ZSTDN)		+= backend_zstdn.o
  zram-$(CONFIG_ZRAM_BACKEND_ZSTD)	+= backend_zstd.o
  zram-$(CONFIG_ZRAM_BACKEND_DEFLATE)	+= backend_deflate.o
  zram-$(CONFIG_ZRAM_BACKEND_842)		+= backend_842.o
@@ -538,15 +537,16 @@ diff --git a/drivers/block/zram/zcomp.c b/drivers/block/zram/zcomp.c
 index bb514403e305..1b3cc6702fd0 100644
 --- a/drivers/block/zram/zcomp.c
 +++ b/drivers/block/zram/zcomp.c
-@@ -16,6 +16,7 @@
+@@ -16,6 +16,8 @@
  #include "backend_lzorle.h"
  #include "backend_lz4.h"
  #include "backend_lz4hc.h"
 +#include "backend_lz4kd.h"
++#include "backend_zstdn.h"
  #include "backend_zstd.h"
  #include "backend_deflate.h"
  #include "backend_842.h"
-@@ -31,6 +32,12 @@ static const struct zcomp_ops *backends[] = {
+@@ -31,6 +33,15 @@ static const struct zcomp_ops *backends[] = {
  #if IS_ENABLED(CONFIG_ZRAM_BACKEND_LZ4HC)
  	&backend_lz4hc,
  #endif
@@ -555,6 +555,9 @@ index bb514403e305..1b3cc6702fd0 100644
 +#endif
 +#if IS_ENABLED(CONFIG_ZRAM_BACKEND_LZ4KD)
 +	&backend_lz4kd,
++#endif
++#if IS_ENABLED(CONFIG_ZRAM_BACKEND_ZSTDN)
++	&backend_zstdn,
 +#endif
  #if IS_ENABLED(CONFIG_ZRAM_BACKEND_ZSTD)
  	&backend_zstd,
@@ -4241,3 +4244,109 @@ index 000000000000..63b62f044ba1
 +}
 +
 +#endif /* _LZ4KD_PRIVATE_H */
+diff --git a/drivers/block/zram/backend_zstdn.c b/drivers/block/zram/backend_zstdn.c
+new file mode 100644
+--- /dev/null
++++ b/drivers/block/zram/backend_zstdn.c
+@@ -0,0 +1,86 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++
++#include <linux/crypto.h>
++#include <linux/err.h>
++#include <linux/slab.h>
++
++#include "backend_zstdn.h"
++
++struct zstdn_ctx {
++	struct crypto_comp *tfm;
++};
++
++static void zstdn_release_params(struct zcomp_params *params)
++{
++}
++
++static int zstdn_setup_params(struct zcomp_params *params)
++{
++	return 0;
++}
++
++static int zstdn_create(struct zcomp_params *params, struct zcomp_ctx *ctx)
++{
++	struct zstdn_ctx *zctx;
++
++	zctx = kzalloc(sizeof(*zctx), GFP_KERNEL);
++	if (!zctx)
++		return -ENOMEM;
++
++	zctx->tfm = crypto_alloc_comp("zstdn", 0, 0);
++	if (IS_ERR(zctx->tfm)) {
++		int ret = PTR_ERR(zctx->tfm);
++
++		kfree(zctx);
++		return ret;
++	}
++
++	ctx->context = zctx;
++	return 0;
++}
++
++static void zstdn_destroy(struct zcomp_ctx *ctx)
++{
++	struct zstdn_ctx *zctx = ctx->context;
++
++	crypto_free_comp(zctx->tfm);
++	kfree(zctx);
++}
++
++static int zstdn_compress(struct zcomp_params *params, struct zcomp_ctx *ctx,
++			  struct zcomp_req *req)
++{
++	struct zstdn_ctx *zctx = ctx->context;
++	unsigned int dlen = req->dst_len;
++	int ret;
++
++	ret = crypto_comp_compress(zctx->tfm, req->src, req->src_len,
++				   req->dst, &dlen);
++	if (!ret)
++		req->dst_len = dlen;
++	return ret;
++}
++
++static int zstdn_decompress(struct zcomp_params *params, struct zcomp_ctx *ctx,
++			    struct zcomp_req *req)
++{
++	struct zstdn_ctx *zctx = ctx->context;
++	unsigned int dlen = req->dst_len;
++	int ret;
++
++	ret = crypto_comp_decompress(zctx->tfm, req->src, req->src_len,
++				     req->dst, &dlen);
++	if (!ret)
++		req->dst_len = dlen;
++	return ret;
++}
++
++const struct zcomp_ops backend_zstdn = {
++	.compress	= zstdn_compress,
++	.decompress	= zstdn_decompress,
++	.create_ctx	= zstdn_create,
++	.destroy_ctx	= zstdn_destroy,
++	.setup_params	= zstdn_setup_params,
++	.release_params	= zstdn_release_params,
++	.name		= "zstdn",
++};
+diff --git a/drivers/block/zram/backend_zstdn.h b/drivers/block/zram/backend_zstdn.h
+new file mode 100644
+--- /dev/null
++++ b/drivers/block/zram/backend_zstdn.h
+@@ -0,0 +1,10 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++
++#ifndef __BACKEND_ZSTDN_H__
++#define __BACKEND_ZSTDN_H__
++
++#include "zcomp.h"
++
++extern const struct zcomp_ops backend_zstdn;
++
++#endif /* __BACKEND_ZSTDN_H__ */
