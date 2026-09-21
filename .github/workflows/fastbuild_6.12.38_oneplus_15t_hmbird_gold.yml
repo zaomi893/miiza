@@ -335,12 +335,12 @@ jobs:
           echo "当前构建内核版本：${{ env.KERNEL_VERSION }}.${{ env.SUB_VERSION }}"
           # 同机型的金/紫标、序列号和功能组合共享对象；ccache 会按真实
           # 编译参数与文件内容判断命中，源码变化仍由提交号自动隔离。
-          # 按月生成新快照，
-          # 同时从上一份快照增量恢复，避免固定 key 永远无法更新。
+          # 每次构建保存唯一滚动快照，下次优先恢复同源码族的最新快照；
+          # 避免 GitHub 不可覆盖的固定 key 丢失后续配置生成的对象。
           SOURCE_CACHE_ID="${KERNEL_SOURCE_COMMIT:0:12}"
           CACHE_EPOCH="$(date -u +%Y-%m)"
           CCACHE_FAMILY="${{ env.CCACHE_KEY }}-${SOURCE_CACHE_ID}"
-          CCACHE_REAL_KEY="${CCACHE_FAMILY}-${CACHE_EPOCH}"
+          CCACHE_REAL_KEY="${CCACHE_FAMILY}-${CACHE_EPOCH}-${GITHUB_RUN_ID}"
           echo "CCACHE_FAMILY=$CCACHE_FAMILY" >> $GITHUB_ENV
           echo "CCACHE_REAL_KEY=$CCACHE_REAL_KEY" >> $GITHUB_ENV
 
