@@ -229,24 +229,16 @@ jobs:
           unzip -q build-tools.zip &&
           rm -rf build-tools.zip &
 
-          echo "正在下载Ace6T官方 pahole 工具..." &&
-          KERNEL_BUILD_TOOLS_COMMIT=4ba19a61c7a0d63603e0d1c84eb2b610bff706a4 &&
-          KERNEL_BUILD_TOOLS_RAW="https://git.codelinaro.org/clo/la/kernel/prebuilts/build-tools/-/raw/$KERNEL_BUILD_TOOLS_COMMIT/linux-x86" &&
-          mkdir -p kernel-build-tools/linux-x86/bin kernel-build-tools/linux-x86/lib64 &&
-          curl -fL --connect-timeout 15 --max-time 90 --retry 4 --retry-delay 2 --retry-all-errors \
-            "$KERNEL_BUILD_TOOLS_RAW/bin/pahole" -o kernel-build-tools/linux-x86/bin/pahole &&
-          curl -fL --connect-timeout 15 --max-time 90 --retry 4 --retry-delay 2 --retry-all-errors \
-            "$KERNEL_BUILD_TOOLS_RAW/lib64/libc++.so" -o kernel-build-tools/linux-x86/lib64/libc++.so &&
-          curl -fL --connect-timeout 15 --max-time 90 --retry 4 --retry-delay 2 --retry-all-errors \
-            "$KERNEL_BUILD_TOOLS_RAW/lib64/libelf.so" -o kernel-build-tools/linux-x86/lib64/libelf.so &&
-          chmod +x kernel-build-tools/linux-x86/bin/pahole &
+          echo "正在克隆Ace6T官方 kernel-build-tools..." &&
+          mkdir -p kernel-build-tools &&
+          git -C kernel-build-tools init -q &&
+          git -C kernel-build-tools remote add origin https://git.codelinaro.org/clo/la/kernel/prebuilts/build-tools.git &&
+          git -C kernel-build-tools fetch -q --depth=1 origin 4ba19a61c7a0d63603e0d1c84eb2b610bff706a4 &&
+          git -C kernel-build-tools checkout -q --detach FETCH_HEAD &
 
           wait
           test -d common
           test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT"
-          test -x kernel-build-tools/linux-x86/bin/pahole
-          test -s kernel-build-tools/linux-x86/lib64/libc++.so
-          test -s kernel-build-tools/linux-x86/lib64/libelf.so
 
       - name: 同步 Android GKI 通用构建环境
         shell: bash
@@ -801,7 +793,6 @@ jobs:
           export PATH="$WORKDIR/kernel_workspace/rust/bin:$PATH"
           export CLANG_DIR="$WORKDIR/kernel_workspace/clang19/bin"
           export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
-          export LD_LIBRARY_PATH="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/lib64:${LD_LIBRARY_PATH:-}"
           test -x "$PAHOLE"
           CLANG_VERSION="$($CLANG_DIR/clang --version | head -n 1)"
           LLD_VERSION="$($CLANG_DIR/ld.lld --version | head -n 1)"
