@@ -511,10 +511,13 @@ jobs:
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/gki_defconfig
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
             ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM
+            ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM_DEF_COMP_LZ4
             echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
             # 保留源码原有 ZRAM 后端，只额外加入 lz4kd
             echo "CONFIG_ZRAM_BACKEND_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
+            # 原厂 zstdn 由设备侧 Oplus 模块提供，内置 ZRAM 继续复用该后端
+            echo "CONFIG_ZRAM_BACKEND_ZSTDN=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
           # 开启O2编译优化配置
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -892,12 +895,16 @@ jobs:
             grep -qx "CONFIG_CRYPTO_LZ4KD=y" out/.config
             grep -qx "CONFIG_ZRAM=y" out/.config
             grep -qx "CONFIG_ZRAM_BACKEND_LZ4KD=y" out/.config
+            grep -qx "CONFIG_ZRAM_BACKEND_ZSTDN=y" out/.config
+            grep -qx "CONFIG_ZRAM_DEF_COMP_LZ4=y" out/.config
+            grep -qx 'CONFIG_ZRAM_DEF_COMP="lz4"' out/.config
           fi
           export CC="$(pwd)/cc-wrapper" && export LD="$(pwd)/ld-wrapper" &&
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="llvm-objcopy" PAHOLE="$PAHOLE" O=out Image
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
             grep -Eq '[[:space:]]zram_init$' out/System.map
             grep -Eq '[[:space:]]backend_lz4kd$' out/System.map
+            grep -Eq '[[:space:]]backend_zstdn$' out/System.map
           fi
           echo "内核编译完成！"
           if [[ "${{ github.event.inputs.ccache_debug }}" == "true" ]]; then
