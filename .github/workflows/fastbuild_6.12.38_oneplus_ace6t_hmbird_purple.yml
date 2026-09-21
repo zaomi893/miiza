@@ -201,7 +201,7 @@ jobs:
           sudo apt purge man-db &&
           sudo rm -rf /var/lib/man-db/auto-update &&
           sudo apt-get -o Acquire::http::Timeout=30 -o Acquire::Retries=2 update &&
-          sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev libdw-dev cmake zlib1g-dev dwarves &
+          sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev libdw-dev cmake zlib1g-dev &
           #旧版完整指令：（由于经过验证大部分指令已内置于GitHub Action环境中，故进行精简）
           #sudo apt-get install -y --no-install-recommends curl bison flex make binutils git perl gcc python3 python-is-python3 bc libssl-dev libelf-dev libdw-dev zip unzip ccache
 
@@ -229,10 +229,24 @@ jobs:
           unzip -q build-tools.zip &&
           rm -rf build-tools.zip &
 
+          echo "正在下载Ace6T官方 pahole 工具..." &&
+          KERNEL_BUILD_TOOLS_COMMIT=4ba19a61c7a0d63603e0d1c84eb2b610bff706a4 &&
+          KERNEL_BUILD_TOOLS_RAW="https://git.codelinaro.org/clo/la/kernel/prebuilts/build-tools/-/raw/$KERNEL_BUILD_TOOLS_COMMIT/linux-x86" &&
+          mkdir -p kernel-build-tools/linux-x86/bin kernel-build-tools/linux-x86/lib64 &&
+          curl -fL --connect-timeout 15 --max-time 90 --retry 4 --retry-delay 2 --retry-all-errors \
+            "$KERNEL_BUILD_TOOLS_RAW/bin/pahole" -o kernel-build-tools/linux-x86/bin/pahole &&
+          curl -fL --connect-timeout 15 --max-time 90 --retry 4 --retry-delay 2 --retry-all-errors \
+            "$KERNEL_BUILD_TOOLS_RAW/lib64/libc++.so" -o kernel-build-tools/linux-x86/lib64/libc++.so &&
+          curl -fL --connect-timeout 15 --max-time 90 --retry 4 --retry-delay 2 --retry-all-errors \
+            "$KERNEL_BUILD_TOOLS_RAW/lib64/libelf.so" -o kernel-build-tools/linux-x86/lib64/libelf.so &&
+          chmod +x kernel-build-tools/linux-x86/bin/pahole &
+
           wait
           test -d common
           test "$(git -C common rev-parse HEAD)" = "$KERNEL_SOURCE_COMMIT"
-          test -x /usr/bin/pahole
+          test -x kernel-build-tools/linux-x86/bin/pahole
+          test -s kernel-build-tools/linux-x86/lib64/libc++.so
+          test -s kernel-build-tools/linux-x86/lib64/libelf.so
 
       - name: 同步 Android GKI 通用构建环境
         shell: bash
@@ -786,7 +800,8 @@ jobs:
           export PATH="$WORKDIR/kernel_workspace/build-tools/bin:$PATH"
           export PATH="$WORKDIR/kernel_workspace/rust/bin:$PATH"
           export CLANG_DIR="$WORKDIR/kernel_workspace/clang19/bin"
-          export PAHOLE=/usr/bin/pahole
+          export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
+          export LD_LIBRARY_PATH="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/lib64:${LD_LIBRARY_PATH:-}"
           test -x "$PAHOLE"
           CLANG_VERSION="$($CLANG_DIR/clang --version | head -n 1)"
           LLD_VERSION="$($CLANG_DIR/ld.lld --version | head -n 1)"
@@ -896,7 +911,7 @@ jobs:
           set +u
           source "$GITHUB_WORKSPACE/kernel_workspace/kernel_build_env/kernel_platform/build/kernel/_setup_env.sh" 2>/dev/null || true
           set -u
-          export PAHOLE=/usr/bin/pahole
+          export PAHOLE="$WORKDIR/kernel_workspace/kernel-build-tools/linux-x86/bin/pahole"
           test -x "$PAHOLE"
           export KBUILD_BUILD_TIMESTAMP="$KERNEL_BUILD_DATE"
 
