@@ -73,7 +73,7 @@ on:
         description: '是否安装 LZ4KD 补丁(若已开启lz4+zstd补丁则可不开启)'
         required: true
         type: boolean
-        default: 'false'
+        default: 'true'
       zarm_tool:
         description: 'zarm工具（自定义zarm的工具模块）'
         required: true
@@ -168,12 +168,6 @@ jobs:
             echo "::error::SUSFS 与 NoMount 不能同时开启；如需 NoMount，请取消勾选 SUSFS。"
             exit 1
           fi
-
-      - name: 阻止不安全的 LZ4KD 内置构建
-        if: inputs.lz4kd_enable
-        run: |
-          echo "::error::已确认将 ZRAM 内置进 Image 会导致真机无法启动。当前原厂 zram.ko 又没有外部后端注册接口，因此在安全的 vendor_dlkm 模块替换方案完成前，LZ4KD 构建已暂停。"
-          exit 1
 
       - name: 准备构建工作目录
         run: |
@@ -543,6 +537,10 @@ jobs:
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/gki_defconfig
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+            # 沿用 15 已验证方案：ZRAM 与 lz4kd 内置，重复的原厂模块加载
+            # 由 lz4kd 补丁兼容处理并返回成功，不改变原厂默认压缩算法。
+            ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM
+            echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
             # 保留源码原有 ZRAM 后端，只额外加入 lz4kd
             echo "CONFIG_ZRAM_BACKEND_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -918,12 +916,16 @@ jobs:
           sudo rm -rf /opt/hostedtoolcache/CodeQL &
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out gki_defconfig
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
-            grep -qx "CONFIG_ZRAM=m" out/.config
+            grep -qx "CONFIG_ZRAM=y" out/.config
             grep -qx "CONFIG_CRYPTO_LZ4KD=y" out/.config
             grep -qx "CONFIG_ZRAM_BACKEND_LZ4KD=y" out/.config
           fi
           export CC="$(pwd)/cc-wrapper" && export LD="$(pwd)/ld-wrapper" &&
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="llvm-objcopy" O=out Image
+          if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+            grep -Eq '[[:space:]]zram_init$' out/System.map
+            grep -Eq '[[:space:]]backend_lz4kd$' out/System.map
+          fi
 
           # Keep the first-pass vmlinux BTF. The matching HMBIRD module is
           # compiled against this exact ID space in the next step.
