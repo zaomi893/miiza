@@ -1339,7 +1339,7 @@ index f6efc626e1b7..af5a9e19626c 100644
  
  	err = rewrite_section_headers(info, flags);
  	if (err)
-@@ -3337,6 +3352,11 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3337,6 +3352,12 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	err = early_mod_check(info, flags);
  	if (err)
  		goto free_copy;
