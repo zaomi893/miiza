@@ -510,6 +510,8 @@ jobs:
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/gki_defconfig
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+            # lz4kd 必须随 Image 内置；保留源码已有后端与默认压缩算法
+            ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
             # 保留源码原有 ZRAM 后端，只额外加入 lz4kd
             echo "CONFIG_ZRAM_BACKEND_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -882,6 +884,7 @@ jobs:
           sudo rm -rf /opt/hostedtoolcache/CodeQL &
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out gki_defconfig
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
+            grep -qx "CONFIG_ZRAM=y" out/.config
             grep -qx "CONFIG_CRYPTO_LZ4KD=y" out/.config
             grep -qx "CONFIG_ZRAM_BACKEND_LZ4KD=y" out/.config
           fi
