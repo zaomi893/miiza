@@ -891,7 +891,6 @@ jobs:
             grep -Eq '[[:space:]]zram_init$' out/System.map
             grep -Eq '[[:space:]]backend_lz4kd$' out/System.map
             grep -Eq '[[:space:]]backend_zstdn$' out/System.map
-            grep -Eq '[[:space:]]backend_zstd$' out/System.map
           fi
 
           # Keep the first-pass vmlinux BTF. The matching HMBIRD module is

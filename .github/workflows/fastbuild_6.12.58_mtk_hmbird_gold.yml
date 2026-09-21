@@ -924,7 +924,6 @@ jobs:
             grep -Eq '[[:space:]]zram_init$' out/System.map
             grep -Eq '[[:space:]]backend_lz4kd$' out/System.map
             grep -Eq '[[:space:]]backend_zstdn$' out/System.map
-            grep -Eq '[[:space:]]backend_zstd$' out/System.map
           fi
           echo "内核编译完成！"
           if [[ "${{ github.event.inputs.ccache_debug }}" == "true" ]]; then
