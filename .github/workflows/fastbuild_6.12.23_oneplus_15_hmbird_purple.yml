@@ -378,7 +378,8 @@ jobs:
       - name: 初始化并配置ccache
         run: |
           # 设置ccache环境变量
-          export CCACHE_COMPILERCHECK="content"
+          # 工具链版本已经写入缓存 key，可安全跳过重复哈希并复用旧缓存。
+          export CCACHE_COMPILERCHECK="none"
           export CCACHE_BASEDIR="${{ github.workspace }}"
           export CCACHE_NOHASHDIR="true"
           export CCACHE_NOHARDLINK="true"
@@ -804,7 +805,8 @@ jobs:
           pahole_version=$(pahole --version 2>/dev/null | head -n1); [ -z "$pahole_version" ] && echo "pahole版本：未安装" || echo "pahole版本：$pahole_version"
 
           export CCACHE_LOGFILE="${{ github.workspace }}/kernel_workspace/ccache.log"
-          export CCACHE_COMPILERCHECK="content"
+          # 工具链版本已经写入缓存 key，可安全跳过重复哈希并复用旧缓存。
+          export CCACHE_COMPILERCHECK="none"
           export CCACHE_BASEDIR="${{ github.workspace }}"
           export CCACHE_NOHASHDIR="true"
           export CCACHE_NOHARDLINK="true"
