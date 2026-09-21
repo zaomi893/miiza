@@ -534,15 +534,9 @@ jobs:
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
             ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM
             echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
-            # 将 ZRAM 与压缩后端直接编入 Image，供 Scene 等工具读取并切换
-            echo "CONFIG_ZRAM_BACKEND_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_ZRAM_BACKEND_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
+            # 保留源码原有 ZRAM 后端，只额外加入 lz4kd
             echo "CONFIG_ZRAM_BACKEND_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_ZRAM_BACKEND_842=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
           # 开启O2编译优化配置
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -706,15 +700,20 @@ jobs:
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
 
       - name: 应用内核模块加载黑名单
-        if: inputs.blacklist_modules != ''
+        if: inputs.blacklist_modules != '' || inputs.lz4kd_enable
         run: |
           echo "正在应用内核模块加载黑名单: ${{ inputs.blacklist_modules }}"
           cd kernel_workspace/common
           echo 'CONFIG_DEBLOAT_VENDOR_MODULES="${{ inputs.blacklist_modules }}"' >> arch/arm64/configs/gki_defconfig
           export BLACKLIST_MODULES="${{ inputs.blacklist_modules }}"
+          export LZ4KD_ENABLE="${{ inputs.lz4kd_enable }}"
           python3 - <<'PYEOF'
           import os, sys
           mods = [m.strip() for m in os.environ.get('BLACKLIST_MODULES','').replace('\n',',').replace(' ',',').split(',') if m.strip()]
+          if os.environ.get('LZ4KD_ENABLE') == 'true':
+              for built_in_module in ('zram', 'zsmalloc', 'lzo', 'lzo_rle'):
+                  if built_in_module not in mods:
+                      mods.append(built_in_module)
           if not mods:
               print('黑名单为空,跳过')
               sys.exit(0)
