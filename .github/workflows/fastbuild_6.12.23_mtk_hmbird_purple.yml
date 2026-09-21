@@ -25,7 +25,7 @@ env:
   HMBIRD_TRACK: 'purple'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
-  CCACHE_KEY: ccache-ecsv11-6.12.23-mtk-hmbird-purple
+  CCACHE_KEY: ccache-v14-findx9-clang-r536225
 
 on:
   workflow_dispatch:
@@ -305,10 +305,17 @@ jobs:
           df -h
           echo "当前构建内核版本：${{ env.KERNEL_VERSION }}.${{ env.SUB_VERSION }}"
           if [[ "${{ github.event.inputs.droidspaces_enable }}" != "false" ]]; then
-            CCACHE_REAL_KEY=${{ env.CCACHE_KEY }}-Droidspaces
+            CCACHE_VARIANT=Droidspaces
           else
-            CCACHE_REAL_KEY=${{ env.CCACHE_KEY }}-none
+            CCACHE_VARIANT=standard
           fi
+          # 同机型金标/紫标共享对象；源码变化自动隔离。按月生成新快照，
+          # 同时从上一份快照增量恢复，避免固定 key 永远无法更新。
+          SOURCE_CACHE_ID="${KERNEL_SOURCE_COMMIT:0:12}"
+          CACHE_EPOCH="$(date -u +%Y-%m)"
+          CCACHE_FAMILY="${{ env.CCACHE_KEY }}-${SOURCE_CACHE_ID}-${CCACHE_VARIANT}"
+          CCACHE_REAL_KEY="${CCACHE_FAMILY}-${CACHE_EPOCH}"
+          echo "CCACHE_FAMILY=$CCACHE_FAMILY" >> $GITHUB_ENV
           echo "CCACHE_REAL_KEY=$CCACHE_REAL_KEY" >> $GITHUB_ENV
 
       - name: 载入当前版本内核的 ccache缓存
@@ -319,7 +326,7 @@ jobs:
           key: ${{ env.CCACHE_REAL_KEY }}-${{ runner.os }}-${{ github.ref_name }}
           restore-keys: |
             ${{ env.CCACHE_REAL_KEY }}-${{ runner.os }}-
-            ${{ env.CCACHE_REAL_KEY }}-
+            ${{ env.CCACHE_FAMILY }}-
 
       - name: 拉取公共预置 ccache 缓存
         env:
@@ -362,7 +369,7 @@ jobs:
       - name: 初始化并配置ccache
         run: |
           # 设置ccache环境变量
-          export CCACHE_COMPILERCHECK="none"
+          export CCACHE_COMPILERCHECK="content"
           export CCACHE_BASEDIR="${{ github.workspace }}"
           export CCACHE_NOHASHDIR="true"
           export CCACHE_NOHARDLINK="true"
@@ -794,15 +801,16 @@ jobs:
           pahole_version=$($PAHOLE --version 2>/dev/null | head -n1); [ -z "$pahole_version" ] && echo "pahole版本：不可用" || echo "pahole版本：$pahole_version"
 
           export CCACHE_LOGFILE="${{ github.workspace }}/kernel_workspace/ccache.log"
-          export CCACHE_COMPILERCHECK="none"
+          export CCACHE_COMPILERCHECK="content"
           export CCACHE_BASEDIR="${{ github.workspace }}"
           export CCACHE_NOHASHDIR="true"
           export CCACHE_NOHARDLINK="true"
           export CCACHE_DIR="${{ env.CCACHE_DIR }}"
-          export CCACHE_MAXSIZE="3G"
+          export CCACHE_MAXSIZE="${{ env.CCACHE_MAXSIZE }}"
+          export CCACHE_SLOPPINESS="include_file_mtime,include_file_ctime"
           export CCACHE_IS_KERNEL_COMPILING="true"
-          echo "sloppiness = file_stat_matches,include_file_ctime,include_file_mtime,pch_defines,file_macro,time_macros" >> "$CCACHE_DIR/ccache.conf"
-
+          # 统计只计算本次构建，缓存对象本身不会被清除。
+          ccache -z
           cd kernel_workspace/common
           cp "$GITHUB_WORKSPACE/lib/libfakestat.so" .
           cp "$GITHUB_WORKSPACE/lib/libfaketimeMT.so" .
