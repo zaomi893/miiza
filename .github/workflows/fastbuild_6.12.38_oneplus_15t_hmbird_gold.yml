@@ -163,6 +163,10 @@ jobs:
             echo "::error::SUSFS 与 NoMount 不能同时开启；如需 NoMount，请取消勾选 SUSFS。"
             exit 1
           fi
+          if [[ "${{ inputs.susfs_enable }}" == "true" && "${{ inputs.ksu_type }}" == "ksu" ]]; then
+            echo "::error::当前官方 KernelSU 主线与仓库内的 SUSFS 接入补丁不兼容。请关闭 SUSFS，或改用 ReSukiSU、KernelSU Next、KowSU。"
+            exit 1
+          fi
 
       - name: 准备构建工作目录
         run: |
