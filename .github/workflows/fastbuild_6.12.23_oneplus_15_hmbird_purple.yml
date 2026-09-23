@@ -74,11 +74,6 @@ on:
         required: true
         type: boolean
         default: 'true'
-      zarm_tool:
-        description: 'zarm工具（自定义zarm的工具模块）'
-        required: true
-        type: boolean
-        default: false
       unicode_enable:
         description: "是否添加Unicode不可见字码点绕过读取漏洞修复？"
         type: boolean
@@ -1207,12 +1202,6 @@ jobs:
             KSU_TYPENAME="KSU"
           else
             KSU_TYPENAME="none"
-          fi
-          if [[ "${{ inputs.lz4kd_enable }}" == "true" && "${{ inputs.zarm_tool }}" == "true" ]]; then
-            echo "LZ4KD 与 zarm工具均已启用，正在下载工具模块..."
-            cp "$GITHUB_WORKSPACE/zram.zip" zram.zip
-          else
-            echo "跳过 zarm工具模块（必须同时启用 LZ4KD 和 zarm工具）"
           fi
           if [[ ${{ github.event.inputs.kpm_enable }} == 'true' ]]; then
             wget https://github.com/cctv18/KPatch-Next/releases/latest/download/kpn.zip

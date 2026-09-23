@@ -78,11 +78,6 @@ on:
         required: true
         type: boolean
         default: 'false'
-      zarm_tool:
-        description: 'zarm工具（自定义zarm的工具模块）'
-        required: true
-        type: boolean
-        default: 'false'
       unicode_enable:
         description: '是否添加Unicode不可见字符码点绕过读取漏洞修复'
         required: true
@@ -1130,9 +1125,6 @@ jobs:
           else
             KSU_TYPENAME="none"
           fi
-          if [[ "${{ inputs.lz4kd_enable }}" == "true" && "${{ inputs.zarm_tool }}" == "true" ]]; then
-            cp "$GITHUB_WORKSPACE/zram.zip" zram.zip
-          fi
           if [[ ${{ github.event.inputs.kpm_enable }} == 'true' ]]; then
             wget https://github.com/cctv18/KPatch-Next/releases/latest/download/kpn.zip
           fi
@@ -1167,7 +1159,6 @@ jobs:
           echo "KPM: ${{ github.event.inputs.kpm_enable }}" >> ./ak3.log
           echo "LZ4: ${{ github.event.inputs.lz4_enable }}" >> ./ak3.log
           echo "LZ4KD: ${{ github.event.inputs.lz4kd_enable }}" >> ./ak3.log
-          echo "Zarm Tool: ${{ inputs.zarm_tool }}" >> ./ak3.log
           echo "Unicode Bypass: ${{ inputs.unicode_enable }}" >> ./ak3.log
           echo "IPset: ${{ github.event.inputs.better_net }}" >> ./ak3.log
           echo "BBR&Brutal: ${{ github.event.inputs.bbr_enable }}" >> ./ak3.log
@@ -1365,7 +1356,6 @@ jobs:
           - KPM支持 ：${{ github.event.inputs.kpm_enable }}
           - LZ4支持：${{ github.event.inputs.lz4_enable }}
           - LZ4KD支持：${{ github.event.inputs.lz4kd_enable }}
-          - zarm工具：${{ inputs.zarm_tool }}
           - Unicode不可见字符绕过修复：${{ inputs.unicode_enable }}
           - 网络功能增强：${{ github.event.inputs.better_net }}
           - BBR/Brutal 等拥塞控制算法支持：${{ github.event.inputs.bbr_enable }}
