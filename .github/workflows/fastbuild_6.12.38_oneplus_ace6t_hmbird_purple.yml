@@ -967,6 +967,10 @@ jobs:
           sudo rm -rf /opt/ghc &
           sudo rm -rf /opt/hostedtoolcache/CodeQL &
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="clang" LD="ld.lld" OBJCOPY="llvm-objcopy" O=out gki_defconfig
+          if [[ "${{ inputs.ksu_type }}" == "ksu" && "${{ inputs.susfs_enable }}" == "true" ]]; then
+            grep -qx 'CONFIG_KSU=y' out/.config || { echo "::error::官方 KernelSU 未启用"; exit 1; }
+            grep -qx 'CONFIG_KSU_SUSFS=y' out/.config || { echo "::error::SUSFS 未在最终内核配置中启用"; exit 1; }
+          fi
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
             grep -qx "CONFIG_ZRAM=y" out/.config
             grep -qx "CONFIG_CRYPTO_LZ4KD=y" out/.config
