@@ -183,10 +183,6 @@ jobs:
             echo "::error::SUSFS 与 NoMount 不能同时开启；如需 NoMount，请取消勾选 SUSFS。"
             exit 1
           fi
-          if [[ "${{ inputs.susfs_enable }}" == "true" && "${{ inputs.ksu_type }}" == "ksu" ]]; then
-            echo "::error::当前官方 KernelSU 主线与仓库内的 SUSFS 接入补丁不兼容。请关闭 SUSFS，或改用 ReSukiSU、KernelSU Next、KowSU。"
-            exit 1
-          fi
 
       - name: 准备构建工作目录
         run: |
@@ -451,6 +447,9 @@ jobs:
           if [[ ${{ github.event.inputs.ksu_type }} != "none" ]]; then
             echo "正在添加susfs补丁..."
             git clone --depth=1 https://github.com/cctv18/susfs4oki.git susfs4ksu -b oki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}
+            if [[ "${{ github.event.inputs.ksu_type }}" == "ksu" ]]; then
+              python3 "$GITHUB_WORKSPACE/tools/adapt-official-ksu-susfs-patch.py" --pin-susfs ./susfs4ksu
+            fi
             cp ./susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch ./common/
             cp ./susfs4ksu/kernel_patches/fs/* ./common/fs/
             cp ./susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
@@ -495,7 +494,9 @@ jobs:
           fi
           if [[ ${{ github.event.inputs.ksu_type }} == "ksu" ]]; then
             echo "正在为原版 KernelSU (tiann/KernelSU)添加补丁..."
-            cp ./susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
+            python3 "$GITHUB_WORKSPACE/tools/adapt-official-ksu-susfs-patch.py" \
+              ./KernelSU ./susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch \
+              > ./KernelSU/10_enable_susfs_for_ksu.patch
             cd ./KernelSU
             patch --batch --forward -p1 < 10_enable_susfs_for_ksu.patch
           fi

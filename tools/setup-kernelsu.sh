@@ -55,9 +55,16 @@ case "$KSU_TYPE" in
 
   ksu)
     echo "正在配置原版 KernelSU (tiann/KernelSU)..."
+    official_ref=main
+    if [[ "$SUSFS_ENABLE" == "true" ]]; then
+      official_ref=623eba3e092b911a3a7389b7d87622a5835d2f3a
+    fi
     curl -fLSs --retry 3 \
-      "https://raw.githubusercontent.com/tiann/KernelSU/refs/heads/main/kernel/setup.sh" |
-      bash -s main
+      "https://raw.githubusercontent.com/tiann/KernelSU/$official_ref/kernel/setup.sh" |
+      bash -s "$official_ref"
+    if [[ "$SUSFS_ENABLE" == "true" ]]; then
+      test "$(git -C KernelSU rev-parse HEAD)" = "$official_ref"
+    fi
     add_absolute_include_paths KernelSU/kernel
     version="$(( $(git -C KernelSU rev-list --count HEAD) + 30000 ))"
     write_version "$version"
