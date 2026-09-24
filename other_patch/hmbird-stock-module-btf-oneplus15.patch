@@ -11,7 +11,7 @@ index f6efc62..24d9673 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,205 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,214 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -32,6 +32,14 @@ index f6efc62..24d9673 100644
 +#define OPLUS_HMBIRD_GKI_BTF_CAPACITY	32768U
 +#define OPLUS_HMBIRD_BTF_IDS_SIZE	320U
 +#define OPLUS_HMBIRD_BTF_ID_COUNT	39U
++#if defined(OPLUS_HMBIRD_TRACK_GOLD)
++#define OPLUS_HMBIRD_MATCH_503 0
++#elif defined(OPLUS_HMBIRD_TRACK_PURPLE)
++#define OPLUS_HMBIRD_MATCH_503 1
++#else
++#error "HMBIRD track must be selected"
++#endif
++
 +
 +#ifdef OPLUS_DEVICE_SERIAL_LOCK_ENABLED
 +extern bool oplus_device_serial_verified(void);
@@ -173,7 +181,8 @@ index f6efc62..24d9673 100644
 +	 * prevents unrelated modules from entering this path.
 +	 */
 +#else
-+	if (!((mod->btf_data_size == OPLUS_HMBIRD_503_STOCK_BTF_SIZE &&
++	if (!((OPLUS_HMBIRD_MATCH_503 &&
++	       mod->btf_data_size == OPLUS_HMBIRD_503_STOCK_BTF_SIZE &&
 +	       oplus_btf_sha256_matches(mod->btf_data, mod->btf_data_size,
 +						oplus_hmbird_503_stock_btf_sha256) &&
 +	       oplus_btf_sha256_matches(ids, ids_size,
@@ -217,7 +226,7 @@ index f6efc62..24d9673 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3597,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3606,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  

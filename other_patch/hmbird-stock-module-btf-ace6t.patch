@@ -11,7 +11,7 @@ index f6efc62..24d9673 100644
  #include <linux/execmem.h>
  #include <uapi/linux/module.h>
  #include "internal.h"
-@@ -283,6 +285,196 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +285,197 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -147,7 +147,7 @@ index f6efc62..24d9673 100644
 +	ids = any_section_objs(info, ".BTF_ids", 1, &ids_size);
 +	if (!ids || ids_size < ids_payload_size ||
 +	    ids_size > OPLUS_HMBIRD_BTF_IDS_CAPACITY ||
-+	    ((u32 *)ids)[0] != OPLUS_HMBIRD_LEGACY_IDS_SIZE / 8 - 1 ||
++	    ((u32 *)ids)[0] != (ids_payload_size - 8) / 8 ||
 +	    ((u32 *)oplus_hmbird_gki_btf_ids)[0] !=
 +		(ids_payload_size - 8) / 8) {
 +		pr_err("%s: stock/generated BTF ID layout mismatch: stock=%u embedded=%u\n",
@@ -158,9 +158,10 @@ index f6efc62..24d9673 100644
 +		pr_err("%s: stock module has no BTF payload\n", mod->name);
 +		return;
 +	}
-+#ifdef CONFIG_OPLUS_SYSTEM_KERNEL_MTK
++#if defined(CONFIG_OPLUS_SYSTEM_KERNEL_MTK) || \
++	defined(OPLUS_HMBIRD_SOURCE_IDENTITY)
 +	/*
-+	 * MediaTek does not publish a prebuilt stock module fingerprint. The
++	 * This device has no verified prebuilt stock module fingerprint. The
 +	 * official module source and the exact module name remain sufficient to
 +	 * identify the DDK target, while the BTF_ids structure check above still
 +	 * prevents unrelated modules from entering this path.
@@ -208,7 +209,7 @@ index f6efc62..24d9673 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3588,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3589,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  

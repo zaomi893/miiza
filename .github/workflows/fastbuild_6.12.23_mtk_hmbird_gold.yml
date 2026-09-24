@@ -19,7 +19,7 @@ env:
   KERNEL_SOURCE_COMMIT: '05b2cfbb13711a7ce39d62fca2e81a42a0e70de0'
   HMBIRD_SOURCE_REPO: 'OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845'
   HMBIRD_SOURCE_BRANCH: 'oneplus/sm8845_b_16.0.0_ace_6t'
-  # Current 39-kfunc source selected from the PLG110 16.0.10.501 stock module layout.
+  # Equivalent 39-kfunc source for the PLG110 stock module; metadata generation only.
   HMBIRD_SOURCE_COMMIT: 'c198db99380d7f268894229b8e3ab1deaff8ba79'
   HMBIRD_MAKEFILE: 'hmbird_module/Makefile.mtk'
   HMBIRD_TRACK: 'gold'
@@ -175,7 +175,8 @@ jobs:
             --repo "$HMBIRD_SOURCE_REPO" \
             --branch "$HMBIRD_SOURCE_BRANCH" \
             --commit "$HMBIRD_SOURCE_COMMIT" \
-            --track "$HMBIRD_TRACK"
+            --track "$HMBIRD_TRACK" \
+            --allow-pinned-equivalent-baseline
 
       - name: 验证 SUSFS / NoMount 互斥选项
         run: |
@@ -925,6 +926,7 @@ jobs:
           KCFLAGS+=" -Qunused-arguments"
           KCFLAGS+=" -Wno-unused-command-line-argument"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
+          KCFLAGS+=" -DOPLUS_HMBIRD_TRACK_GOLD"
           if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi

@@ -929,6 +929,7 @@ jobs:
           KCFLAGS+=" -Qunused-arguments"
           KCFLAGS+=" -Wno-unused-command-line-argument"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
+          KCFLAGS+=" -DOPLUS_HMBIRD_TRACK_GOLD"
           if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi

@@ -1,5 +1,5 @@
-name: 6.12.58 OnePlus Pad 3 Pro 紫标风驰内核快速构建
-run-name: 6.12.58 Pad 3 Pro 紫标风驰 · ${{ inputs.device_serial || '手动构建' }}
+name: 6.12.58 OnePlus Pad 3 Pro 金标风驰内核快速构建
+run-name: 6.12.58 Pad 3 Pro 金标风驰 · ${{ inputs.device_serial || '手动构建' }}
 
 env:
   TZ: Asia/Shanghai
@@ -19,10 +19,10 @@ env:
   KERNEL_SOURCE_COMMIT: '6a99a4b6722104b69a26c23fa29a163622b14e14'
   HMBIRD_SOURCE_REPO: 'OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850'
   HMBIRD_SOURCE_BRANCH: 'oneplus/sm8850_b_16.0_pad_3_pro'
-  # Purple HMBIRD source: OPD2513 16.0.6.103 (CN01).
+  # Gold HMBIRD source: OPD2513 16.0.6.103 (CN01); no <=16.0.5 purple source is published.
   HMBIRD_SOURCE_COMMIT: '8be53e8b737a83a33512d5e0106cccb010a5c24c'
   HMBIRD_MAKEFILE: 'hmbird_module/Makefile.qcom'
-  HMBIRD_TRACK: 'purple'
+  HMBIRD_TRACK: 'gold'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
   CCACHE_KEY: ccache-v14-pad3pro-clang-r536225
@@ -925,6 +925,7 @@ jobs:
           KCFLAGS+=" -Qunused-arguments"
           KCFLAGS+=" -Wno-unused-command-line-argument"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
+          KCFLAGS+=" -DOPLUS_HMBIRD_TRACK_GOLD"
           if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi
@@ -1094,7 +1095,7 @@ jobs:
         run: |
           cd kernel_workspace
           git clone --depth=1 --branch master https://github.com/${MIGRATED_REPO_OWNER}/AnyKernel3_ZAOMI ak3_workspace
-          AK3_PREFIX="ak3_Pad3Pro_SM8850_PurpleHmbird"
+          AK3_PREFIX="ak3_Pad3Pro_SM8850_GoldHmbird"
           rm -rf ./ak3_workspace/.git
           cd ak3_workspace
           test -s tools/installer-profile.sh
@@ -1277,7 +1278,7 @@ jobs:
       - name: 上传匹配 GKI 的风驰驱动工件
         uses: actions/upload-artifact@v7
         with:
-          name: pad3pro-sm8850-hmbird-purple-matching-module
+          name: pad3pro-sm8850-hmbird-gold-matching-module
           path: ${{ github.workspace }}/kernel_workspace/hmbird_artifact/*
 
   release:
@@ -1366,7 +1367,7 @@ jobs:
           - NoMount/PathMask/AppCloak支持：${{ inputs.nomount_enable }}
           - NoMount Suite版本：v1.7.8（不修改 ksud/ksu_susfs）
           - 模块加载黑名单：${{ inputs.blacklist_modules }}
-          - 风驰版本：紫标（OPD2513 16.0.6.103 CN01），固定注入与本次 GKI 匹配的 BTF/BTF_ids 元数据，继续加载原厂 vendor_dlkm 风驰模块
+          - 风驰版本：金标（OPD2513 16.0.6.103 CN01），固定注入与本次 GKI 匹配的 BTF/BTF_ids 元数据，继续加载原厂 vendor_dlkm 风驰模块
           - ReSukiSU 管理器请从对应发布渠道下载
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)

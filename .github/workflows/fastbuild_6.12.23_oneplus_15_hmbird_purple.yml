@@ -12,8 +12,11 @@ env:
   # Official OnePlus 15 history with the verified stock boot-fix sequence.
   KERNEL_SOURCE_BRANCH: 'oneplus/sm8850_v_16.0.0_oneplus_15'
   KERNEL_SOURCE_COMMIT: '6313a006d228a27bc33175f571f0561d93c2deb2'
+  HMBIRD_SOURCE_REPO: 'OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850'
+  HMBIRD_SOURCE_BRANCH: 'oneplus/sm8850_b_16.0.0_oneplus_15'
   # Purple HMBIRD source: PLK110 16.0.5.701 (CN01).
   HMBIRD_SOURCE_COMMIT: '7fb7abf097a18c6e2ad2fb9d18876b095898e87f'
+  HMBIRD_TRACK: 'purple'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
   CCACHE_KEY: ccache-v14-oneplus15-clang-r536225
@@ -156,6 +159,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+
+      - name: 验证官方风驰源码版本
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/verify-hmbird-source.py \
+            --repo "$HMBIRD_SOURCE_REPO" \
+            --branch "$HMBIRD_SOURCE_BRANCH" \
+            --commit "$HMBIRD_SOURCE_COMMIT" \
+            --track "$HMBIRD_TRACK"
 
       - name: 验证 SUSFS / NoMount 互斥选项
         run: |
@@ -896,6 +909,7 @@ jobs:
           KCFLAGS+=" -Wno-error"
           KCFLAGS+=" -fno-stack-protector"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
+          KCFLAGS+=" -DOPLUS_HMBIRD_TRACK_PURPLE"
           export KCFLAGS
           # 4. 配置其他工具及选项（非必须，防错冗余）
           export HOSTCC=clang

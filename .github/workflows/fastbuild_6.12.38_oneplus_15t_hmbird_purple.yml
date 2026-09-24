@@ -18,6 +18,7 @@ env:
   HMBIRD_SOURCE_BRANCH: 'oneplus/sm8850_b_16.0_oneplus_15t'
   # Purple HMBIRD source: PLZ110 16.0.4.603 (CN01).
   HMBIRD_SOURCE_COMMIT: 'bc8d91d1e146be96d2e27bebe8f753f82bdebeee'
+  HMBIRD_TRACK: 'purple'
   NOMOUNT_UPSTREAM_REPO: 'Bouteillepleine/NoMount-Suite'
   NOMOUNT_UPSTREAM_COMMIT: '36a462132102e49ed868c88cceb390aadd39f3d5'
   CCACHE_KEY: ccache-v14-oneplus15t-clang-r547379
@@ -156,6 +157,16 @@ jobs:
     steps:
       - name: 检出本仓库构建资源
         uses: actions/checkout@v4
+
+      - name: 验证官方风驰源码版本
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/verify-hmbird-source.py \
+            --repo "$HMBIRD_SOURCE_REPO" \
+            --branch "$HMBIRD_SOURCE_BRANCH" \
+            --commit "$HMBIRD_SOURCE_COMMIT" \
+            --track "$HMBIRD_TRACK"
 
       - name: 验证 SUSFS / NoMount 互斥选项
         run: |
@@ -908,6 +919,7 @@ jobs:
           KCFLAGS+=" -Qunused-arguments"
           KCFLAGS+=" -Wno-unused-command-line-argument"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
+          KCFLAGS+=" -DOPLUS_HMBIRD_TRACK_PURPLE"
           if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi

@@ -29,7 +29,7 @@
 
 ## 风驰版本入口
 
-每个入口优先使用目标机型自己的官方内核模块仓库和分支。官方同步版本 `16.0.7` 及以上归为金标，低于 `16.0.7` 归为紫标。唯一例外是尚未公开当前 MT6993 模块树的 Find X9 金标：它使用与实机原厂模块源码指纹完全一致的官方同步点，并仍按 MTK 配置只生成元数据。构建只消费 `vendor/oplus/kernel/cpu` 中的官方风驰源码，并用同一次 GKI 编译提取匹配的 `.BTF` / `.BTF_ids`：
+每个入口优先使用目标机型自己的官方内核模块仓库和分支。手机版本 `16.0.5.x` 及以下属于紫标范围，`16.0.6.x` 及以上属于金标范围；构建只选金标或紫标，不输入手机版本号。唯一例外是尚未公开当前 MT6993 模块树的 Find X9 金标：它使用与实机原厂模块源码指纹完全一致的官方同步点，并仍按 MTK 配置只生成元数据。构建只消费 `vendor/oplus/kernel/cpu` 中的官方风驰源码，并用同一次 GKI 编译提取匹配的 `.BTF` / `.BTF_ids`：
 
 | 机型 | 版本 | 官方同步版本 | 工作流 |
 | --- | --- | --- | --- |
@@ -37,13 +37,12 @@
 | 一加 15 | 紫标 | `PLK110_16.0.5.701(CN01)`，[`7fb7abf`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/7fb7abf097a18c6e2ad2fb9d18876b095898e87f) | `fastbuild_6.12.23_oneplus_15_hmbird_purple.yml` |
 | 一加 15T | 金标 | `PLZ110_16.0.8.300(CN01)`，[`d447f71`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/d447f713d6403f707a2910383495f4ada98cfa4d) | `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` |
 | 一加 15T | 紫标 | `PLZ110_16.0.4.603(CN01)`，[`bc8d91d`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/bc8d91d1e146be96d2e27bebe8f753f82bdebeee) | `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml` |
-| Ace6T | 金标 | `PLR110_16.0.9.400(CN01)`，[`c198db9`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845/commit/c198db99380d7f268894229b8e3ab1deaff8ba79) | `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` |
+| Ace6T | 金标 | `PLR110_16.0.10.500(CN01)`，[`6265826`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845/commit/6265826aa0a52ea9a3bb60a84c3164dd61e282c7) | `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` |
 | Ace6T | 紫标 | `PLR110_16.0.5.702(CN01)`，39 ID，[`5bc6b8a`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845/commit/5bc6b8ab8671f68c7754ea42bda91b660ff0ac53) | `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml` |
-| OnePlus Pad 3 Pro | 紫标 | `OPD2513_16.0.6.103(CN01)`，[`8be53e8`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/8be53e8b737a83a33512d5e0106cccb010a5c24c) | `fastbuild_6.12.58_hmbird_purple.yml` |
+| OnePlus Pad 3 Pro | 金标 | `OPD2513_16.0.6.103(CN01)`，[`8be53e8`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8850/commit/8be53e8b737a83a33512d5e0106cccb010a5c24c) | `fastbuild_6.12.58_hmbird_gold.yml` |
 | OPPO Find X9 系列 | 金标 | `PLG110_16.0.10.501(CN01)` 实机模块对应的 39-ID 源码修订，[`c198db9`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845/commit/c198db99380d7f268894229b8e3ab1deaff8ba79) | `fastbuild_6.12.23_mtk_hmbird_gold.yml` |
 | OPPO Find X9 系列 | 紫标 | `16.0.1.301/302`，[`4d505a4`](https://github.com/oppo-source/android_kernel_modules_and_devicetree_oppo_mt6993/commit/4d505a4292dab3176a45fec66dc85debc362e24c) | `fastbuild_6.12.23_mtk_hmbird_purple.yml` |
 | OnePlus Ace 6 Ultra | 金标 | `PMB110_16.0.9.400(CN01)`，[`2cc7f46`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_mt6993/commit/2cc7f4606b65a9ede42030ee82614dd845b665a1) | `fastbuild_6.12.58_mtk_hmbird_gold.yml` |
-| OnePlus Ace 6 Ultra | 紫标 | `PMB110_16.0.6.103(CN01)`，[`366500c`](https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_mt6993/commit/366500c5f2c1b45764722d20b2d923b3816e7bda) | `fastbuild_6.12.58_mtk_hmbird_purple.yml` |
 
 一加 15 的 common GKI 底座仍取自本仓库配置的 `6.12.23` 源码分支，避免换成当前无法在该机启动的官方 common 版本；一加 15T 的底座继续跟随 `oneplus/sm8850_b_16.0_oneplus_15t` 已验证启动链。其他入口保留各自已验证启动的内核底座和 Clang `r536225` 构建链。金标、紫标只改变风驰模块源码提交，不改变内核底座、启动基线或序列号锁。`7fb7abf` 与 `bc8d91d` 不再是当前分支头，工作流按完整 SHA 精确获取这两个历史同步点。
 
@@ -62,7 +61,7 @@ Pad 3 Pro 的 SM8850 官方分支目前只有 `16.0.6.103`，因此仅保留紫�
 
 手机继续加载原厂 `vendor_dlkm` 中的模块代码，本仓库不会用自编译 `.ko` 覆盖原厂模块。构建流程会使用同一次 GKI 编译的 BTF ID 空间编译官方风驰源码，只提取生成模块的 `.BTF` 和 `.BTF_ids` 元数据，再写入 Image 中预留的固定槽位；模块装载时仅对已核对身份的原厂风驰模块使用这份匹配元数据。
 
-另有 103 个国行固件模块携带与自定义 GKI 不兼容的旧式 split-BTF。内核只按仓库内固定名单忽略这些模块的错误 BTF，而不改模块代码、符号 CRC 或 KMI，也不会宽泛屏蔽所有模块的 BTF 检查。风险是名单与其他固件版本不一定一致，因此本仓库只声明支持 `PLK110_16.0.9.400(CN01)`；系统升级后必须重新验证。
+另有 103 个国行固件模块携带与自定义 GKI 不兼容的旧式 split-BTF。内核只按仓库内固定名单忽略这些模块的错误 BTF，而不改模块代码、符号 CRC 或 KMI，也不会宽泛屏蔽所有模块的 BTF 检查。风驰模块装载时按原厂模块指纹或 `.BTF_ids` 结构决定是否替换：已确认的一加 15 `16.0.3.503` 指纹只在紫标入口接受；MTK 入口还要求原厂 ID 数量与嵌入基线一致。模块本身不携带可供内核直接比较的完整手机版本号；尚未采集的版本不能仅凭版本区间保证可用，系统升级后仍需实机验证。
 
 天玑入口使用 `hmbird_module/Makefile.mtk` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_MTK`；Ace 6 Ultra 取 OnePlusOSS MT6993 模块仓库，Find X9 的旧版元数据取 `oppo-source` MT6993 模块仓库。Find X9 当前 OTA 尚无对应 MT6993 公开提交，因此仅用与其实机模块 `srcversion` 完全一致的 Ace6T 提交补齐新版元数据，并仍按 MTK 配置编译；手机不会加载该构建产物的代码。由于这些仓库未提供可提取指纹的预编译 `.ko`，MTK 配置下的兼容层使用“精确模块名 + `.BTF_ids` 结构”校验。高通入口使用独立的 `hmbird_module/Makefile.qcom` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM`，并保留原有 BTF 哈希指纹校验。
 
@@ -90,9 +89,9 @@ GitHub Release 日志和刷机包注释会按要求显示本次输入的绑定�
 - `fastbuild_6.12.23_oneplus_15_hmbird_gold.yml` / `fastbuild_6.12.23_oneplus_15_hmbird_purple.yml`：一加 15 金标、紫标风驰构建。
 - `fastbuild_6.12.38_oneplus_15t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_15t_hmbird_purple.yml`：一加 15T 金标、紫标风驰构建。源码使用 `zaominn/android_kernel_common_oneplus_sm8850` 的 `oneplus/sm8850_b_16.0_oneplus_15t` 分支；TCP Brutal、ADIOS、Re-Kernel 源码随树提供，但仅由各自开关启用。版本号为 `android16-5-gbe6292a1543d-ab14525421-4k`，构建时间默认为 `Mon Dec 1 03:28:37 UTC 2025`，工具链为 Clang `r547379` / Rust 1.82。
 - `fastbuild_6.12.38_oneplus_ace6t_hmbird_gold.yml` / `fastbuild_6.12.38_oneplus_ace6t_hmbird_purple.yml`：Ace6T 金标、紫标风驰构建，源码使用 `zaominn/android_kernel_common_oneplus_sm8845` 的 `oneplus/sm8845_b_16.0.0_ace_6t` 分支。
-- `fastbuild_6.12.58_hmbird_purple.yml`：OnePlus Pad 3 Pro 紫标风驰构建；官方分支没有金标同步版本，因此不提供金标入口。
+- `fastbuild_6.12.58_hmbird_gold.yml`：OnePlus Pad 3 Pro 金标风驰构建；未公开 `16.0.5.x` 及以下源码，不提供紫标入口。
 - `fastbuild_6.12.23_mtk_hmbird_gold.yml` / `fastbuild_6.12.23_mtk_hmbird_purple.yml`：OPPO Find X9 系列金标、紫标风驰构建；当前 `16.0.10.501` 使用金标。
-- `fastbuild_6.12.58_mtk_hmbird_gold.yml` / `fastbuild_6.12.58_mtk_hmbird_purple.yml`：OnePlus Ace 6 Ultra（PMB110）金标、紫标风驰构建。
+- `fastbuild_6.12.58_mtk_hmbird_gold.yml`：OnePlus Ace 6 Ultra（PMB110）金标风驰构建；未公开 `16.0.5.x` 及以下源码，不提供紫标入口。
 
 这些入口复用 6.12.23 已稳定使用的序列号锁、ReSukiSU 分支选择、LZ4/Zstd、LZ4KD、zarm、Unicode 修复、BBR/Brutal、Droidspaces、网络增强、ADIOS、Re-Kernel、基带保护、NoMount、AppCloak、PathMask 和刷机包命名规则，并分别保留开启/关闭选项。所有工作流默认关闭 SUSFS 和 NoMount，且两者同时开启会立即拒绝构建。15T 的序列号锁与风驰兼容固定启用；`self_config` 只属于 6.12.23 的一加 15 入口，机器人不会向 15T 工作流提交该输入。
 

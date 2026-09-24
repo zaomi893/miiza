@@ -19,7 +19,7 @@ env:
   KERNEL_SOURCE_COMMIT: '709b09b6ce9e1ac61af18b15aaf49cd93b9438d5'
   HMBIRD_SOURCE_REPO: 'OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8845'
   HMBIRD_SOURCE_BRANCH: 'oneplus/sm8845_b_16.0.0_ace_6t'
-  # Latest Purple HMBIRD source below 16.0.7: PLR110 16.0.5.702 (CN01).
+  # Latest Purple HMBIRD source <=16.0.5.x: PLR110 16.0.5.702 (CN01).
   HMBIRD_SOURCE_COMMIT: '5bc6b8ab8671f68c7754ea42bda91b660ff0ac53'
   HMBIRD_MAKEFILE: 'hmbird_module/Makefile.qcom'
   HMBIRD_TRACK: 'purple'
@@ -929,6 +929,7 @@ jobs:
           KCFLAGS+=" -Qunused-arguments"
           KCFLAGS+=" -Wno-unused-command-line-argument"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
+          KCFLAGS+=" -DOPLUS_HMBIRD_TRACK_PURPLE"
           if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi
