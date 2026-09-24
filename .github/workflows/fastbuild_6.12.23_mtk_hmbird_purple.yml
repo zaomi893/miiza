@@ -142,7 +142,7 @@ on:
         type: string
         default: 'Tue Nov 18 18:08:47 UTC 2025'
       blacklist_modules:
-        description: '内核模块加载黑名单(逗号分隔;默认屏蔽oplus_secure_guard_new;启用LZ4KD时自动加入zram和zsmalloc)'
+        description: '内核模块加载黑名单(逗号分隔;默认屏蔽oplus_secure_guard_new)'
         required: false
         type: string
         default: 'oplus_secure_guard_new'
@@ -541,6 +541,27 @@ jobs:
           grep -Eq '\.name[[:space:]]*=[[:space:]]*"lz4kd"' drivers/block/zram/backend_lz4kd.c
           rm -f lz4kd.patch
 
+      - name: 移植匹配 Oplus 提交的 zram_opt
+        if: inputs.lz4kd_enable
+        run: |
+          python3 "$GITHUB_WORKSPACE/build_tools/integrate_oplus_zram_opt.py" \
+            --kernel-root kernel_workspace/common \
+            --source-repo "$HMBIRD_SOURCE_REPO" \
+            --source-commit "$HMBIRD_SOURCE_COMMIT"
+          cd kernel_workspace/common
+          cp "$GITHUB_WORKSPACE/other_patch/lz4kd_builtin_module_skip.patch" .
+          if patch --dry-run --batch --forward -p1 -F 3 < lz4kd_builtin_module_skip.patch >/dev/null 2>&1; then
+            patch --batch --forward --no-backup-if-mismatch -p1 -F 3 < lz4kd_builtin_module_skip.patch
+          elif grep -Fq 'is_built_in_duplicate(info->name)' kernel/module/main.c && \
+               grep -Fq 'oplus_bsp_zram_opt' kernel/module/main.c && \
+               grep -Fq 'CONFIG_OPLUS_LZ4KD_ZRAM_OPT' kernel/module/main.c; then
+            echo "内置模块重复加载兼容补丁已存在，跳过重复应用"
+          else
+            echo "无法应用内置模块重复加载兼容补丁，停止构建"
+            exit 1
+          fi
+          rm -f lz4kd_builtin_module_skip.patch
+
       - name: UNICODE_BYPASS补丁
         if: inputs.unicode_enable
         run: |
@@ -580,7 +601,7 @@ jobs:
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/gki_defconfig
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
-            # ZRAM、ZSMALLOC 与 lz4kd 内置；原厂同名模块由构建黑名单拦截。
+            # LZ4KD、ZRAM 与该脚本锁定版本的 zram_opt 优化编入 Image；重复 vendor .ko 由加载器安全跳过。
             # 不改变原厂默认压缩算法。
             ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM
             echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -753,13 +774,10 @@ jobs:
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
 
       - name: 应用内核模块加载黑名单
-        if: inputs.blacklist_modules != '' || inputs.lz4kd_enable
+        if: inputs.blacklist_modules != ''
         run: |
           cd kernel_workspace/common
           export BLACKLIST_MODULES="${{ inputs.blacklist_modules }}"
-          if [[ "${{ inputs.lz4kd_enable }}" == "true" ]]; then
-            BLACKLIST_MODULES="${BLACKLIST_MODULES:+$BLACKLIST_MODULES,}zram,zsmalloc"
-          fi
           echo "正在应用内核模块加载黑名单: $BLACKLIST_MODULES"
           echo "CONFIG_DEBLOAT_VENDOR_MODULES=\"$BLACKLIST_MODULES\"" >> arch/arm64/configs/gki_defconfig
           python3 "$GITHUB_WORKSPACE/build_tools/apply_module_blacklist.py"
@@ -944,6 +962,11 @@ jobs:
             grep -qx "CONFIG_ZRAM_BACKEND_ZSTD=y" out/.config
             grep -qx "CONFIG_ZRAM_BACKEND_ZSTDN=y" out/.config
             grep -qx "CONFIG_ZRAM_BACKEND_LZ4KD=y" out/.config
+            grep -qx "CONFIG_OPLUS_LZ4KD_ZRAM_OPT=y" out/.config
+            test -s drivers/block/zram/oplus_bsp_zram_opt.c
+            grep -Fq 'obj-$(CONFIG_OPLUS_LZ4KD_ZRAM_OPT) += oplus_bsp_zram_opt.o' drivers/block/zram/Makefile
+            grep -Fq 'is_built_in_duplicate(info->name)' kernel/module/main.c
+            grep -Fq 'oplus_bsp_zram_opt' kernel/module/main.c
           fi
           export CC="$(pwd)/cc-wrapper" && export LD="$(pwd)/ld-wrapper" &&
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" OBJCOPY="llvm-objcopy" PAHOLE="$PAHOLE" O=out Image
@@ -952,6 +975,7 @@ jobs:
             grep -Eq '[[:space:]]backend_zstd$' out/System.map
             grep -Eq '[[:space:]]backend_zstdn$' out/System.map
             grep -Eq '[[:space:]]backend_lz4kd$' out/System.map
+            test -s out/drivers/block/zram/oplus_bsp_zram_opt.o
           fi
           echo "内核编译完成！"
           if [[ "${{ github.event.inputs.ccache_debug }}" == "true" ]]; then
