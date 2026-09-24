@@ -71,6 +71,24 @@ def adapt_source(
         "CONFIG_OPLUS_LZ4KD_PORT_WITH_HYBRIDSWAP",
     )
 
+    # ezr_enabled is declared and initialized only by mm_osvelte, which is
+    # deliberately excluded from this in-tree GKI port.  Without that state,
+    # retain the generic swappiness hook and remove its source-only bypass.
+    source, removed_ezram_bypass = re.subn(
+        r"(?m)^\s*if\s*\(\s*ezr_enabled\s*\)\s*\r?\n"
+        r"\s*goto\s+bypass_swappiness_hook\s*;\s*\r?\n",
+        "",
+        source,
+        count=1,
+    )
+    if re.search(r"\bgoto\s+bypass_swappiness_hook\s*;", source):
+        raise ValueError("An unadapted mm_osvelte-only swappiness bypass remains")
+    source, removed_bypass_label = re.subn(
+        r"(?m)^bypass_swappiness_hook:\s*\r?\n", "", source, count=1
+    )
+    if removed_ezram_bypass and removed_bypass_label != 1:
+        raise ValueError("Could not remove the now-unused swappiness bypass label")
+
     source = source.replace(
         "extern bool free_zram_is_ok(void);",
         """/*
