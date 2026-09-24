@@ -89,6 +89,30 @@ def adapt_source(
     if removed_ezram_bypass and removed_bypass_label != 1:
         raise ValueError("Could not remove the now-unused swappiness bypass label")
 
+    # Several OEM snapshots carry private copies of the zone iterators, but
+    # every target GKI tree already provides these through linux/mmzone.h.
+    # Drop the copies and use the kernel's exported helpers to avoid duplicate
+    # global symbols when linking vmlinux.
+    zone_iterator_signatures = (
+        "struct pglist_data *first_online_pgdat(void)",
+        "struct pglist_data *next_online_pgdat(struct pglist_data *pgdat)",
+        "struct zone *next_zone(struct zone *zone)",
+    )
+    zone_iterators_present = [signature in source for signature in zone_iterator_signatures]
+    if any(zone_iterators_present):
+        if not all(zone_iterators_present):
+            raise ValueError("Pinned zram_opt.c contains only part of the zone iterator helpers")
+        zone_iterator_block = re.compile(
+            r"(?ms)^struct pglist_data \*first_online_pgdat\(void\)\s*\{.*?"
+            r"^struct pglist_data \*next_online_pgdat\(struct pglist_data \*pgdat\)\s*\{.*?"
+            r"^struct zone \*next_zone\(struct zone \*zone\)\s*\{.*?^\}\s*\r?\n"
+        )
+        source, removed_zone_iterators = zone_iterator_block.subn(
+            "", source, count=1
+        )
+        if removed_zone_iterators != 1:
+            raise ValueError("Could not isolate the duplicate Oplus zone iterator helpers")
+
     source = source.replace(
         "extern bool free_zram_is_ok(void);",
         """/*
