@@ -521,6 +521,7 @@ jobs:
           test -s drivers/block/zram/backend_lz4kd.c
           grep -Fq '&backend_lz4kd' drivers/block/zram/zcomp.c
           grep -Eq '\.name[[:space:]]*=[[:space:]]*"lz4kd"' drivers/block/zram/backend_lz4kd.c
+          grep -Fq 'is_built_in_duplicate(info->name)' kernel/module/main.c
           rm -f lz4kd.patch
 
       - name: UNICODE_BYPASS补丁

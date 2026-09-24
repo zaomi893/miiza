@@ -1288,71 +1288,46 @@ diff --git a/kernel/module/main.c b/kernel/module/main.c
 index f6efc626e1b7..af5a9e19626c 100644
 --- a/kernel/module/main.c
 +++ b/kernel/module/main.c
-@@ -2796,13 +2796,26 @@ int __weak module_frob_arch_sections(Elf_Ehdr *hdr,
+@@ -2802,7 +2802,25 @@ int __weak module_frob_arch_sections(Elf_Ehdr *hdr,
  
  /* module_blacklist is a comma-separated list of module names */
  static char *module_blacklist;
-+static char *custom_module_blacklist[] = {
++
++static bool is_built_in_duplicate(const char *module_name)
++{
 +#if IS_BUILTIN(CONFIG_CRYPTO_LZO)
-+    "lzo", "lzo_rle",
++	if (!strcmp(module_name, "lzo") || !strcmp(module_name, "lzo_rle"))
++		return true;
 +#endif
 +#if IS_BUILTIN(CONFIG_ZRAM)
-+    "zram",
++	if (!strcmp(module_name, "zram"))
++		return true;
 +#endif
 +#if IS_BUILTIN(CONFIG_ZSMALLOC)
-+    "zsmalloc",
++	if (!strcmp(module_name, "zsmalloc"))
++		return true;
 +#endif
-+};
++	return false;
++}
 +
  static bool blacklisted(const char *module_name)
  {
  	const char *p;
  	size_t len;
-+	int i;
- 
- 	if (!module_blacklist)
--		return false;
-+		goto custom_blacklist;
- 
- 	for (p = module_blacklist; *p; p += len) {
- 		len = strcspn(p, ",");
-@@ -2811,6 +2824,12 @@ static bool blacklisted(const char *module_name)
- 		if (p[len] == ',')
- 			len++;
- 	}
-+
-+custom_blacklist:
-+	for (i = 0; i < ARRAY_SIZE(custom_module_blacklist); i++)
-+		if (!strcmp(module_name, custom_module_blacklist[i]))
-+			return true;
-+
- 	return false;
- }
- core_param(module_blacklist, module_blacklist, charp, 0400);
-@@ -3273,10 +3292,6 @@ static int early_mod_check(struct load_info *info, int flags)
- 	 * Now that we know we have the correct module name, check
- 	 * if it's blacklisted.
- 	 */
--	if (blacklisted(info->name)) {
--		pr_err("Module %s is blacklisted\n", info->name);
--		return -EPERM;
--	}
- 
- 	err = rewrite_section_headers(info, flags);
- 	if (err)
-@@ -3337,6 +3352,12 @@ static int load_module(struct load_info *info, const char __user *uargs,
- 	err = early_mod_check(info, flags);
+@@ -3342,7 +3360,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+ 	err = elf_validity_cache_copy(info, flags);
  	if (err)
  		goto free_copy;
-+
-+	if (blacklisted(info->name)) {
+ 
++	if (is_built_in_duplicate(info->name) && !blacklisted(info->name)) {
 +		pr_info("Module %s is already built in; skipping duplicate load\n",
 +			info->name);
 +		goto free_copy;
 +	}
- 
- 	/* Figure out module layout, and allocate all the memory. */
- 	mod = layout_and_allocate(info, flags);
++
+ 	err = early_mod_check(info, flags);
+ 	if (err)
+ 		goto free_copy;
 diff --git a/lib/Kconfig b/lib/Kconfig
 index b38849af6f13..9c6df9de121e 100644
 --- a/lib/Kconfig
