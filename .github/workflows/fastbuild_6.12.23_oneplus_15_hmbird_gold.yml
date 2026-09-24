@@ -909,7 +909,6 @@ jobs:
           KCFLAGS+=" -Wno-error"
           KCFLAGS+=" -fno-stack-protector"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
-          KCFLAGS+=" -DOPLUS_HMBIRD_TRACK_GOLD"
           export KCFLAGS
           # 4. 配置其他工具及选项（非必须，防错冗余）
           export HOSTCC=clang

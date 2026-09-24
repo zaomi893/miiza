@@ -929,13 +929,11 @@ jobs:
           KCFLAGS+=" -Qunused-arguments"
           KCFLAGS+=" -Wno-unused-command-line-argument"
           KCFLAGS+=" -D__ANDROID_COMMON_KERNEL__"
-          KCFLAGS+=" -DOPLUS_HMBIRD_TRACK_PURPLE"
           if true; then
             KCFLAGS+=" -DOPLUS_DEVICE_SERIAL_LOCK_ENABLED"
           fi
-          # These non-PLK/PLZ targets have no published stock .ko fingerprint.
-          # Gate substitution by the exact module name and generated .BTF_ids
-          # structure from the pinned official source commit.
+          # Require the stock module ID count to match generated metadata;
+          # no stock BTF hash is checked at module load time.
           KCFLAGS+=" -DOPLUS_HMBIRD_SOURCE_IDENTITY"
           KCPPFLAGS+=" -DCONFIG_OPTIMIZE_INLINING"
           export KCFLAGS

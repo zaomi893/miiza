@@ -2,16 +2,7 @@ diff --git a/kernel/module/main.c b/kernel/module/main.c
 index f6efc62..24d9673 100644
 --- a/kernel/module/main.c
 +++ b/kernel/module/main.c
-@@ -58,6 +58,8 @@
- #include <linux/cfi.h>
- #include <linux/codetag.h>
- #include <linux/debugfs.h>
-+#include <crypto/sha2.h>
-+#include <crypto/utils.h>
- #include <linux/execmem.h>
- #include <uapi/linux/module.h>
- #include "internal.h"
-@@ -283,6 +285,184 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
+@@ -283,6 +283,117 @@ static __maybe_unused void *any_section_objs(const struct load_info *info,
  	return (void *)info->sechdrs[sec].sh_addr;
  }
  
@@ -26,8 +17,6 @@ index f6efc62..24d9673 100644
 + * Only metadata is substituted: executable code and all other sections still
 + * come from the signed stock module in vendor_dlkm.
 + */
-+#define OPLUS_HMBIRD_STOCK_BTF_SIZE	26340U
-+#define OPLUS_HMBIRD_15T_STOCK_BTF_SIZE	26046U
 +#define OPLUS_HMBIRD_GKI_BTF_CAPACITY	32768U
 +#define OPLUS_HMBIRD_BTF_IDS_SIZE	320U
 +#define OPLUS_HMBIRD_BTF_ID_COUNT	39U
@@ -46,35 +35,6 @@ index f6efc62..24d9673 100644
 +#endif
 +}
 +
-+static const u8 oplus_hmbird_stock_btf_sha256[SHA256_DIGEST_SIZE] = {
-+	0x7f, 0x9a, 0x87, 0xf1, 0xc1, 0x7a, 0x37, 0xe0,
-+	0xba, 0xc5, 0xb2, 0xb2, 0x3b, 0x54, 0x22, 0xe5,
-+	0x54, 0xb7, 0x8d, 0x9a, 0x4f, 0x70, 0x15, 0x23,
-+	0x21, 0x94, 0x2c, 0x2a, 0xf8, 0x0d, 0x6f, 0x87,
-+};
-+
-+static const u8 oplus_hmbird_stock_ids_sha256[SHA256_DIGEST_SIZE] = {
-+	0xa7, 0x10, 0xde, 0xfd, 0x11, 0xca, 0xf3, 0x8e,
-+	0xc7, 0xbe, 0xdf, 0x45, 0xf8, 0x4f, 0x48, 0xf1,
-+	0x03, 0x2d, 0x6a, 0x34, 0x72, 0x39, 0x73, 0x3f,
-+	0x70, 0x0c, 0x62, 0xc8, 0x88, 0x1f, 0xf1, 0xfa,
-+};
-+
-+/* PLZ110 / OnePlus 15T stock module fingerprints. */
-+static const u8 oplus_hmbird_15t_stock_btf_sha256[SHA256_DIGEST_SIZE] = {
-+	0xfe, 0x50, 0x72, 0x94, 0xae, 0x3d, 0x84, 0xb4,
-+	0x7b, 0x73, 0x9c, 0x95, 0xaf, 0xd1, 0x20, 0x9f,
-+	0x62, 0x30, 0x16, 0x28, 0xfa, 0x3f, 0x35, 0xc7,
-+	0x1c, 0x5c, 0x8b, 0xa7, 0xab, 0x95, 0x14, 0x9c,
-+};
-+
-+static const u8 oplus_hmbird_15t_stock_ids_sha256[SHA256_DIGEST_SIZE] = {
-+	0xd5, 0xae, 0xa0, 0x75, 0xeb, 0xeb, 0x64, 0x75,
-+	0x92, 0x96, 0x19, 0x8e, 0x37, 0x36, 0xa6, 0x17,
-+	0x7e, 0x05, 0xea, 0x61, 0xaf, 0x96, 0xd5, 0x91,
-+	0x09, 0xd2, 0x68, 0xfc, 0xe1, 0x08, 0x14, 0x67,
-+};
-+
 +static const char * const oplus_known_bad_legacy_btf[] = {
 +#include "oplus_legacy_btf_denylist.inc"
 +};
@@ -89,18 +49,6 @@ index f6efc62..24d9673 100644
 +static const u8 oplus_hmbird_gki_btf_ids[OPLUS_HMBIRD_BTF_IDS_SIZE] = {
 +#include "oplus_hmbird_btf_ids.inc"
 +};
-+
-+static bool oplus_btf_sha256_matches(const void *data, unsigned int size,
-+				     const u8 expected[SHA256_DIGEST_SIZE])
-+{
-+	u8 actual[SHA256_DIGEST_SIZE];
-+	bool matches;
-+
-+	sha256(data, size, actual);
-+	matches = !crypto_memneq(actual, expected, sizeof(actual));
-+	memzero_explicit(actual, sizeof(actual));
-+	return matches;
-+}
 +
 +static bool oplus_is_known_bad_legacy_btf(const char *name)
 +{
@@ -148,30 +96,6 @@ index f6efc62..24d9673 100644
 +		pr_err("%s: stock module has no BTF payload\n", mod->name);
 +		return;
 +	}
-+#if defined(CONFIG_OPLUS_SYSTEM_KERNEL_MTK) || \
-+	defined(OPLUS_HMBIRD_SOURCE_IDENTITY)
-+	/*
-+	 * MediaTek does not publish a prebuilt stock module fingerprint. The
-+	 * official module source and the exact module name remain sufficient to
-+	 * identify the DDK target, while the BTF_ids structure check above still
-+	 * prevents unrelated modules from entering this path.
-+	 */
-+#else
-+	if (!((mod->btf_data_size == OPLUS_HMBIRD_STOCK_BTF_SIZE &&
-+	       oplus_btf_sha256_matches(mod->btf_data, mod->btf_data_size,
-+					oplus_hmbird_stock_btf_sha256) &&
-+	       oplus_btf_sha256_matches(ids, ids_size,
-+					oplus_hmbird_stock_ids_sha256)) ||
-+	      (mod->btf_data_size == OPLUS_HMBIRD_15T_STOCK_BTF_SIZE &&
-+	       oplus_btf_sha256_matches(mod->btf_data, mod->btf_data_size,
-+					oplus_hmbird_15t_stock_btf_sha256) &&
-+	       oplus_btf_sha256_matches(ids, ids_size,
-+					oplus_hmbird_15t_stock_ids_sha256)))) {
-+		pr_err("%s: stock BTF fingerprint mismatch; refusing substitution\n",
-+		       mod->name);
-+		return;
-+	}
-+#endif
 +
 +	btf_size = (unsigned int)oplus_hmbird_gki_btf_size_slot[0] |
 +		((unsigned int)oplus_hmbird_gki_btf_size_slot[1] << 8) |
@@ -196,7 +120,7 @@ index f6efc62..24d9673 100644
  #ifndef CONFIG_MODVERSIONS
  #define symversion(base, idx) NULL
  #else
-@@ -3396,6 +3576,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
+@@ -3396,6 +3507,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
  	if (err < 0)
  		goto free_modinfo;
  

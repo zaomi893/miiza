@@ -61,9 +61,9 @@ Pad 3 Pro 的 SM8850 官方分支目前只有 `16.0.6.103`，因此仅保留紫�
 
 手机继续加载原厂 `vendor_dlkm` 中的模块代码，本仓库不会用自编译 `.ko` 覆盖原厂模块。构建流程会使用同一次 GKI 编译的 BTF ID 空间编译官方风驰源码，只提取生成模块的 `.BTF` 和 `.BTF_ids` 元数据，再写入 Image 中预留的固定槽位；模块装载时仅对已核对身份的原厂风驰模块使用这份匹配元数据。
 
-另有 103 个国行固件模块携带与自定义 GKI 不兼容的旧式 split-BTF。内核只按仓库内固定名单忽略这些模块的错误 BTF，而不改模块代码、符号 CRC 或 KMI，也不会宽泛屏蔽所有模块的 BTF 检查。风驰模块装载时按原厂模块指纹或 `.BTF_ids` 结构决定是否替换：已确认的一加 15 `16.0.3.503` 指纹只在紫标入口接受；MTK 入口还要求原厂 ID 数量与嵌入基线一致。模块本身不携带可供内核直接比较的完整手机版本号；尚未采集的版本不能仅凭版本区间保证可用，系统升级后仍需实机验证。
+另有 103 个国行固件模块携带与自定义 GKI 不兼容的旧式 split-BTF。内核只按仓库内固定名单忽略这些模块的错误 BTF，而不改模块代码、符号 CRC 或 KMI，也不会宽泛屏蔽所有模块的 BTF 检查。风驰模块装载时不校验原厂 BTF 哈希；选定金标或紫标入口后，模块名、`.BTF_ids` 布局、嵌入元数据长度及适用入口的设备绑定检查通过时，就尝试替换为该入口的基线元数据。原厂模块不携带可供内核直接比较的完整手机版本号，因此刷错分线也可能尝试替换；不保证跨版本模块的代码与基线 BTF 兼容，仍需实机验证。
 
-天玑入口使用 `hmbird_module/Makefile.mtk` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_MTK`；Ace 6 Ultra 取 OnePlusOSS MT6993 模块仓库，Find X9 的旧版元数据取 `oppo-source` MT6993 模块仓库。Find X9 当前 OTA 尚无对应 MT6993 公开提交，因此仅用与其实机模块 `srcversion` 完全一致的 Ace6T 提交补齐新版元数据，并仍按 MTK 配置编译；手机不会加载该构建产物的代码。由于这些仓库未提供可提取指纹的预编译 `.ko`，MTK 配置下的兼容层使用“精确模块名 + `.BTF_ids` 结构”校验。高通入口使用独立的 `hmbird_module/Makefile.qcom` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM`，并保留原有 BTF 哈希指纹校验。
+天玑入口使用 `hmbird_module/Makefile.mtk` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_MTK`；Ace 6 Ultra 取 OnePlusOSS MT6993 模块仓库，Find X9 的旧版元数据取 `oppo-source` MT6993 模块仓库。Find X9 当前 OTA 尚无对应 MT6993 公开提交，因此仅用与其实机模块 `srcversion` 完全一致的 Ace6T 提交补齐新版元数据，并仍按 MTK 配置编译；手机不会加载该构建产物的代码。所有入口都不再使用原厂 BTF 哈希作为装载门槛，仍保留精确模块名及 `.BTF_ids` 结构校验。高通入口使用独立的 `hmbird_module/Makefile.qcom` 与 `CONFIG_OPLUS_SYSTEM_KERNEL_QCOM`。
 
 Find X9 `16.0.10.501` 与 Ace6T `16.0.10.500` 的实机原厂模块都报告 `srcversion=CAD3D00952B4ECFE53162C5`，并暴露 39 个 kfunc ID；旧公开 Find X9 源码只生成33个。因此金标和紫标保持为两个独立工作流，构建时分别强制校验39项或33项，不填充未知 ID，也不替换 `vendor_dlkm` 中的原厂代码。
 
