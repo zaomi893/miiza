@@ -1075,6 +1075,7 @@ jobs:
           test "$BTF_SIZE" -gt 0
           test "$BTF_SIZE" -le 32768
           test "$(stat -c%s hmbird.gki.btf_ids)" -eq 320
+
           # The first-pass kernel contains two fixed-size, uniquely marked
           # metadata slots. Replace them in the raw Image without relinking;
           # this preserves every code address and the exact BTF ID space that
@@ -1097,6 +1098,8 @@ jobs:
                   raise SystemExit(
                       f"bad payload size for {marker!r}: {len(payload)} (capacity {capacity})"
                   )
+              if exact and int.from_bytes(payload[:4], "little") != 39:
+                  raise SystemExit(f"bad kfunc ID count for {marker!r}")
               positions = []
               start = 0
               while True:
@@ -1461,7 +1464,7 @@ jobs:
           - 模块加载黑名单：${{ github.event.inputs.blacklist_modules }}
           - 绑定设备序列号：`${{ inputs.device_serial }}`
           - 设备序列号锁：随机盐 SHA-256（启动时校验；不匹配或缺失时在 Android init 前停止）
-          - 风驰版本：紫标（PLK110 16.0.5.701 CN01），官方同步提交 `${{ env.HMBIRD_SOURCE_COMMIT }}`（仅检出 `vendor/oplus/kernel/cpu`）
+          - 风驰版本：紫标（PLK110 16.0.5.701 CN01），16.0.3.503 原厂模块亦使用 701 基准 BTF；官方同步提交 `${{ env.HMBIRD_SOURCE_COMMIT }}`（仅检出 `vendor/oplus/kernel/cpu`）
           - ReSukiSU 管理器请从对应发布渠道下载
           - SukiSU Ultra管理器下载：[SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases)
           - KernelSU Next管理器下载：[KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases)
