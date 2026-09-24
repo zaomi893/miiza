@@ -1284,50 +1284,6 @@ index 000000000000..cef922d1e1d4
 +
 +
 +#endif /* _LZ4KD_H */
-diff --git a/kernel/module/main.c b/kernel/module/main.c
-index f6efc626e1b7..af5a9e19626c 100644
---- a/kernel/module/main.c
-+++ b/kernel/module/main.c
-@@ -2802,7 +2802,25 @@ int __weak module_frob_arch_sections(Elf_Ehdr *hdr,
- 
- /* module_blacklist is a comma-separated list of module names */
- static char *module_blacklist;
-+
-+static bool is_built_in_duplicate(const char *module_name)
-+{
-+#if IS_BUILTIN(CONFIG_CRYPTO_LZO)
-+	if (!strcmp(module_name, "lzo") || !strcmp(module_name, "lzo_rle"))
-+		return true;
-+#endif
-+#if IS_BUILTIN(CONFIG_ZRAM)
-+	if (!strcmp(module_name, "zram"))
-+		return true;
-+#endif
-+#if IS_BUILTIN(CONFIG_ZSMALLOC)
-+	if (!strcmp(module_name, "zsmalloc"))
-+		return true;
-+#endif
-+	return false;
-+}
-+
- static bool blacklisted(const char *module_name)
- {
- 	const char *p;
- 	size_t len;
-@@ -3342,7 +3360,13 @@ static int load_module(struct load_info *info, const char __user *uargs,
- 	err = elf_validity_cache_copy(info, flags);
- 	if (err)
- 		goto free_copy;
- 
-+	if (is_built_in_duplicate(info->name) && !blacklisted(info->name)) {
-+		pr_info("Module %s is already built in; skipping duplicate load\n",
-+			info->name);
-+		goto free_copy;
-+	}
-+
- 	err = early_mod_check(info, flags);
- 	if (err)
- 		goto free_copy;
 diff --git a/lib/Kconfig b/lib/Kconfig
 index b38849af6f13..9c6df9de121e 100644
 --- a/lib/Kconfig

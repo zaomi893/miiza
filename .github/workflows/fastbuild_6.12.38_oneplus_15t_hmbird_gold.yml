@@ -138,7 +138,7 @@ on:
         type: string
         default: 'Mon Dec 1 03:28:37 UTC 2025'
       blacklist_modules:
-        description: '内核模块加载黑名单(逗号分隔,内核加载阶段跳过;留空不屏蔽,默认屏蔽oplus_secure_guard_new以保证KSU兼容)'
+        description: '内核模块加载黑名单(逗号分隔;默认屏蔽oplus_secure_guard_new;启用LZ4KD时自动加入zram和zsmalloc)'
         required: false
         type: string
         default: 'oplus_secure_guard_new'
@@ -532,7 +532,6 @@ jobs:
           test -s drivers/block/zram/backend_lz4kd.c
           grep -Fq '&backend_lz4kd' drivers/block/zram/zcomp.c
           grep -Eq '\.name[[:space:]]*=[[:space:]]*"lz4kd"' drivers/block/zram/backend_lz4kd.c
-          grep -Fq 'is_built_in_duplicate(info->name)' kernel/module/main.c
           rm -f lz4kd.patch
 
       - name: UNICODE_BYPASS补丁
@@ -574,8 +573,8 @@ jobs:
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/gki_defconfig
           if [[ "${{ github.event.inputs.lz4kd_enable }}" == "true" ]]; then
-            # 沿用 15 已验证方案：ZRAM 与 lz4kd 内置，重复的原厂模块加载
-            # 由 lz4kd 补丁兼容处理并返回成功，不改变原厂默认压缩算法。
+            # ZRAM、ZSMALLOC 与 lz4kd 内置；原厂同名模块由构建黑名单拦截。
+            # 不改变原厂默认压缩算法。
             ./common/scripts/config --file ./common/arch/arm64/configs/gki_defconfig --enable ZRAM
             echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -747,45 +746,16 @@ jobs:
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' security/Kconfig
 
       - name: 应用内核模块加载黑名单
-        if: inputs.blacklist_modules != ''
+        if: inputs.blacklist_modules != '' || inputs.lz4kd_enable
         run: |
-          echo "正在应用内核模块加载黑名单: ${{ inputs.blacklist_modules }}"
           cd kernel_workspace/common
-          echo 'CONFIG_DEBLOAT_VENDOR_MODULES="${{ inputs.blacklist_modules }}"' >> arch/arm64/configs/gki_defconfig
           export BLACKLIST_MODULES="${{ inputs.blacklist_modules }}"
-          python3 - <<'PYEOF'
-          import os, sys
-          mods = [m.strip() for m in os.environ.get('BLACKLIST_MODULES','').replace('\n',',').replace(' ',',').split(',') if m.strip()]
-          if not mods:
-              print('黑名单为空,跳过')
-              sys.exit(0)
-          path = 'kernel/module/main.c'
-          src = open(path).read()
-          anchor = 'mod = layout_and_allocate(info, flags);'
-          if anchor not in src:
-              print('警告: 未找到 load_module 锚点,跳过黑名单注入')
-              sys.exit(0)
-          block = ''
-          injected = []
-          for m in mods:
-              if f'strcmp(info->name, "{m}")' in src:
-                  print(f'模块 {m} 已在黑名单中,跳过')
-                  continue
-              block += (f'\t/* Skip blacklisted module: {m} */\n'
-                        f'\tif (strcmp(info->name, "{m}") == 0) {{\n'
-                        f'\t\tpr_warn("Blocking blacklisted module: %s\\n", info->name);\n'
-                        f'\t\terr = 0;\n'
-                        f'\t\tgoto free_copy;\n'
-                        f'\t}}\n')
-              injected.append(m)
-          if block:
-              src = src.replace(anchor, block + anchor, 1)
-              open(path, 'w').write(src)
-              print(f'已注入黑名单模块: {", ".join(injected)}')
-          else:
-              print('没有新的黑名单模块需要注入')
-          PYEOF
-
+          if [[ "${{ inputs.lz4kd_enable }}" == "true" ]]; then
+            BLACKLIST_MODULES="${BLACKLIST_MODULES:+$BLACKLIST_MODULES,}zram,zsmalloc"
+          fi
+          echo "正在应用内核模块加载黑名单: $BLACKLIST_MODULES"
+          echo "CONFIG_DEBLOAT_VENDOR_MODULES=\"$BLACKLIST_MODULES\"" >> arch/arm64/configs/gki_defconfig
+          python3 "$GITHUB_WORKSPACE/build_tools/apply_module_blacklist.py"
       - name: 集成 NoMount/PathMask 内核模块
         if: inputs.nomount_enable
         run: |
