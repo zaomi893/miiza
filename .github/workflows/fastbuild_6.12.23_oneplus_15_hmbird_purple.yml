@@ -141,7 +141,7 @@ on:
         type: string
         default: 'Fri Dec 5 02:05:55 UTC 2025'
       blacklist_modules:
-        description: '内核模块加载黑名单(逗号分隔;默认屏蔽oplus_secure_guard_new;启用LZ4KD时自动加入zram和zsmalloc)'
+        description: '内核模块加载黑名单(逗号分隔;默认屏蔽oplus_secure_guard_new;启用LZ4KD时自动加入zram、zsmalloc和oplus_bsp_zram_opt)'
         required: false
         type: string
         default: 'oplus_secure_guard_new'
@@ -731,7 +731,7 @@ jobs:
           cd kernel_workspace/common
           export BLACKLIST_MODULES="${{ inputs.blacklist_modules }}"
           if [[ "${{ inputs.lz4kd_enable }}" == "true" ]]; then
-            BLACKLIST_MODULES="${BLACKLIST_MODULES:+$BLACKLIST_MODULES,}zram,zsmalloc"
+            BLACKLIST_MODULES="${BLACKLIST_MODULES:+$BLACKLIST_MODULES,}zram,zsmalloc,oplus_bsp_zram_opt"
           fi
           echo "正在应用内核模块加载黑名单: $BLACKLIST_MODULES"
           python3 "$GITHUB_WORKSPACE/build_tools/apply_module_blacklist.py"
