@@ -115,17 +115,11 @@ def adapt_source(
 
     source = source.replace(
         "extern bool free_zram_is_ok(void);",
-        """/*
- * The OEM zram driver exports free_zram_is_ok() with device-specific
- * watermarks.  The matching generic GKI zram has no equivalent API, so use
- * the generic swap-space availability signal instead of importing the OEM
- * zram.ko symbol.
- */
-static bool free_zram_is_ok(void)
-{
-\treturn get_nr_swap_pages() > 0;
-}""",
+        "extern bool oplus_zram_free_watermark_ok(void);",
         1,
+    )
+    source = source.replace(
+        "free_zram_is_ok()", "oplus_zram_free_watermark_ok()"
     )
 
     high_priority = re.compile(
@@ -232,6 +226,263 @@ static bool free_zram_is_ok(void)
     return source
 
 
+def integrate_kernel_zram_watermark(kernel_root: Path) -> None:
+    """Add the OEM free-zram watermark using the generic driver's zram0 state."""
+    zram_dir = kernel_root / "drivers/block/zram"
+    driver_path = zram_dir / "zram_drv.c"
+    header_path = zram_dir / "zram_drv.h"
+    oplus_header_path = kernel_root / "include/linux/oplus_zram_watermark.h"
+    for required in (driver_path, header_path):
+        if not required.is_file():
+            raise SystemExit(f"Missing expected zram watermark integration file: {required}")
+
+    oplus_header = """/* OPLUS_LZ4KD_ZRAM_CGROUP_LIMIT */
+#ifndef _LINUX_OPLUS_ZRAM_WATERMARK_H
+#define _LINUX_OPLUS_ZRAM_WATERMARK_H
+
+#include <linux/types.h>
+
+#ifdef CONFIG_OPLUS_LZ4KD_ZRAM_OPT
+int oplus_zram_set_used_limit_mb(s64 limit_mb);
+u64 oplus_zram_get_used_limit_mb(void);
+#endif
+
+#endif /* _LINUX_OPLUS_ZRAM_WATERMARK_H */
+"""
+    if oplus_header_path.exists():
+        if "OPLUS_LZ4KD_ZRAM_CGROUP_LIMIT" not in oplus_header_path.read_text(
+            encoding="utf-8"
+        ):
+            raise ValueError(f"Conflicting header already exists: {oplus_header_path}")
+    else:
+        oplus_header_path.write_text(oplus_header, encoding="utf-8")
+
+    driver = driver_path.read_text(encoding="utf-8")
+    header = header_path.read_text(encoding="utf-8")
+    marker = "OPLUS_LZ4KD_OEM_ZRAM_WATERMARK"
+    prototype = "bool oplus_zram_free_watermark_ok(void);"
+    if marker in driver:
+        if prototype not in header or "bool oplus_zram_free_watermark_ok(void)" not in driver:
+            raise ValueError("Found an incomplete Oplus zram watermark integration")
+        if "oplus_zram_used_limit_pages" not in driver:
+            raise ValueError("Found an outdated Oplus zram watermark integration")
+        integrate_kernel_zram_cgroup(kernel_root)
+        return
+    if "oplus_zram_free_watermark_ok" in driver or prototype in header:
+        raise ValueError("Found a partial or conflicting Oplus zram watermark integration")
+
+    include_anchor = "#include <linux/part_stat.h>\n"
+    if include_anchor not in driver:
+        raise ValueError("Could not locate zram_drv.c include anchor for RCU support")
+    for include in (
+        "#include <linux/compiler.h>\n",
+        "#include <linux/errno.h>\n",
+        "#include <linux/rcupdate.h>\n",
+        "#include <linux/oplus_zram_watermark.h>\n",
+    ):
+        if include.rstrip() not in driver:
+            driver = driver.replace(include_anchor, include_anchor + include, 1)
+
+    mutex_anchor = "static DEFINE_MUTEX(zram_index_mutex);\n"
+    if driver.count(mutex_anchor) != 1:
+        raise ValueError("Could not uniquely locate zram device index lock")
+    watermark_impl = """\n#if defined(CONFIG_OPLUS_LZ4KD_ZRAM_OPT)
+/* OPLUS_LZ4KD_OEM_ZRAM_WATERMARK
+ * Match the OEM free_zram_is_ok() decision.  These generic GKI targets do
+ * not implement Oplus zram expansion, so its increase_nr_pages adjustment
+ * is zero.  zram0 is the device used by the supported phone configurations.
+ */
+static struct zram __rcu *oplus_zram_watermark_device;
+static unsigned long oplus_zram_used_limit_pages;
+
+int oplus_zram_set_used_limit_mb(s64 limit_mb)
+{
+\tif (limit_mb < 0 || (u64)limit_mb > (~0ULL >> 20))
+\t\treturn -EINVAL;
+
+\tWRITE_ONCE(oplus_zram_used_limit_pages,
+\t\t   ((u64)limit_mb << 20) >> PAGE_SHIFT);
+\treturn 0;
+}
+
+u64 oplus_zram_get_used_limit_mb(void)
+{
+\treturn ((u64)READ_ONCE(oplus_zram_used_limit_pages) << PAGE_SHIFT) >> 20;
+}
+
+bool oplus_zram_free_watermark_ok(void)
+{
+\tstruct zram *zram;
+\tunsigned long nr_used = 0, nr_tot = 1, nr_rsv, same_pages = 0;
+\tunsigned long nr_increase = 0;
+\tunsigned long used_limit_pages =
+\t\tREAD_ONCE(oplus_zram_used_limit_pages);
+
+\trcu_read_lock();
+\tzram = rcu_dereference(oplus_zram_watermark_device);
+\tif (zram) {
+\t\tnr_tot = READ_ONCE(zram->disksize) >> PAGE_SHIFT;
+\t\tnr_used = (u64)atomic64_read(&zram->stats.pages_stored);
+\t\tsame_pages = (u64)atomic64_read(&zram->stats.same_pages);
+\t}
+\trcu_read_unlock();
+
+\tif (used_limit_pages)
+\t\tnr_tot = used_limit_pages;
+\tnr_tot = nr_tot ?: 1;
+\tnr_rsv = nr_tot >> 6;
+
+\tif (used_limit_pages)
+\t\treturn nr_used < (nr_tot - nr_rsv);
+
+\tif (nr_used - same_pages > nr_tot - nr_rsv - nr_increase / 2)
+\t\treturn false;
+
+\treturn nr_used < (nr_tot - nr_rsv);
+}
+#endif
+"""
+    driver = driver.replace(mutex_anchor, mutex_anchor + watermark_impl, 1)
+
+    add_return = re.compile(r"(?m)^([ \t]*)return device_id;[ \t]*$")
+    if len(add_return.findall(driver)) != 1:
+        raise ValueError("Could not uniquely locate successful zram device creation")
+
+    def publish_primary_device(match: re.Match[str]) -> str:
+        indent = match.group(1)
+        return (
+            f"{indent}if (device_id == 0)\n"
+            f"{indent}\trcu_assign_pointer(oplus_zram_watermark_device, zram);\n"
+            f"{indent}return device_id;"
+        )
+
+    driver, replaced_add = add_return.subn(publish_primary_device, driver, count=1)
+    if replaced_add != 1:
+        raise ValueError("Could not publish the primary zram device for watermark checks")
+
+    remove_anchor = re.compile(
+        r"(?m)^([ \t]*)zram_reset_device\(zram\);\r?\n(?:\r?\n)?([ \t]*)put_disk\(zram->disk\);"
+    )
+    if len(remove_anchor.findall(driver)) != 1:
+        raise ValueError("Could not uniquely locate zram device removal cleanup")
+
+    def clear_primary_device(match: re.Match[str]) -> str:
+        reset_indent, put_indent = match.groups()
+        return (
+            f"{reset_indent}zram_reset_device(zram);\n\n"
+            f"{reset_indent}if (zram->disk->first_minor == 0) {{\n"
+            f"{reset_indent}\trcu_assign_pointer(oplus_zram_watermark_device, NULL);\n"
+            f"{reset_indent}\tsynchronize_rcu();\n"
+            f"{reset_indent}}}\n\n"
+            f"{put_indent}put_disk(zram->disk);"
+        )
+
+    driver, replaced_remove = remove_anchor.subn(
+        clear_primary_device, driver, count=1
+    )
+    if replaced_remove != 1:
+        raise ValueError("Could not safely clear the primary zram watermark device")
+
+    final_endif = header.rfind("#endif")
+    if final_endif < 0:
+        raise ValueError("Could not locate zram_drv.h include-guard terminator")
+    header = (
+        header[:final_endif]
+        + "#ifdef CONFIG_OPLUS_LZ4KD_ZRAM_OPT\n"
+        + prototype
+        + "\n#endif\n\n"
+        + header[final_endif:]
+    )
+
+    driver_path.write_text(driver, encoding="utf-8")
+    header_path.write_text(header, encoding="utf-8")
+    integrate_kernel_zram_cgroup(kernel_root)
+
+
+def integrate_kernel_zram_cgroup(kernel_root: Path) -> None:
+    """Expose the OEM zram_used_limit_mb setting through memory cgroups."""
+    marker = "OPLUS_LZ4KD_ZRAM_CGROUP_LIMIT"
+    integrations = (
+        (
+            kernel_root / "mm/memcontrol.c",
+            "static struct cftype memory_files[] = {",
+        ),
+        (
+            kernel_root / "mm/memcontrol-v1.c",
+            "struct cftype mem_cgroup_legacy_files[] = {",
+        ),
+    )
+    header_include = "#include <linux/oplus_zram_watermark.h>\n"
+    callback_block = """#ifdef CONFIG_OPLUS_LZ4KD_ZRAM_OPT
+/* OPLUS_LZ4KD_ZRAM_CGROUP_LIMIT: same root cgroup control as Oplus hybridswapd. */
+static int oplus_zram_used_limit_mb_write(struct cgroup_subsys_state *css,
+\t\t\t\t\t  struct cftype *cft, s64 val)
+{
+\treturn oplus_zram_set_used_limit_mb(val);
+}
+
+static u64 oplus_zram_used_limit_mb_read(struct cgroup_subsys_state *css,
+\t\t\t\t\t struct cftype *cft)
+{
+\treturn oplus_zram_get_used_limit_mb();
+}
+#endif
+
+"""
+    cftype_block = """#ifdef CONFIG_OPLUS_LZ4KD_ZRAM_OPT
+\t{
+\t\t.name = "zram_used_limit_mb",
+\t\t.flags = CFTYPE_ONLY_ON_ROOT,
+\t\t.write_s64 = oplus_zram_used_limit_mb_write,
+\t\t.read_u64 = oplus_zram_used_limit_mb_read,
+\t},
+#endif
+"""
+
+    modified: list[tuple[Path, str]] = []
+    for source_path, array_anchor in integrations:
+        if not source_path.is_file():
+            raise SystemExit(f"Missing expected memory cgroup integration file: {source_path}")
+
+        source = source_path.read_text(encoding="utf-8")
+        if marker in source:
+            if '"zram_used_limit_mb"' not in source:
+                raise ValueError(f"Found incomplete zram cgroup integration in {source_path}")
+            modified.append((source_path, source))
+            continue
+        if '"zram_used_limit_mb"' in source:
+            raise ValueError(f"Conflicting zram_used_limit_mb cgroup file in {source_path}")
+
+        include_anchor = "#include <linux/memcontrol.h>\n"
+        if include_anchor not in source:
+            raise ValueError(f"Could not locate memory cgroup include anchor in {source_path}")
+        if header_include.rstrip() not in source:
+            source = source.replace(include_anchor, include_anchor + header_include, 1)
+
+        if source.count(array_anchor) != 1:
+            raise ValueError(f"Could not uniquely locate cgroup file array in {source_path}")
+        source = source.replace(array_anchor, callback_block + array_anchor, 1)
+
+        array_start = source.index(array_anchor)
+        array_end = source.find("};", array_start)
+        if array_end < 0:
+            raise ValueError(f"Could not locate cgroup file array terminator in {source_path}")
+        array_body = source[array_start:array_end]
+        terminator = re.compile(
+            r"(?m)^[ \t]*\{[ \t]*\}[ \t]*,?[ \t]*(?:/\*[^\n]*\*/)?[ \t]*$"
+        )
+        matches = list(terminator.finditer(array_body))
+        if len(matches) != 1:
+            raise ValueError(f"Could not uniquely locate cgroup file sentinel in {source_path}")
+        sentinel = matches[0]
+        insert_at = array_start + sentinel.start()
+        source = source[:insert_at] + cftype_block + source[insert_at:]
+        modified.append((source_path, source))
+
+    for source_path, source in modified:
+        source_path.write_text(source, encoding="utf-8")
+
+
 def download_source(repo: str, commit: str) -> str:
     url = f"https://raw.githubusercontent.com/{repo}/{commit}/{SOURCE_PATH}"
     request = urllib.request.Request(url, headers={"User-Agent": "Codex-kernel-build"})
@@ -292,6 +543,8 @@ def integrate(kernel_root: Path, source: str, repo: str, commit: str) -> str:
     if object_rule not in makefile:
         makefile = makefile.rstrip() + "\n" + object_rule + "\n"
         makefile_path.write_text(makefile, encoding="utf-8")
+
+    integrate_kernel_zram_watermark(kernel_root)
 
     defconfig_path = kernel_root / "arch/arm64/configs/gki_defconfig"
     if not defconfig_path.is_file():
