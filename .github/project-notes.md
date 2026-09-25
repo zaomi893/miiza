@@ -117,7 +117,7 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 
 ## NoMount Suite 与 PathMask
 
-选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.8.0.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
+选择 `nomount_enable` 后，CI 同时发布与该内核匹配的 `NoMount-Suite-v1.80.zip`。模块源码、WebUI、AppCloak 后端和二进制均保存在本仓库，不安装额外的管理应用，也不依赖外部应用隐藏项目。SUSFS 与 NoMount 必须二选一，工作流会在两者同时勾选时立即拒绝构建。
 
 - 2026-09-20 核对 [`Bouteillepleine/NoMount-Suite`](https://github.com/Bouteillepleine/NoMount-Suite) 后，上游已更新到 `61023e9`（Suite v1.3.184 / Prism engine v32）。当前内核仍是本仓库的 v14 PathHide 协议定制分支，不能把 v32 内核端和用户态直接替换进来；CI 引擎继续固定在已验证的 `36a4621`，只移植与协议无关、可以单独验证的低开销改动。
 - PathHide 只接受绝对路径，使用 RCU 不可变快照、inode 身份和 Bloom 快速拒绝；规则为空时静态分支直接旁路。删除了旧版每次读取 maps 都拿锁并做任意子串匹配的行为。手动 `+` 规则仍按原来的 global/deny 语义全局生效；`&` 规则是 AppCloak 可选补充，只在 `@uid:` 白名单中的调用方 UID 下生效。
@@ -133,7 +133,7 @@ adb pull /sdcard/Download/oneplus15t-hmbird-stock-*.tar.gz .
 - 对照 Hybrid Mount 的分区规划后，`my_*` 与 `product`、`vendor` 一样按独立受管分区处理，不把 `system/my_*` 误当成普通 system 子目录。Hybrid Mount 会按模块和路径在 VFS、OverlayFS、Magic Mount 间选择；本项目保持单一 NoMount VFS 注入路径，避免为了兼容这些分区重新产生真实挂载。
 - KernelSU/APatch 的 `post-mount.sh` 会在所有模块的 `post-fs-data.sh` 之后、zygote 之前运行一次 `absorb --early`，先接管启动阶段产生的可安全转换挂载；开机完成后再执行一次普通吸收处理晚创建挂载。两次完整结果写入 `/data/adb/nomount/absorb.log`，保留具体目标、来源和拒绝原因。
 
-v1.8.0 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
+v1.80 的 WebUI 会读取设备应用并显示应用名和包名。“隐藏目标”和“生效应用”是两个独立卡片，列表可单独收起，默认只显示用户应用，各自可开启“显示系统应用”；隐藏目标中勾选即隐藏，生效应用中只有勾选的调用应用看不到隐藏目标。检测到的 Xposed 模块及 HMA 黑名单默认勾选，用户取消后会保存排除选择。PathMask 固定对全系统生效，只保存并完整显示文件绝对路径（唯一自动添加项是 Scene debugfs），手动规则可以直接删除。
 
 AppCloak 的隐藏组内应用仍可以看到自己和所有其他应用；系统 UID 不过滤，未勾选的调用应用也不过滤。策略文件通过 inotify 事件即时更新，仅以 5 分钟低频检查兜底；列表未变化时不读取文件，调用方策略缓存最长 5 分钟，策略变更时立即失效。
 

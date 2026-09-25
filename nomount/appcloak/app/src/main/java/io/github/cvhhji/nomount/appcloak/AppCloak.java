@@ -21,7 +21,6 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Minimal NoMount-owned filter for Android's central package-visibility gate. */
 final class AppCloak {
     private static final String TAG = "NoMount-AppCloak";
     private static final File POLICY = new File("/data/system/nomount_appcloak/hidden_apps.conf");
@@ -236,14 +235,9 @@ final class AppCloak {
             CallerPolicy caller = callerAppId >= 10000
                     ? callerPolicy(frame, callerUid, snapshotIndex) : null;
             if (caller != null && caller.hidden) {
-                // A hidden caller sees the complete package set, including
-                // other members of the hidden group.
                 frame.accessor().setBoolean(EmulatedStackFrame.RETURN_VALUE_IDX, false);
                 return;
             }
-            // Most callers are outside the configured scope. Return to the original
-            // gate before reflecting on the target package in that overwhelmingly
-            // common path.
             if (caller == null || !caller.scoped) {
                 Transformers.invokeExactNoChecks(original, frame);
                 return;
@@ -257,7 +251,6 @@ final class AppCloak {
                 return;
             }
         } catch (Throwable t) {
-            // Fail open: a vendor signature change must never break PackageManager.
             Log.w(TAG, "filter call failed open", t);
         }
         Transformers.invokeExactNoChecks(original, frame);
@@ -300,11 +293,6 @@ final class AppCloak {
         return false;
     }
 
-    /**
-     * Hidden applications form a one-way-visible group: each hidden caller can
-     * still enumerate every package, while ordinary callers cannot enumerate
-     * any member of the hidden group.
-     */
     private static String[] packagesForUid(EmulatedStackFrame frame, int uid,
             int snapshotIndex) {
         if (snapshotIndex < 0) return null;

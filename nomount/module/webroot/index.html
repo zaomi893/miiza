@@ -1168,6 +1168,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
   };
 
   let currentLang = "en";
+  let uiReady = false;
 
   function translateElements(dict) {
     if (!dict) return;
@@ -1196,20 +1197,18 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
 
     try { localStorage.setItem("nm_lang", lang); } catch (e) {}
+    if (!uiReady) return;
     window.setTimeout(function () {
       try { if (typeof renderCloak === "function") renderCloak(); } catch (e) {}
       try {
         const b = document.getElementById("phShow");
         if (b) b.textContent = phShown ? (currentLang === "zh" ? "隐藏列表" : "Hide list") : (currentLang === "zh" ? "显示列表" : "Show list");
       } catch (e) {}
-      try { if (typeof refreshScenePathMaskStatus === "function") refreshScenePathMaskStatus(); } catch (e) {}
-      try { if (typeof refreshStatus === "function") refreshStatus(); } catch (e) {}
-      try { if (typeof refreshStealth === "function") refreshStealth(); } catch (e) {}
       try { if (typeof renderGlobalHide === "function") renderGlobalHide(); } catch (e) {}
-      try { if (typeof refreshGlobalHideStatus === "function") refreshGlobalHideStatus(); } catch (e) {}
-      try { if (typeof refreshRuleSummary === "function") refreshRuleSummary(); } catch (e) {}
-      try { if (typeof filterRules === "function" && rulesShown) filterRules(); } catch (e) {}
-      try { if (typeof refreshModules === "function") refreshModules(); } catch (e) {}
+      try {
+        const pane = document.querySelector(".tab.on");
+        if (pane) refreshTabData(pane.id.replace(/^tab-/, ""), true, false);
+      } catch (e) {}
       try {
         const hb = document.getElementById("ghShow"), sb = document.getElementById("gsShow");
         if (hb) hb.textContent = ghShown ? (currentLang === "zh" ? "隐藏列表" : "Hide list") : (currentLang === "zh" ? "显示列表" : "Show list");
@@ -1258,11 +1257,18 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     });
   }
   let NMBIN = null;
+  let NMBIN_PENDING = null;
   async function bin() {
     if (NMBIN) return NMBIN;
-    const abi = (await exec("getprop ro.product.cpu.abi")).stdout.trim() || "arm64-v8a";
-    NMBIN = `/data/adb/modules/meta-nomount/bin/${abi}/nomount`;
-    return NMBIN;
+    if (!NMBIN_PENDING) {
+      NMBIN_PENDING = (async function () {
+        const abi = (await exec("getprop ro.product.cpu.abi")).stdout.trim() || "arm64-v8a";
+        NMBIN = `/data/adb/modules/meta-nomount/bin/${abi}/nomount`;
+        return NMBIN;
+      })();
+    }
+    try { return await NMBIN_PENDING; }
+    finally { NMBIN_PENDING = null; }
   }
   async function nm(args) {
     const b = await bin();
@@ -1274,8 +1280,14 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     t.textContent = msg; t.className = "show " + kind;
     clearTimeout(t._t); t._t = setTimeout(() => { t.className = ""; }, 2400);
   }
+  let _vfsListPending = null;
+  function nmVfsList() {
+    if (_vfsListPending) return _vfsListPending;
+    _vfsListPending = nm("vfs list").finally(function () { _vfsListPending = null; });
+    return _vfsListPending;
+  }
   async function refreshStatus() {
-    const list = await nm("vfs list");
+    const list = await nmVfsList();
     const dot = $("dot");
     if (list.errno !== 0) {
       $("state").textContent = currentLang === "zh" ? "引擎离线" : "Engine offline";
@@ -1390,8 +1402,10 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     }
   }
   async function refreshGuard() {
-    const c = (await exec("cat /data/adb/nomount/bootcount 2>/dev/null")).stdout.trim();
-    const disabled = (await exec("[ -f /data/adb/nomount/disabled ] && echo 1 || echo 0")).stdout.trim() === "1";
+    const r = await exec('c=$(cat /data/adb/nomount/bootcount 2>/dev/null); [ -f /data/adb/nomount/disabled ] && d=1 || d=0; printf "%s|%s\\n" "$c" "$d"');
+    const parts = (r.stdout || "").trim().split("|");
+    const c = parts[0] || "";
+    const disabled = parts[1] === "1";
     $("gchip").textContent = (currentLang === "zh" ? "启动 " : "boot ") + (c === "" ? "0" : c) + "/3";
     if (disabled) {
       $("gstate").textContent = currentLang === "zh" ? "已触发 — 已禁用" : "Tripped — disabled";
@@ -1444,6 +1458,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     movePill(true);
     try { sessionStorage.setItem("nm_tab", name); } catch (e) {}
     window.scrollTo({ top: 0, behavior: "smooth" });
+    if (uiReady) refreshTabData(name, false, true);
   }
   let _rulesRaw = "";
   var _ruleGroup = false;
@@ -1634,8 +1649,15 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     }).join("");
     $("mMod").textContent = served;
   }
+  const _refreshModulesImpl = refreshModules;
+  let _refreshModulesPending = null;
+  refreshModules = function () {
+    if (_refreshModulesPending) return _refreshModulesPending;
+    _refreshModulesPending = _refreshModulesImpl().finally(function () { _refreshModulesPending = null; });
+    return _refreshModulesPending;
+  };
   async function refreshRuleSummary() {
-    const r = await nm("vfs list");
+    const r = await nmVfsList();
     const lines = (r.errno === 0 ? r.stdout : "").split("\n").map(x => x.trim()).filter(Boolean);
     const rro = lines.filter(l => /\/overlay\/[^\s]*\.apk/.test(l)).length;
     const vfs = lines.length - rro;
@@ -1673,7 +1695,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
   var _vfsFiles = [], _ovFiles = [];
   async function refreshVfs() {
     const box = $("vfsdirs");
-    const list = await nm("vfs list");
+    const list = await nmVfsList();
     const lines = (list.errno === 0 ? list.stdout : "").split("\n").map(x => x.trim()).filter(Boolean);
     const dirs = {};
     _vfsFiles = [];
@@ -1722,7 +1744,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
   }
   async function refreshOverlays() {
     const box = $("overlays");
-    const list = await nm("vfs list");
+    const list = await nmVfsList();
     const lines = (list.errno === 0 ? list.stdout : "").split("\n").map(s => s.trim()).filter(Boolean);
     const dirs = {};
     _ovFiles = [];
@@ -1758,7 +1780,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
   }
   let rulesShown = false;
   async function loadRules() {
-    const r = await nm("vfs list");
+    const r = await nmVfsList();
     _rulesRaw = (r.errno === 0 && r.stdout.trim()) ? r.stdout.trim() : "";
     if (!_rulesRaw) {
       $("ruleslist").textContent = currentLang === "zh" ? "无规则" : "no rules";
@@ -1800,8 +1822,11 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     btn.disabled = false; refreshGuard(); refreshIncident();
   }
   var _pkgsLoaded = false, _pkgs = [], _pkgByName = new Map();
+  let _pkgLoadTask = null;
   async function loadPkgList() {
     if (_pkgsLoaded) return;
+    if (_pkgLoadTask) return _pkgLoadTask;
+    _pkgLoadTask = (async function () {
     const richUser = ksuPackageInfo("user");
     const richSystem = ksuPackageInfo("system");
     if (richUser.length || richSystem.length) {
@@ -1831,6 +1856,9 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     _pkgs.sort(function (a, b) { return (a.label || a.name).localeCompare(b.label || b.name); });
     _pkgByName = new Map(_pkgs.map(function (p) { return [p.name, p]; }));
     if (_pkgs.length) _pkgsLoaded = true;
+    })();
+    try { await _pkgLoadTask; }
+    finally { _pkgLoadTask = null; }
   }
   async function refreshSpoof() {
     const conf = (await exec("cat /data/adb/nomount/spoof.conf 2>/dev/null")).stdout;
@@ -1971,23 +1999,59 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
       }
     });
   }
+  async function refreshVersionInfo() {
+    const [caps, suite] = await Promise.all([
+      nm("caps"),
+      exec("sed -n 's/^version=//p' /data/adb/modules/meta-nomount/module.prop 2>/dev/null | head -n1")
+    ]);
+    let protocolMatch = (caps.stdout || "").match(/\bversion\s*=\s*(\d+)\b/i);
+    if (!protocolMatch) {
+      const version = await nm("v");
+      protocolMatch = (version.stdout || "").trim().match(/^(?:nomount\s*)?v?(\d+)$/i);
+    }
+    const suiteVersion = (suite.stdout || "").trim();
+    $("ver").textContent = suiteVersion || "v?";
+    const protocolVersion = protocolMatch ? "v" + protocolMatch[1] : "v?";
+    const protocol = (currentLang === "zh" ? "内核协议 " : "kernel protocol ") + protocolVersion;
+    $("footver").textContent = suiteVersion ? ("Suite " + suiteVersion + " · " + protocol) : protocol;
+  }
+  let _refreshingTabs = new Map();
+  const _loadedTabs = new Set();
+  async function refreshTabData(name, force = false, loadHidden = true) {
+    if (!force && _loadedTabs.has(name)) return;
+    if (_refreshingTabs.has(name)) return _refreshingTabs.get(name);
+    const task = (async function () {
+      if (name === "status") {
+        await Promise.all([refreshVersionInfo(), refreshStatus(), refreshDevice(), refreshGuard()]);
+        refreshModules().catch(function () {});
+      } else if (name === "modules") {
+        await Promise.all([refreshStealth(), refreshModules(), nmLoadModMeta()]);
+      } else if (name === "rules") {
+        await Promise.all([refreshRuleSummary(), refreshVfs(), refreshOverlays()]);
+        if (rulesShown) await loadRules();
+      } else if (name === "tools") {
+        if (loadHidden && !_loadedTabs.has("tools")) {
+          await Promise.all([refreshSpoof(), refreshIncident(), loadCloak(), loadGlobalHide()]);
+        } else {
+          renderCloak();
+          renderGlobalHide();
+          await Promise.all([refreshSpoof(), refreshIncident(), refreshScenePathMaskStatus(), refreshGlobalHideStatus()]);
+        }
+      }
+      _loadedTabs.add(name);
+    })();
+    _refreshingTabs.set(name, task);
+    try { await task; }
+    finally { _refreshingTabs.delete(name); }
+  }
   async function refreshAll(btn) {
     const ic = btn && btn.querySelector("svg");
     if (ic) ic.classList.add("spin");
-    const engineVersion = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "").replace(/^v/i, "");
-    const suiteVersion = (await exec("sed -n 's/^version=//p' /data/adb/modules/meta-nomount/module.prop 2>/dev/null | head -n1")).stdout.trim();
-    $("ver").textContent = suiteVersion || "v?";
-    const protocolVersion = engineVersion ? "v" + engineVersion : "v?";
-    const protocol = (currentLang === "zh" ? "内核协议 " : "kernel protocol ") + protocolVersion;
-    $("footver").textContent = suiteVersion ? ("Suite " + suiteVersion + " · " + protocol) : protocol;
-    await Promise.all([
-      refreshStatus(), refreshDevice(), refreshStealth(), refreshGuard(),
-      refreshModules(), refreshOverlays(), refreshVfs(), refreshRuleSummary(),
-      refreshIncident(), refreshSpoof()
-    ]);
-    if (rulesShown) loadRules();
-    loadPkgList();
-    if (ic) ic.classList.remove("spin");
+    const active = document.querySelector(".tab.on");
+    const pages = new Set(_loadedTabs);
+    pages.add(active ? active.id.replace(/^tab-/, "") : "status");
+    try { await Promise.all([...pages].map(function (name) { return refreshTabData(name, true, false); })); }
+    finally { if (ic) ic.classList.remove("spin"); }
   }
   const PH_CONF = "/data/adb/nomount/pathhide.conf";
   const PH_EXCLUDE = "/data/adb/nomount/.cloak_exclude";
@@ -2260,9 +2324,11 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
   movePill(false);
   window.addEventListener("load", function () { movePill(false); });
   applyCardState();
-  refreshAll();
-  loadCloak();
-  loadGlobalHide();
+  uiReady = true;
+  window.addEventListener("load", function () {
+    const initialTab = document.querySelector(".tab.on");
+    refreshTabData(initialTab ? initialTab.id.replace(/^tab-/, "") : "status", false, true);
+  });
 </script>
 <script>
 (function () {
@@ -2614,7 +2680,6 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
       new MutationObserver(function () { nmDecorateModules(); })
         .observe(box, { childList: true });
     }
-    nmLoadModMeta();
   })();
 
   (async function nmEngineRow() {
