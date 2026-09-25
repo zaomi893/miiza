@@ -94,11 +94,6 @@ body{
   -webkit-backdrop-filter:blur(14px) saturate(140%);
 }
 .topbar .spacer{flex:1 1 auto;min-width:0}
-.topbar-title{
-  flex:1 1 auto;min-width:0;
-  font-size:22px;font-weight:500;letter-spacing:-.2px;color:var(--on-surface);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
 .iconbtn{
   flex:none;width:40px;height:40px;border:0;border-radius:var(--r-full);
   display:grid;place-items:center;cursor:pointer;
@@ -579,7 +574,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
 </head>
 <body>
 <div class="topbar">
-  <span class="topbar-title">NoMount Suite</span>
+  <span class="spacer" aria-hidden="true"></span>
   <button class="iconbtn" id="langBtn" type="button" onclick="toggleLang()" data-i18n-title="title_language" data-i18n-aria="title_language" title="Switch language" aria-label="Switch language"><span data-i18n="lang_btn">EN</span></button>
   <button class="iconbtn" id="themeBtn" type="button" onclick="toggleTheme()" data-i18n-title="title_theme" data-i18n-aria="title_theme" title="Light / dark theme" aria-label="Light / dark theme">
     <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -596,6 +591,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
 </div>
 <div class="wrap">
   <section class="tab on" id="tab-status">
+    <h1 class="pagetitle" data-i18n="brand_title">NoMount Suite</h1>
     <div class="banner" id="banner" data-i18n="banner_tip">请从 KernelSU / APatch 管理器的 WebUI 中打开此页面以控制模块。</div>
 
     <div class="card hero" id="heroCard">
@@ -642,7 +638,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
       </div>
       <div class="info-row">
         <div class="info-text">
-          <div class="info-k" data-i18n="k_suite">管理器版本</div>
+          <div class="info-k" data-i18n="k_suite">模块版本</div>
           <div class="info-v" id="ver">v…</div>
         </div>
       </div>
@@ -1965,10 +1961,11 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
   async function refreshAll(btn) {
     const ic = btn && btn.querySelector("svg");
     if (ic) ic.classList.add("spin");
-    const engineVersion = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "");
+    const engineVersion = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "").replace(/^v/i, "");
     const suiteVersion = (await exec("sed -n 's/^version=//p' /data/adb/modules/meta-nomount/module.prop 2>/dev/null | head -n1")).stdout.trim();
-    $("ver").textContent = suiteVersion || engineVersion || "v?";
-    const protocol = (currentLang === "zh" ? "内核协议 " : "kernel protocol ") + (engineVersion || "v?");
+    $("ver").textContent = suiteVersion || "v?";
+    const protocolVersion = engineVersion ? "v" + engineVersion : "v?";
+    const protocol = (currentLang === "zh" ? "内核协议 " : "kernel protocol ") + protocolVersion;
     $("footver").textContent = suiteVersion ? ("Suite " + suiteVersion + " · " + protocol) : protocol;
     await Promise.all([
       refreshStatus(), refreshDevice(), refreshStealth(), refreshGuard(),
@@ -2269,7 +2266,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     hero_chip: "hookless",
     k_guard_state: "Guard state",
     k_engine: "Kernel driver version",
-    k_suite: "Manager version",
+    k_suite: "Module version",
     k_api_short: "· API",
     gl_app: "App settings",
     k_language: "App language",
@@ -2295,7 +2292,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     hero_chip: "无钩子",
     k_guard_state: "保护状态",
     k_engine: "内核驱动版本",
-    k_suite: "管理器版本",
+    k_suite: "模块版本",
     k_api_short: "· API",
     gl_app: "应用设置",
     k_language: "应用语言",
