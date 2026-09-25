@@ -40,8 +40,10 @@
 #define NM_SDKSANDBOX_OFF   10000
 
 #define NM_GHOST_RULE_MAX 200
-extern int ghost_ctl(const char *buf, size_t count) __attribute__((weak));
-extern int ghost_get_rule(int idx, char *out, size_t outsz) __attribute__((weak));
+#ifdef CONFIG_NOMOUNT_GHOST_BACKEND
+extern int ghost_ctl(const char *buf, size_t count);
+extern int ghost_get_rule(int idx, char *out, size_t outsz);
+#endif
 
 static atomic_t nm_rule_gen = ATOMIC_INIT(0);
 static struct kmem_cache *nm_dir_cachep __read_mostly, *nm_inode_cachep __read_mostly;
@@ -4991,12 +4993,10 @@ static int nomount_nl_dump_uids(struct sk_buff *skb, struct netlink_callback *cb
 
 static int nomount_nl_dump_ghost(struct sk_buff *skb, struct netlink_callback *cb)
 {
+#ifdef CONFIG_NOMOUNT_GHOST_BACKEND
     char rule[NM_GHOST_RULE_MAX];
     int idx = cb->args[0];
     void *hdr;
-
-    if (!ghost_get_rule)
-        return 0;
 
     while (ghost_get_rule(idx, rule, sizeof(rule)) > 0) {
         rule[sizeof(rule) - 1] = '\0';
@@ -5012,6 +5012,9 @@ static int nomount_nl_dump_ghost(struct sk_buff *skb, struct netlink_callback *c
     }
     cb->args[0] = idx;
     return skb->len;
+#else
+    return 0;
+#endif
 }
 
 static int nomount_nl_get_version(struct sk_buff *req, struct nlmsghdr *req_nlh)
@@ -5140,11 +5143,13 @@ static int nomount_nl_set_knob(struct nlattr **attrs)
         return 0;
     }
     case NM_KNOB_GHOST:
-        if (!ghost_ctl)
-            return -EINVAL;
+#ifdef CONFIG_NOMOUNT_GHOST_BACKEND
         if (vlen == 0)
             return 0;
         return ghost_ctl(val, vlen);
+#else
+        return -EINVAL;
+#endif
     default:
         return -EINVAL;
     }

@@ -36,6 +36,13 @@ reports both values, and `nm version` remains an alias for `nm v`. PathHide's
 legacy `+`, `&`, `-`, `@uid`, `@appcloak-clear`, and scope commands stay valid;
 no existing `/proc/pathhide` configuration needs conversion. The old `v14`
 identifier is no longer advertised as a separate current protocol version.
+The optional upstream Ghost backend is not present in these kernel sources.
+Its unresolved weak function references generated forbidden arm64 GOT/PLT
+sections during the full kernel link, so Ghost calls are compiled only when a
+matching implementation is supplied with `CONFIG_NOMOUNT_GHOST_BACKEND`.
+Without that backend the engine keeps the protocol commands but reports Ghost
+control as unsupported, matching the previous runtime behavior when the weak
+symbols were absent.
 
 The upstream tag's checked-in `module/module.prop` still says `v1.3.181`, so
 workflow version checks use `Cargo.toml` (`1.3.186`) and pin the exact tag commit.
