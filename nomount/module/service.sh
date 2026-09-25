@@ -33,9 +33,9 @@ fi
 [ -f "$MODDIR/scan.sh" ] && sh "$MODDIR/scan.sh" --apply >/dev/null 2>&1
 
 WATCH_PID="$NMDIR/.appcloak_pathhide_watch.pid"
-if [ -f "$MODDIR/appcloak-pathhide-watch.sh" ] && \
+if [ -f "$MODDIR/appcloak-sync.sh" ] && \
    { [ ! -f "$WATCH_PID" ] || ! kill -0 "$(cat "$WATCH_PID" 2>/dev/null)" 2>/dev/null; }; then
-    sh "$MODDIR/appcloak-pathhide-watch.sh" >/dev/null 2>&1 &
+    sh "$MODDIR/appcloak-sync.sh" --watch >/dev/null 2>&1 &
     echo $! > "$WATCH_PID"
 fi
 

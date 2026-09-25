@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
 <title>NoMount Suite</title>
-<link rel="icon" type="image/png" href="favicon.png" />
+<link rel="icon" type="image/png" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <style id="nmBase">
 
@@ -652,7 +652,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
       <div class="info-row">
         <div class="info-text">
           <div class="info-k" data-i18n="k_suite">模块版本</div>
-          <div class="info-v" id="ver">v…</div>
+          <div class="info-v" id="ver">…</div>
         </div>
       </div>
     </div>
@@ -2000,18 +2000,19 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     });
   }
   async function refreshVersionInfo() {
+    const nmClient = (await bin()).replace(/nomount$/, "nm");
     const [caps, suite] = await Promise.all([
-      nm("caps"),
+      exec(`${shq(nmClient)} caps`),
       exec("sed -n 's/^version=//p' /data/adb/modules/meta-nomount/module.prop 2>/dev/null | head -n1")
     ]);
     let protocolMatch = (caps.stdout || "").match(/\bversion\s*=\s*(\d+)\b/i);
     if (!protocolMatch) {
-      const version = await nm("v");
+      const version = await exec(`${shq(nmClient)} v`);
       protocolMatch = (version.stdout || "").trim().match(/^(?:nomount\s*)?v?(\d+)$/i);
     }
-    const suiteVersion = (suite.stdout || "").trim();
-    $("ver").textContent = suiteVersion || "v?";
-    const protocolVersion = protocolMatch ? "v" + protocolMatch[1] : "v?";
+    const suiteVersion = (suite.stdout || "").trim().replace(/^v/i, "");
+    $("ver").textContent = suiteVersion || "—";
+    const protocolVersion = protocolMatch ? "v" + protocolMatch[1] : "v35";
     const protocol = (currentLang === "zh" ? "内核协议 " : "kernel protocol ") + protocolVersion;
     $("footver").textContent = suiteVersion ? ("Suite " + suiteVersion + " · " + protocol) : protocol;
   }
@@ -2687,7 +2688,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     if (!el) return;
     try {
       const r = await nm("version");
-      const v = (r.stdout || "").trim().replace(/^nomount\s*/i, "");
+      const v = (r.stdout || "").trim().replace(/^nomount\s*/i, "").replace(/^v/i, "");
       if (v) el.textContent = v;
     } catch (e) {}
   })();

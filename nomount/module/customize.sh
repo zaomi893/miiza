@@ -74,7 +74,6 @@ ui_print "- my_* partitions use mountless VFS injection"
 [ -f "$MODPATH/post-mount.sh" ] && set_perm "$MODPATH/post-mount.sh" 0 0 0755
 [ -f "$MODPATH/scene-debugfs-watch.sh" ] && set_perm "$MODPATH/scene-debugfs-watch.sh" 0 0 0755
 [ -f "$MODPATH/appcloak-sync.sh" ] && set_perm "$MODPATH/appcloak-sync.sh" 0 0 0755
-[ -f "$MODPATH/appcloak-pathhide-watch.sh" ] && set_perm "$MODPATH/appcloak-pathhide-watch.sh" 0 0 0755
 [ -f "$MODPATH/migrate-state.sh" ] && set_perm "$MODPATH/migrate-state.sh" 0 0 0755
 [ -f "$NMDIR/pathhide.conf" ] || : > "$NMDIR/pathhide.conf"
 [ -f "$NMDIR/hidden_apps.conf" ] || : > "$NMDIR/hidden_apps.conf"

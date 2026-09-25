@@ -1,5 +1,7 @@
 #!/system/bin/sh
 
+MODDIR="${0%/*}"
+PKG_LIST=/data/system/packages.list
 SRC=/data/adb/nomount/hidden_apps.conf
 SCOPE_SRC=/data/adb/nomount/scope_apps.conf
 PATHHIDE_FLAG=/data/adb/nomount/appcloak_pathhide
@@ -8,6 +10,19 @@ DST="$DIR/hidden_apps.conf"
 SCOPE_DST="$DIR/scope_apps.conf"
 ACTIVE="$DIR/active"
 STATUS="$DIR/status"
+
+case "${1:-}" in
+    --event)
+        sleep 1
+        exec sh "$MODDIR/appcloak-sync.sh"
+        ;;
+    --watch)
+        while [ ! -f "$PKG_LIST" ]; do sleep 10; done
+        sh "$MODDIR/appcloak-sync.sh" >/dev/null 2>&1
+        command -v inotifyd >/dev/null 2>&1 || exit 0
+        exec inotifyd "$MODDIR/appcloak-sync.sh --event" "$PKG_LIST:e"
+        ;;
+esac
 
 if [ "$1" = "--status" ]; then
     if [ -s "$ACTIVE" ]; then
