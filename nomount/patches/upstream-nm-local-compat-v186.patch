@@ -1,0 +1,42 @@
+diff --git a/userspace/src/nm.c b/userspace/src/nm.c
+index 829c378..c3b1c91 100644
+--- a/userspace/src/nm.c
++++ b/userspace/src/nm.c
+@@ -37,7 +37,7 @@ void c_main(long *sp) {
+         { "add", 'a' },   { "del", 'd' },     { "w", 'w' },
+         { "block", 'b' }, { "unblock", 'u' },  { "clear", 'c' },
+         { "list", 'l' },  { "l", 'l' },        { "v", 'v' },
+-        { "k", 'k' },
++        { "version", 'v' }, { "caps", 'p' }, { "k", 'k' },
+     };
+     char cmd = 0;
+     for (unsigned int ci = 0; ci < sizeof(nm_cmds) / sizeof(nm_cmds[0]); ci++) {
+@@ -153,4 +153,5 @@ void c_main(long *sp) {
+         static const struct { const char *name; int knob; } nm_knobs[] = {
++            { "r", 0 }, { "v", 1 }, { "c", 2 }, { "b", 3 },
+             { "d", 4 }, { "i", 5 }, { "g", 7 },
+         };
+         if (p_count < 1) { print_err("nm: missing knob\n"); exit_code = 3; goto do_exit; }
+@@ -182,10 +183,21 @@ void c_main(long *sp) {
+-    } else if (cmd == 'v') {
++    } else if (cmd == 'v' || cmd == 'p') {
+         int vlen_rx = do_nm_cmd(fd, 1, 0, (void *)0, 0, 1, &mem);
+         if (nm_timed_out(vlen_rx)) goto do_timeout;
+         struct nlmsghdr *vh = (struct nlmsghdr *)mem.rx_buf;
+         if (vlen_rx >= 16 && vh->nlmsg_len <= (unsigned int)vlen_rx) {
+             unsigned int *ver = get_attr(mem.rx_buf, 5, 4);
+             if (ver) {
++                if (cmd == 'p') {
++                    unsigned int *caps = get_attr(mem.rx_buf, 7, 4);
++                    if (!caps) {
++                        print_err("nm: engine does not advertise v35 capabilities\n");
++                        exit_code = 1; goto do_exit;
++                    }
++                    print_str("version="); print_uint(*ver);
++                    print_str("\ncapabilities="); print_uint(*caps);
++                    print_str("\n");
++                    exit_code = 0; goto do_exit;
++                }
+                 print_uint(*ver);
+                 print_str("\n");
+                 exit_code = 0; goto do_exit;

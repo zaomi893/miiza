@@ -1,8 +1,8 @@
 diff --git a/src/absorb.rs b/src/absorb.rs
-index 599984e..c60cf12 100644
+index a632a94..a4180ef 100644
 --- a/src/absorb.rs
 +++ b/src/absorb.rs
-@@ -2498,7 +2498,7 @@ pub fn run_absorb(dry_run: bool, include_dirs: bool, early: bool) -> Result<()>
+@@ -1540,7 +1540,7 @@ pub fn run_absorb(dry_run: bool, include_dirs: bool, early: bool) -> Result<()>
                  s.target.display()
              ),
              Disposition::Declined(Declined::MustBind) => println!(
@@ -11,8 +11,8 @@ index 599984e..c60cf12 100644
                  s.target.display()
              ),
              Disposition::Leaking(why) => {
-@@ -2559,9 +2559,8 @@ pub fn run_absorb(dry_run: bool, include_dirs: bool, early: bool) -> Result<()>
-     // it in the declined bucket would be a different claim from the true one.
+@@ -1632,9 +1632,8 @@ pub fn run_absorb(dry_run: bool, include_dirs: bool, early: bool) -> Result<()>
+         .collect();
      if deferred > 0 {
          println!(
 -            "nomount absorb: {deferred} my_* mount(s) deferred to the pre-zygote pass \
@@ -24,26 +24,18 @@ index 599984e..c60cf12 100644
      }
      if cands.is_empty() {
 diff --git a/src/audit.rs b/src/audit.rs
-index 1c5e10b..9b71e4c 100644
+index 9792c50..5952f75 100644
 --- a/src/audit.rs
 +++ b/src/audit.rs
-@@ -628,29 +628,19 @@ fn check_zero_mount() -> Check {
-                 crate::bind::BINDS_LIST
+@@ -347,21 +347,18 @@ fn check_zero_mount() -> Check {
              )
          } else if mine == leaked.len() {
--            // Lead with "nothing is wrong", the same way the hook-framework arm
--            // above does, because this is the DEFAULT state of a OnePlus device
--            // with any my_* module installed -- `my_hookless` is the opt-in. The
--            // honest content is all still here: these are real mounts, any app
--            // reading its own mountinfo sees them, and the per-app remedy that
--            // actually works is named. What is gone is the implication that the
--            // reader is in a broken state.
              format!(
 -                "Nothing is wrong here. All {} of these mount(s) are the Suite's own: a my_* \
 -                 target is served by a real bind unless the `my_hookless` opt-in is set, because \
 -                 a leaf my_* injection can trip zygote's FD allowlist. They serve content from \
 -                 {owner}. They are real mounts, so an app that reads /proc/self/mountinfo sees \
--                 them — worth knowing only if you are hiding from one specific app, and there \
+-                 them - worth knowing only if you are hiding from one specific app, and there \
 -                 your manager's \"umount modules\" for that app does take them out of its view. \
 -                 To have no mount at all, set /data/adb/nomount/my_hookless and reboot; the same \
 -                 files are then served by injection.",
@@ -65,15 +57,15 @@ index 1c5e10b..9b71e4c 100644
              )
          } else {
 diff --git a/src/doctor.rs b/src/doctor.rs
-index ac94b15..b0177d1 100644
+index 6853965..8ec7900 100644
 --- a/src/doctor.rs
 +++ b/src/doctor.rs
-@@ -2003,10 +2003,10 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
+@@ -1196,10 +1196,10 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
                      let binds = v.len();
                      format!(
                          "your manager's \"Kernel umount\" is ON, and this device has {binds} \
--                         bind mount(s) of ours — my_* is served by a real bind unless the \
--                         my_hookless trial is on. The switch DOES hide those from an app's \
+-                         bind mount(s) of ours - my_* is served by a real bind unless the \
+-                         my_hookless trial is on. The switch does hide those from an app's \
 -                         mount table, and it is the only thing that does; it cannot touch the \
 -                         injections, which are not mounts."
 +                         my_* bind compatibility mount(s). Restore \
@@ -83,10 +75,10 @@ index ac94b15..b0177d1 100644
                      )
                  }
                  Err(e) => format!(
-@@ -2065,9 +2065,9 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
+@@ -1227,9 +1227,9 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
                      format!(
                          "your manager's \"Kernel umount\" could not be read, so it is UNKNOWN \
-                          rather than off — and this device has {binds} bind mount(s) of ours \
+                          rather than off - and this device has {binds} bind mount(s) of ours \
 -                         (my_* is served by a real bind unless the my_hookless trial is on). \
 -                         That switch is the only thing that hides those from an app's mount \
 -                         table, so it is worth checking in your manager."
@@ -96,7 +88,7 @@ index ac94b15..b0177d1 100644
                      )
                  }
                  Err(e) => format!(
-@@ -2677,8 +2677,8 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
+@@ -1626,8 +1626,8 @@ pub fn plan_checks() -> Result<(Vec<Check>, Vec<crate::check::Fact>)> {
                  Level::Info,
                  "module mount left by design",
                  format!(

@@ -1,12 +1,12 @@
 diff --git a/src/mount.rs b/src/mount.rs
-index c64d3ce..59be5ed 100644
+index 7b89fc6..73ecfee 100644
 --- a/src/mount.rs
 +++ b/src/mount.rs
-@@ -622,6 +622,20 @@ pub(crate) fn module_enabled(dir: &Path) -> bool {
+@@ -280,6 +280,20 @@ pub(crate) fn module_enabled(dir: &Path) -> bool {
          && !dir.join("skip_mount").exists()
  }
  
-+fn declared_module_id(dir: &Path) -> Result<String, String> {
++fn declared_module_id(dir: &Path) -> std::result::Result<String, String> {
 +    let prop = fs::read_to_string(dir.join("module.prop"))
 +        .map_err(|_| format!("cannot read {}", dir.join("module.prop").display()))?;
 +    let id = prop
@@ -20,18 +20,18 @@ index c64d3ce..59be5ed 100644
 +    Ok(id.to_string())
 +}
 +
- fn load_blocklist() -> HashSet<String> {
+ pub(crate) fn load_blocklist() -> HashSet<String> {
      let mut set: HashSet<String> = BUILTIN_BLOCKLIST.iter().map(|s| (*s).to_string()).collect();
      if let Ok(contents) = fs::read_to_string(BLOCKLIST_FILE) {
-@@ -1141,6 +1155,7 @@ pub(crate) fn collect_plan() -> Result<(Vec<PlanEntry>, u32)> {
-     let blocklist = load_blocklist();
+@@ -648,6 +662,7 @@ pub(crate) fn collect_plan() -> Result<(Vec<PlanEntry>, u32, Vec<Refused>)> {
      let mut plan = Vec::new();
+     let mut refused: Vec<Refused> = Vec::new();
      let mut skipped = 0u32;
 +    let mut seen_ids = HashSet::new();
-     // Sorted for the same reason plan_tree sorts: a contested target must resolve
-     // to the same module on every boot.
      let dirs = fs::read_dir(MODULES_DIR)
-@@ -1175,6 +1190,27 @@ pub(crate) fn collect_plan() -> Result<(Vec<PlanEntry>, u32)> {
+         .with_context(|| format!("cannot enumerate {MODULES_DIR} -- refusing to treat that as \"no modules installed\", which would clear every rule"))?;
+     let mut dirs: Vec<_> = dirs.flatten().collect();
+@@ -672,6 +687,27 @@ pub(crate) fn collect_plan() -> Result<(Vec<PlanEntry>, u32, Vec<Refused>)> {
              skipped += 1;
              continue;
          }
@@ -57,5 +57,5 @@ index c64d3ce..59be5ed 100644
 +            }
 +        }
          let id = id.to_string();
-         // "system/" is the classic layout; auto_mount modules (e.g. OxygenCustomizer)
-         // ship content directly under module-root partition dirs. Process every
+         if let Ok(entries) = fs::read_dir(&mdir) {
+             let mut entries: Vec<_> = entries.flatten().collect();

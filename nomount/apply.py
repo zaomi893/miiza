@@ -65,10 +65,10 @@ function_insert(
     "fs/proc/task_mmu.c", "show_map_vma(", "static int show_map",
     "\t\tino = inode->i_ino;\n",
     "#ifdef CONFIG_NOMOUNT\n"
-    "\t\t{ extern void nomount_spoof_mmap_metadata(const struct inode *, dev_t *, unsigned long *);\n"
-    "\t\t  nomount_spoof_mmap_metadata(inode, &dev, &ino); }\n"
+    "\t\t{ extern void vfs_map_meta_override(const struct inode *, dev_t *, unsigned long *);\n"
+    "\t\t  vfs_map_meta_override(inode, &dev, &ino); }\n"
     "#endif\n",
-    "nomount_spoof_mmap_metadata",
+    "vfs_map_meta_override",
 )
 function_insert(
     "fs/proc/task_mmu.c", "show_map_vma(", "static int show_map",

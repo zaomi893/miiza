@@ -1,1700 +1,992 @@
 <!DOCTYPE html>
-<html lang="en" data-ui="miuix">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
 <title>NoMount Suite</title>
+<link rel="icon" type="image/png" href="favicon.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<style id="nmBase">
 
-<link rel="icon" type="image/png" href="icon.png" />
-<style>
-  :root {
-    --bg:      #080a11;
-    --bg2:     #0e1220;
-    --card:    rgba(255,255,255,0.045);
-    --card2:   rgba(255,255,255,0.028);
-    --brd:     rgba(255,255,255,0.085);
-    --brd2:    rgba(255,255,255,0.055);
-    --txt:     #eaeef7;
-    --muted:   #8a93a9;
-    --faint:   #616a80;
-    --acc:     #7c9cff;
-    --acc2:    #57e6c3;
-    --ok:      #35d29a;
-    --warn:    #fbbf24;
-    --bad:     #f8717a;
-    --mono:    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-    --radius:  20px;
-    --shadow:  0 12px 34px rgba(0,0,0,0.42);
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; overflow-x: hidden; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    color: var(--txt);
-    background:
-      radial-gradient(1100px 640px at 12% -12%, rgba(124,156,255,0.16), transparent 58%),
-      radial-gradient(940px 560px at 112% 6%, rgba(87,230,195,0.11), transparent 54%),
-      linear-gradient(180deg, var(--bg2), var(--bg) 60%);
-    background-attachment: fixed;
-    min-height: 100vh;
-    padding: 0 15px calc(46px + env(safe-area-inset-bottom));
-    -webkit-font-smoothing: antialiased;
-  }
-  .wrap { max-width: 660px; margin: 0 auto; }
+:root{
+  color-scheme:light;
+  --primary:#51625C;              --on-primary:#FFFFFF;
+  --primary-container:#D4E7DF;    --on-primary-container:#0F1E1A;
+  --secondary:#57605D;            --on-secondary:#FFFFFF;
+  --secondary-container:#DBE5E0;  --on-secondary-container:#141D1B;
+  --tertiary:#4B635C;             --on-tertiary:#FFFFFF;
+  --tertiary-container:#CDE8DF;   --on-tertiary-container:#07201A;
+  --error:#BA1A1A;                --on-error:#FFFFFF;
+  --error-container:#FFDAD6;      --on-error-container:#410002;
+  --surface:#FAF9F7;
+  --surface-container-lowest:#FFFFFF;
+  --surface-container-low:#F5F3F2;
+  --surface-container:#EFEDEC;
+  --surface-container-high:#E9E8E7;
+  --surface-container-highest:#E3E2E1;
+  --on-surface:#1B1C1B;           --on-surface-variant:#464746;
+  --outline:#777776;              --outline-variant:#C7C6C5;
+  --inverse-surface:#2F3130;      --inverse-on-surface:#F2F0EF;
+  --inverse-primary:#B8CBC4;      --scrim:#000000;
+  --muted:var(--on-surface-variant);--faint:var(--outline);
+  --ok:#087F5B;--warn:#A65F00;
 
-  header {
-    position: sticky; top: 0; z-index: 20;
-    display: flex; align-items: center; gap: 13px;
-    padding: max(16px, env(safe-area-inset-top)) 4px 14px;
-    background: linear-gradient(180deg, var(--bg2) 55%, rgba(14,18,32,0));
-    margin: 0 -15px 6px; padding-left: 19px; padding-right: 19px;
-  }
-  .logo {
-    width: 44px; height: 44px; border-radius: 13px; flex: none; display: grid; place-items: center;
-    background: linear-gradient(135deg, var(--acc), var(--acc2));
-    box-shadow: 0 8px 22px rgba(124,156,255,0.34);
-  }
-  .logo svg { width: 25px; height: 25px; }
-  .brand h1 {
-    margin: 0; font-size: 22px; font-weight: 760; letter-spacing: -0.4px; line-height: 1.1;
-    background: linear-gradient(90deg, #fff, #bcc8ff);
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .brand p { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); letter-spacing: 0.2px; }
-  .hbtns { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-  .ver {
-    font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--brd);
-    padding: 6px 11px; border-radius: 999px; font-variant-numeric: tabular-nums;
-  }
-  .iconbtn {
-    width: 38px; height: 38px; border-radius: 12px; flex: none; display: grid; place-items: center;
-    background: var(--card); border: 1px solid var(--brd); color: var(--txt); cursor: pointer;
-    transition: transform .1s, background .2s;
-    font-size: 13px; font-weight: 650;
-  }
-  .iconbtn:active { transform: scale(0.92); }
-  .iconbtn svg { width: 19px; height: 19px; }
+  --r-xs:8px; --r-s:12px; --r-m:16px; --r-l:20px; --r-xl:28px; --r-full:999px;
 
-  .card {
-    position: relative;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.012) 42%, rgba(0,0,0,.05)),
-      var(--card);
-    border: 1px solid var(--brd); border-radius: var(--radius);
+  --ease-emphasized:cubic-bezier(0.2,0,0,1);
+  --ease-standard:cubic-bezier(0.2,0,0,1);
+  --dur-short:150ms; --dur-med:250ms; --dur-long:400ms;
 
-    box-shadow:
-      var(--shadow),
-      0 2px 6px rgba(0,0,0,.28),
-      inset 0 1px 0 rgba(255,255,255,.11),
-      inset 0 -1px 0 rgba(0,0,0,.30);
-    padding: 17px 17px 18px; margin-bottom: 13px; backdrop-filter: blur(10px);
-  }
+  --elev1:0 1px 2px rgba(0,0,0,.05), 0 1px 3px 1px rgba(0,0,0,.03);
+  --elev2:0 1px 2px rgba(0,0,0,.08), 0 2px 6px 2px rgba(0,0,0,.05);
+  --elev3:0 4px 8px 3px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.12);
 
-  .card::before {
-    content: ""; position: absolute; left: 12%; right: 12%; top: 0; height: 1px;
-    pointer-events: none; border-radius: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.26), transparent);
-  }
-  html[data-theme="light"] .card {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.35) 45%, rgba(16,26,48,.02)),
-      var(--card);
-    box-shadow:
-      var(--shadow),
-      0 2px 6px rgba(20,32,64,.10),
-      inset 0 1px 0 rgba(255,255,255,.95),
-      inset 0 -1px 0 rgba(16,26,48,.07);
-  }
-  html[data-theme="light"] .card::before {
-    background: linear-gradient(90deg, transparent, rgba(16,26,48,.10), transparent);
-  }
-  .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-  .card-h h2 { margin: 0; font-size: 14px; font-weight: 680; letter-spacing: 0.2px; }
-  .card-h .ic { width: 17px; height: 17px; color: var(--acc); flex: none; }
-  .card-h .chip.ok   { background-color: rgba(53,210,154,0.15);  color: var(--ok); }
-  .card-h .chip.warn { background-color: rgba(251,191,36,0.15);  color: var(--warn); }
-  .card-h .chip.bad  { background-color: rgba(248,113,122,0.15); color: var(--bad); }
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,RobotoMono,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Roboto","Noto Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --nav-h:80px;
+}
 
-  .card-h .chip {
-    margin-left: auto; font-size: 11px; font-weight: 680; letter-spacing: 0.2px; white-space: nowrap;
-    color: var(--muted); background-color: var(--card2); border: 1px solid rgba(255,255,255,.10);
-    padding: 4px 10px; border-radius: 999px; font-variant-numeric: tabular-nums;
-    background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 62%);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.26),
-      inset 0 -1px 2px rgba(0,0,0,.22),
-      0 1px 2px rgba(0,0,0,.30);
-    text-shadow: 0 1px 0 rgba(0,0,0,.28);
-  }
-  html[data-theme="light"] .card-h .chip {
-    border-color: rgba(16,26,48,.10);
-    background-image: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,0) 65%);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.90),
-      inset 0 -1px 2px rgba(16,26,48,.10),
-      0 1px 2px rgba(20,32,64,.12);
-    text-shadow: none;
-  }
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --primary:#B8CBC4;--on-primary:#23352F;
+  --primary-container:#394B44;--on-primary-container:#D4E7DF;
+  --secondary:#BEC9C3;--on-secondary:#28332F;
+  --secondary-container:#3E4944;--on-secondary-container:#DBE5E0;
+  --tertiary:#B1CCC2;--on-tertiary:#1D352E;
+  --tertiary-container:#344B43;--on-tertiary-container:#CDE8DF;
+  --error:#FFB4AB;--on-error:#690005;
+  --error-container:#93000A;--on-error-container:#FFDAD6;
+  --surface:#111412;--surface-container-lowest:#0C0F0D;
+  --surface-container-low:#191C1A;--surface-container:#1D201E;
+  --surface-container-high:#282B29;--surface-container-highest:#323633;
+  --on-surface:#E1E4DF;--on-surface-variant:#C3C8C2;
+  --outline:#8D938D;--outline-variant:#424943;
+  --inverse-surface:#E1E4DF;--inverse-on-surface:#2E312E;
+  --inverse-primary:#51625C;--scrim:#000000;
+  --muted:var(--on-surface-variant);--faint:var(--outline);
+  --ok:#73D9AD;--warn:#FFBF69;
+  --elev1:0 1px 3px rgba(0,0,0,.25);
+  --elev2:0 2px 8px rgba(0,0,0,.32);
+  --elev3:0 6px 18px rgba(0,0,0,.4);
+}
 
-  .card-h.clp { cursor: pointer; user-select: none; transition: transform .1s ease; }
-  .card-h.clp:active { transform: scale(0.985); }
-  .card-h .chev { margin-left: auto; flex: none; color: var(--muted); font-size: 17px; line-height: 1; transition: transform .2s; }
-  .card-h .chip + .chev { margin-left: 8px; }
-  .card-h.open .chev { transform: rotate(90deg); }
-  .card.collapsed > .card-h { margin-bottom: 0; }
-  .card.collapsed > :not(.card-h) { display: none !important; }
-  .group-label {
-    font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase;
-    color: var(--faint); margin: 20px 6px 9px;
-  }
-  .group-label:first-of-type { margin-top: 2px; }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;overflow-x:clip}
+body{
+  font-family:var(--sans);
+  color:var(--on-surface);
+  background:var(--surface-container);
+  font-size:14px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  padding:0 16px calc(var(--nav-h) + 44px + env(safe-area-inset-bottom));
+}
+.wrap{max-width:640px;margin:0 auto}
 
-  .hero { padding: 20px 18px; position: relative; overflow: hidden; }
-  .hero::after {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background: radial-gradient(420px 180px at 88% -30%, rgba(124,156,255,0.18), transparent 70%);
-  }
-  .statusline { display: flex; align-items: center; gap: 12px; }
-  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--muted); transition: .3s; }
-  .dot.ok   { background: var(--ok);   box-shadow: 0 0 13px var(--ok),   0 0 0 5px rgba(53,210,154,0.14); }
-  .dot.warn { background: var(--warn); box-shadow: 0 0 13px var(--warn), 0 0 0 5px rgba(251,191,36,0.14); }
-  .dot.bad  { background: var(--bad);  box-shadow: 0 0 13px var(--bad),  0 0 0 5px rgba(248,113,122,0.14); }
-  .dot.off  { background: var(--muted); }
-  .statusline .st { font-size: 19px; font-weight: 720; letter-spacing: -0.2px; }
-  .statusline .sub { margin-left: auto; font-size: 12px; color: var(--muted); text-align: right; }
-  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 17px; }
-  .metric { background: var(--card2); border: 1px solid var(--brd2); border-radius: 13px; padding: 12px 13px; }
-  .metric .k { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; }
-  .metric .v { font-size: 21px; font-weight: 750; margin-top: 4px; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
-  .metric .v small { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:4px;
+  margin:0 -16px;padding:max(6px,env(safe-area-inset-top)) 12px 6px 24px;
+  background:color-mix(in srgb, var(--surface-container) 88%, transparent);
+  backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+}
+.topbar .spacer{flex:1 1 auto;min-width:0}
+.topbar-title{
+  flex:1 1 auto;min-width:0;
+  font-size:22px;font-weight:500;letter-spacing:-.2px;color:var(--on-surface);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.iconbtn{
+  flex:none;width:40px;height:40px;border:0;border-radius:var(--r-full);
+  display:grid;place-items:center;cursor:pointer;
+  background:transparent;color:var(--on-surface);
+  font:400 13px/1 var(--sans);
+  transition:background var(--dur-short) var(--ease-standard), transform var(--dur-short) var(--ease-standard);
+}
+.iconbtn:hover{background:color-mix(in srgb, var(--on-surface) 8%, transparent)}
+.iconbtn:active{transform:scale(.92)}
+.iconbtn svg{width:24px;height:24px;fill:currentColor}
+.iconbtn[hidden]{display:none}
+.iconbtn .ico-sun{display:none}
+html[data-theme="dark"] .iconbtn .ico-sun{display:block}
+html[data-theme="dark"] .iconbtn .ico-moon{display:none}
 
-  .btns { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 16px; }
-  button.act {
-    appearance: none; border: 1px solid var(--brd); cursor: pointer; color: var(--txt);
-    background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: 13px;
-    font-size: 13.5px; font-weight: 640; transition: transform .08s, background .2s, border-color .2s;
-    flex: 1; min-width: 120px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  button.act svg { width: 16px; height: 16px; }
-  button.act:active { transform: scale(0.97); }
-  button.act.primary { background: linear-gradient(135deg, var(--acc), var(--acc2)); border-color: transparent; color: #08101c; }
-  button.act.danger { border-color: rgba(248,113,122,0.34); color: #ffd7d9; background: rgba(248,113,122,0.10); }
-  button.act:disabled { opacity: 0.45; cursor: default; }
+.menu{
+  position:fixed;z-index:70;top:calc(env(safe-area-inset-top) + 52px);right:12px;
+  min-width:132px;padding:6px 0;display:none;
+  background:var(--surface-container-low);border-radius:var(--r-m);
+  box-shadow:var(--elev3);
+}
+.menu.show{display:block;animation:nmmenuin var(--dur-short) var(--ease-emphasized) both}
+@keyframes nmmenuin{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+.menu-item{
+  display:block;width:100%;border:0;background:transparent;cursor:pointer;text-align:left;
+  padding:13px 18px;font:400 15px/1.2 var(--sans);color:var(--on-surface);
+}
+.menu-item:hover{background:color-mix(in srgb, var(--on-surface) 8%, transparent)}
+.menu-item.danger{color:var(--error)}
 
-  .list { margin-top: 2px; }
-  .row { display: flex; align-items: center; gap: 10px; padding: 11px 2px; border-top: 1px solid rgba(255,255,255,0.055); font-size: 13.5px; }
-  .row:first-child { border-top: none; }
-  .row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .row .name.mono { font-family: var(--mono); font-size: 12.5px; }
-  .tag {
-    font-size: 10.5px; padding: 4px 10px; border-radius: 999px; font-weight: 680;
-    letter-spacing: 0.2px; white-space: nowrap;
-    border: 1px solid rgba(255,255,255,.10);
+.pagetitle{
+  margin:4px 0 16px;padding-left:8px;font-size:34px;line-height:1.16;font-weight:400;
+  letter-spacing:-.3px;color:var(--on-surface);
+}
+.pagesub{margin:0 0 18px;font-size:13px;color:var(--on-surface-variant)}
+.group-label{
+  display:flex;align-items:center;gap:8px;
+  margin:24px 0 8px;padding-left:16px;
+  font-size:13px;font-weight:400;letter-spacing:.1px;
+  color:var(--on-surface-variant);
+}
+.group-label .chip{margin-left:auto}
+.group-label:first-child{margin-top:6px}
 
-    background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 62%);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.26),
-      inset 0 -1px 2px rgba(0,0,0,.22),
-      0 1px 2px rgba(0,0,0,.30);
-    text-shadow: 0 1px 0 rgba(0,0,0,.28);
-  }
-  html[data-theme="light"] .tag {
-    border-color: rgba(16,26,48,.10);
-    background-image: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,0) 65%);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.90),
-      inset 0 -1px 2px rgba(16,26,48,.10),
-      0 1px 2px rgba(20,32,64,.12);
-    text-shadow: none;
-  }
-  .tag.vfs   { background: rgba(53,210,154,0.14);  color: var(--ok); }
-  .tag.ov    { background: rgba(124,156,255,0.16); color: var(--acc); }
-  .tag.su    { background: rgba(87,230,195,0.15);  color: var(--acc2); }
-  .tag.suite { background: rgba(255,255,255,0.08); color: var(--txt); }
-  .tag.off   { background: rgba(139,147,167,0.15); color: var(--muted); }
-  .tag.warn  { background: rgba(251,191,36,0.15);  color: var(--warn); }
-  .tag.ok    { background: rgba(53,210,154,0.15);  color: var(--ok); }
-  .empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
+.set-row{display:flex;align-items:center;gap:14px;padding:14px 16px;margin-bottom:9px}
+.set-row .info-text{min-width:0;flex:1 1 auto}
+.set-title{font-size:15px;font-weight:400;line-height:1.3;color:var(--on-surface)}
+.set-sub{font-size:13px;color:var(--on-surface-variant);margin-top:3px;overflow-wrap:anywhere}
+.set-row .switch{flex:none}
+.set-row.tap{cursor:pointer}
+.set-row.tap:active{opacity:.75}
+.set-panel{background:var(--surface);border-radius:var(--r-l);padding:16px;margin-bottom:9px}
 
-  .mrow {
-    display: block; padding: 11px 12px; margin: 8px 0; border-radius: 14px;
-    border: 1px solid var(--brd2);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.008)),
-      var(--card2);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 1px 3px rgba(0,0,0,.22);
-  }
-  .mrow:first-child { margin-top: 2px; }
-  .mname {
-    font-size: 13.5px; font-weight: 620; color: var(--txt); line-height: 1.35;
-    overflow-wrap: anywhere; word-break: break-word;
-  }
-  .mmeta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .mmeta .files {
-    font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-right: auto;
-  }
-  html[data-theme="light"] .mrow {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.80), rgba(255,255,255,.30)),
-      var(--card2);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.90), 0 1px 3px rgba(20,32,64,.08);
-  }
-  .note { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 12px 0 0; }
-  .subhead { margin-top: 18px; font-size: 13px; font-weight: 720; color: var(--text); }
-  code { font-family: var(--mono); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
-  pre.rules {
-    margin: 4px 0 0; max-height: 260px; overflow: auto; font-size: 11.5px; line-height: 1.65;
-    font-family: var(--mono); color: #c8d2ea; background: rgba(0,0,0,0.28);
-    border: 1px solid var(--brd2); border-radius: 13px; padding: 13px; white-space: pre; word-break: break-all;
-  }
+.card{
+  position:relative;
+  background:var(--surface);
+  border-radius:var(--r-l);
+  padding:16px;
+  margin-bottom:10px;
+  box-shadow:none;
+}
+.card.raised{box-shadow:var(--elev1)}
+.card-h{display:flex;align-items:center;gap:12px;min-height:28px}
+.card-h h2{margin:0;font-size:15px;font-weight:500;letter-spacing:.1px;color:var(--on-surface)}
+.card-h .ic{width:24px;height:24px;flex:none;fill:currentColor;color:var(--on-surface)}
+.card-h .chip{margin-left:auto}
+.card-h.clp{cursor:pointer;user-select:none}
+.card-h.clp:active{transform:scale(.995)}
+.card-h .chev{
+  margin-left:auto;flex:none;width:22px;height:22px;display:grid;place-items:center;
+  color:var(--on-surface-variant);transition:transform var(--dur-med) var(--ease-emphasized)
+}
+.card-h .chip + .chev{margin-left:8px}
+.card-h.open .chev{transform:rotate(90deg)}
+.card.collapsed > .card-h{margin-bottom:0}
+.card.collapsed > :not(.card-h){display:none !important}
+.card > .card-h + *{margin-top:14px}
+.spoof-content .set-row{background:var(--surface-container-low);border-radius:var(--r-m)}
 
-  .stealth-head { display: flex; align-items: center; gap: 11px; }
-  .shield { width: 40px; height: 40px; border-radius: 12px; flex: none; display: grid; place-items: center; border: 1px solid var(--brd2); }
-  .shield.clean { background: rgba(53,210,154,0.12); color: var(--ok); }
-  .shield.warn  { background: rgba(251,191,36,0.12); color: var(--warn); }
-  .shield svg { width: 21px; height: 21px; }
-  .stealth-head .t { font-size: 15px; font-weight: 700; }
-  .stealth-head .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.hero{
+  background:var(--primary-container);color:var(--on-primary-container);
+  box-shadow:none;padding:15px 18px;
+  transition:background var(--dur-med) var(--ease-standard), color var(--dur-med) var(--ease-standard);
+}
+.hero-main{display:flex;align-items:center;gap:14px}
+.hero-badge{
+  width:21px;height:21px;flex:none;display:grid;place-items:center;
+  background:none;color:inherit;
+}
+.hero-badge svg{width:21px;height:21px;fill:currentColor}
+.hero-badge .hb-bad{display:none}
+.hero:has(#dot.bad) .hb-ok,.hero:has(#dot.warn) .hb-ok{display:none}
+.hero:has(#dot.bad) .hb-bad,.hero:has(#dot.warn) .hb-bad{display:block}
+.hero-text{min-width:0;flex:1 1 auto}
+.hero-state{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hero-state .st{font-size:18px;font-weight:500;line-height:1.2;letter-spacing:-.1px}
+.hero-chip{
+  font-size:12px;font-weight:500;padding:4px 10px;border-radius:var(--r-xs);
+  background:var(--primary);color:var(--on-primary);white-space:nowrap;
+}
+.hero-sub{margin-top:3px;padding-left:35px;font-size:13px;line-height:1.3;opacity:.9}
+.hero:has(#dot.bad){background:var(--error-container);color:var(--on-error-container)}
+.hero:has(#dot.bad) .hero-badge{background:color-mix(in srgb, var(--on-error-container) 10%, transparent)}
+.hero:has(#dot.bad) .hero-chip{background:var(--error);color:var(--on-error)}
+.hero:has(#dot.warn){background:var(--tertiary-container);color:var(--on-tertiary-container)}
+.hero:has(#dot.warn) .hero-badge{background:color-mix(in srgb, var(--on-tertiary-container) 10%, transparent)}
+.hero:has(#dot.warn) .hero-chip{background:var(--tertiary);color:var(--on-tertiary)}
 
-  .uidbar { display: flex; flex-wrap: wrap; gap: 9px; }
-  .uidbar input {
-    flex: 1 1 100%; min-width: 0; background: rgba(0,0,0,0.26); border: 1px solid var(--brd2);
-    color: var(--txt); border-radius: 13px; padding: 12px 14px; font-size: 14px; outline: none;
-  }
-  .uidbar input:focus { border-color: var(--acc); }
-  .uidbar .act { flex: 1 1 0; }
+.shield{
+  width:30px;height:30px;flex:none;display:grid;place-items:center;
+  background:none;color:var(--on-surface);
+}
+.shield svg{width:26px;height:26px;fill:currentColor}
+.shield.warn{color:var(--error)}
 
-  .pkgwrap { position: relative; flex: 1 1 100%; min-width: 0; }
-  .pkgwrap input { width: 100%; }
-  .pkgdd {
-    position: absolute; left: 0; right: 0; top: calc(100% + 5px); z-index: 70;
-    max-height: 264px; overflow-y: auto; display: none;
-    background: var(--bg2); border: 1px solid var(--brd2); border-radius: 13px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
-  }
-  .pkgdd.show { display: block; }
-  .pkgdd .opt {
-    padding: 11px 13px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-  }
-  .pkgdd .opt:first-child { border-top: none; }
-  .pkgdd .opt.sel, .pkgdd .opt:hover { background: rgba(255,255,255,0.07); }
-  .pkgdd .appicon { width: 29px; height: 29px; border-radius: 7px; flex: 0 0 29px; }
-  .pkgdd .apptext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  .pkgdd .opt .pn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pkgdd .opt .pu { flex: 0 0 auto; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
-  .pkgdd .none { padding: 11px 13px; font-size: 12.5px; color: var(--dim); }
-  .pkgdd .pkghead {
-    position: sticky; top: 0; z-index: 1; padding: 8px 13px; font-size: 10.5px; font-weight: 640;
-    letter-spacing: .04em; text-transform: uppercase; color: var(--dim);
-    background: var(--bg2); border-bottom: 1px solid var(--brd2);
-  }
-  .blocklist { display: flex; flex-direction: column; gap: 6px; margin-top: 11px; }
-  .blocklist:empty { display: none; }
-  .blk-none { font-size: 12.5px; color: var(--dim); padding: 9px 11px; border: 1px dashed var(--brd2);
-              border-radius: 11px; text-align: center; }
-  .blk-head { font-size: 11px; font-weight: 640; letter-spacing: .04em; text-transform: uppercase;
-              color: var(--dim); margin: 2px 2px 1px; }
-  .blk {
-    display: flex; align-items: center; gap: 9px;
-    background: rgba(0,0,0,0.22); border: 1px solid var(--brd2);
-    border-radius: 11px; padding: 8px 10px 8px 12px;
-  }
-  .blk .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
-  .blk .bn { flex: 1 1 auto; min-width: 0; font-size: 13px; word-break: break-all; }
-  .blk .bs { flex: 0 0 auto; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
-  .blk.live    .dot { background: var(--acc2, #57e6c3); }
-  .blk.live    .bs  { color: var(--acc2, #57e6c3); }
-  .blk.pending .dot, .blk.drift .dot { background: var(--warn, #d9a441); }
-  .blk.pending .bs,  .blk.drift .bs  { color: var(--warn, #d9a441); }
-  .blk .bx {
-    flex: 0 0 auto; width: 24px; height: 24px; line-height: 22px; text-align: center;
-    border: none; border-radius: 8px; cursor: pointer; font-size: 13px;
-    background: rgba(255,255,255,0.06); color: var(--dim);
-  }
-  .blk .bx:hover { background: rgba(255,90,90,0.16); color: #ff6b6b; }
-  .blk .bx.save:hover { background: rgba(90,220,150,0.16); color: #57e6c3; }
-  .blk .bx:disabled { opacity: 0.4; }
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hero .metrics{margin-top:18px}
+.metric{
+  background:var(--surface-container-high);border-radius:var(--r-m);padding:14px 16px;
+}
+.hero .metric{background:color-mix(in srgb, var(--on-primary-container) 8%, transparent)}
+.hero:has(#dot.bad) .metric{background:color-mix(in srgb, var(--on-error-container) 8%, transparent)}
+.hero:has(#dot.warn) .metric{background:color-mix(in srgb, var(--on-tertiary-container) 8%, transparent)}
+.metric .k{font-size:12px;color:var(--on-surface-variant);letter-spacing:.2px}
+.hero .metric .k{color:inherit;opacity:.8}
+.metric .v{
+  font-size:28px;font-weight:600;letter-spacing:-.6px;margin-top:2px;
+  color:var(--on-surface);font-variant-numeric:tabular-nums;
+}
+.hero .metric .v{color:inherit}
+.metric .v small{font-size:12px;font-weight:600;letter-spacing:0;opacity:.8;color:var(--on-surface-variant)}
+.hero .metric .v small{color:inherit}
 
-  .swrow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-top: 1px solid rgba(255,255,255,0.055); }
-  .swrow:first-child { border-top: none; }
-  .swrow .swi { flex: 1; min-width: 0; }
-  .swrow .swi .lbl { font-size: 13.5px; font-weight: 640; }
-  .swrow .swi .val { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.btns.plain{margin-top:0}
+button.act{
+  appearance:none;cursor:pointer;flex:1 1 auto;min-width:max-content;
+  height:44px;padding:0 20px;border:1px solid transparent;border-radius:var(--r-full);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  white-space:nowrap;
+  font-family:var(--sans);font-size:14px;font-weight:500;letter-spacing:.1px;
+  background:var(--secondary-container);color:var(--on-secondary-container);
+  transition:transform var(--dur-short) var(--ease-standard),
+             background var(--dur-short) var(--ease-standard),
+             box-shadow var(--dur-short) var(--ease-standard);
+}
+button.act svg{width:18px;height:18px;flex:none}
+button.act:active{transform:scale(.98)}
+button.act.primary{background:var(--primary);color:var(--on-primary);box-shadow:var(--elev1)}
+button.act.danger{background:var(--error-container);color:var(--on-error-container)}
+button.act.ghost{background:transparent;color:var(--primary);border-color:var(--outline-variant)}
+button.act:disabled{opacity:.38;cursor:default;box-shadow:none}
+button.act.mini{flex:0 0 auto;height:34px;padding:0 14px;font-size:13px}
 
-  .swrow .swi .val.multiline { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.45; }
-  .switch { position: relative; width: 46px; height: 27px; flex: none; }
-  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-  .switch .sl { position: absolute; inset: 0; border-radius: 999px; background: rgba(255,255,255,0.14); border: 1px solid var(--brd2); transition: .22s; pointer-events: none; }
-  .switch .sl::before { content: ""; position: absolute; width: 21px; height: 21px; left: 2px; top: 2px; border-radius: 50%; background: #fff; transition: .22s; box-shadow: 0 2px 5px rgba(0,0,0,.35); }
-  .switch input:checked + .sl { background: linear-gradient(135deg, var(--acc), var(--acc2)); border-color: transparent; }
-  .switch input:checked + .sl::before { transform: translateX(19px); }
-  html[data-theme="light"] .switch .sl { background: rgba(16,26,48,0.14); }
-  .txin { display: block; width: 100%; background: rgba(0,0,0,0.26); border: 1px solid var(--brd2); color: var(--txt); border-radius: 13px; padding: 12px 14px; font-size: 12.5px; outline: none; margin-top: 9px; font-family: var(--mono); }
-  .txin:focus { border-color: var(--acc); }
-  .txin::placeholder { color: var(--faint); }
-  html[data-theme="light"] .txin { background: rgba(16,26,48,0.05); }
-  .banner { background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.3); color: #ffe6a8; padding: 12px 14px; border-radius: 13px; font-size: 12.5px; margin-bottom: 13px; display: none; line-height: 1.5; }
-  .foot { text-align: center; color: var(--faint); font-size: 11px; margin-top: 16px; line-height: 1.7; }
+.chip{
+  flex:none;font-size:12px;font-weight:500;letter-spacing:.1px;white-space:nowrap;
+  padding:5px 11px;border-radius:var(--r-xs);
+  background:var(--surface-container-highest);color:var(--on-surface-variant);
+}
+.chip.ok{background:var(--primary-container);color:var(--on-primary-container)}
+.chip.warn{background:var(--tertiary-container);color:var(--on-tertiary-container)}
+.chip.bad{background:var(--error-container);color:var(--on-error-container)}
+.chip.off{background:var(--surface-container-highest);color:var(--on-surface-variant)}
 
-  .rmbar {
-    position: relative;
-    display: flex; height: 13px; border-radius: 7px; overflow: hidden;
-    margin: 12px 0 10px; background: var(--card2); border: 1px solid var(--brd2);
-    box-shadow: 0 1px 2px rgba(0,0,0,.30);
-  }
-  .rmbar span { display: block; height: 100%; }
+.tag{
+  flex:none;font-size:11.5px;font-weight:500;letter-spacing:.1px;white-space:nowrap;
+  padding:4px 9px;border-radius:var(--r-xs);
+  background:var(--surface-container-highest);color:var(--on-surface-variant);
+}
+.tag.vfs,.tag.ok,.tag.live{background:var(--primary-container);color:var(--on-primary-container)}
+.tag.ov{background:var(--tertiary-container);color:var(--on-tertiary-container)}
+.tag.su{background:var(--secondary-container);color:var(--on-secondary-container)}
+.tag.suite{background:var(--surface-container-highest);color:var(--on-surface)}
+.tag.off{background:var(--surface-container-highest);color:var(--on-surface-variant)}
+.tag.warn,.tag.pending,.tag.drift{background:var(--error-container);color:var(--on-error-container)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--outline)}
+.dot.ok{background:var(--primary)}
+.dot.warn{background:var(--tertiary)}
+.dot.bad{background:var(--error)}
+.dot.off{background:var(--outline)}
 
-  .rmbar::after {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    border-radius: inherit;
-    background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 62%);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.26),
-      inset 0 -1px 2px rgba(0,0,0,.22);
-  }
-  html[data-theme="light"] .rmbar { box-shadow: 0 1px 2px rgba(20,32,64,.12); }
+.info-row{display:flex;align-items:flex-start;gap:14px;padding:13px 0;border-top:1px solid var(--outline-variant)}
+.info-row:first-child{border-top:0;padding-top:2px}
+.info-row:last-child{padding-bottom:2px}
+.icon-badge{
+  width:40px;height:40px;flex:none;border-radius:var(--r-s);display:grid;place-items:center;
+  background:var(--secondary-container);color:var(--on-secondary-container);
+}
+.icon-badge svg{width:20px;height:20px}
+.info-text{min-width:0;flex:1 1 auto}
+.info-k{font-size:12.5px;font-weight:400;color:var(--on-surface-variant);letter-spacing:.1px}
+.info-v{
+  font-size:16px;font-weight:400;color:var(--on-surface);margin-top:2px;
+  overflow-wrap:anywhere;word-break:break-word;line-height:1.32;
+}
+.info-v.mono{font-family:var(--mono);font-size:14px;font-weight:400}
+.info-v .u{font-size:inherit;font-weight:inherit;color:var(--on-surface-variant);margin-left:5px}
+.info-v small{font-size:13px;font-weight:500;color:var(--on-surface-variant)}
+.info-row .chip,.info-row .tag{align-self:flex-start;margin-top:2px}
+.info-row.between .info-text{display:flex;align-items:center;gap:12px}
+.hero-summary{margin-top:8px;font-size:13.5px;opacity:.85}
+.row-chev{width:22px;height:22px;flex:none;align-self:center;color:var(--on-surface-variant)}
+.row-icon{width:24px;height:24px;flex:none;align-self:center;color:var(--on-surface);fill:currentColor}
+.info-row.tap{cursor:pointer}
+.info-row.tap:active{opacity:.7}
 
-  html[data-theme="light"] .rmbar::after {
-    background-image: linear-gradient(180deg, rgba(255,255,255,.50), rgba(255,255,255,0) 65%);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.85),
-      inset 0 -1px 2px rgba(16,26,48,.10);
-  }
-  .rmlegend { display: flex; flex-wrap: wrap; gap: 7px 14px; margin-bottom: 2px; }
-  .rmleg { font-size: 11.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-  .rmleg .rmname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
-  .rmleg b { color: var(--txt); font-weight: 680; font-variant-numeric: tabular-nums; }
-  .rmsw { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+#modules{margin:0 0 10px}
+#modules .mrow{
+  display:block;background:var(--surface);border:0;border-radius:var(--r-l);
+  padding:13px 14px;margin-bottom:9px;
+}
+.mod-head{display:flex;align-items:flex-start;gap:12px}
+.mod-titles{flex:1 1 auto;min-width:0}
+.mod-title{font-size:17px;font-weight:500;line-height:1.28;color:var(--on-surface);overflow-wrap:anywhere}
+.mod-sub{font-size:13px;color:var(--on-surface-variant);margin-top:3px;overflow-wrap:anywhere}
+.mod-sub.mod-id{font-family:var(--mono);font-size:12px;opacity:.85}
+.mod-desc{
+  font-size:14px;line-height:1.5;color:var(--on-surface);margin:10px 0 0;
+  overflow-wrap:anywhere;white-space:pre-wrap;
+}
+.mod-chips{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:9px}
+.mchip{
+  font-size:12px;font-weight:500;padding:5px 10px;border-radius:var(--r-xs);
+  background:var(--surface-container-high);color:var(--on-surface-variant);
+}
+.mchip.primary{background:var(--primary);color:var(--on-primary)}
+.mchip.cont{background:var(--primary-container);color:var(--on-primary-container)}
+.mchip.ov{background:var(--tertiary-container);color:var(--on-tertiary-container)}
+.mchip.warn{background:var(--error-container);color:var(--on-error-container)}
+.mod-more{
+  margin-left:auto;flex:none;width:32px;height:32px;border:0;cursor:pointer;
+  border-radius:var(--r-full);display:grid;place-items:center;
+  background:transparent;color:var(--on-surface-variant);
+}
+.mod-more:hover{background:var(--surface-container-high)}
+.mod-more svg{width:20px;height:20px;fill:currentColor;transform:rotate(90deg)}
+.mod-rules{margin-top:12px;padding:10px 12px;border-radius:var(--r-s);background:var(--surface-container-low)}
+.mod-rules .row{padding:7px 0;border-top:0;font-size:12.5px}
+.mod-rules .row .tag{display:none}
+.mod-rules .empty{padding:2px 0}
+.switch.ro{pointer-events:none}
+.switch.ro input:disabled + .sl{opacity:1}
+.fab{
+  position:fixed;right:16px;bottom:calc(var(--nav-h) + 26px + env(safe-area-inset-bottom));
+  width:56px;height:56px;border:0;border-radius:var(--r-m);cursor:pointer;z-index:55;
+  display:grid;place-items:center;
+  background:var(--primary);color:var(--on-primary);box-shadow:var(--elev2);
+}
+.fab svg{width:24px;height:24px;fill:currentColor}
+.fab:active{transform:scale(.95)}
 
-  #toast {
-    position: fixed; left: 50%;
-    bottom: calc(96px + env(safe-area-inset-bottom));
-    transform: translate(-50%, 22px); opacity: 0; pointer-events: none;
-    background: #141926; border: 1px solid var(--brd); color: #eaeef7; padding: 12px 18px;
-    border-radius: 13px; font-size: 13px; font-weight: 640; box-shadow: var(--shadow);
-    transition: .28s cubic-bezier(.2,.8,.2,1); max-width: 90vw; z-index: 80; text-align: center;
-  }
-  #toast.show { opacity: 1; transform: translate(-50%, 0); }
-  #toast.ok  { border-color: rgba(53,210,154,0.42); }
-  #toast.bad { border-color: rgba(248,113,122,0.42); }
-  html[data-theme="light"] #toast {
-    background: #ffffff; color: #101725;
-    border-color: rgba(16,26,48,.12);
-    box-shadow: 0 12px 30px rgba(20,32,64,.20), 0 2px 6px rgba(20,32,64,.10);
-  }
-  html[data-theme="light"] #toast.ok  { border-color: rgba(14,154,108,.45); }
-  html[data-theme="light"] #toast.bad { border-color: rgba(210,58,68,.45); }
-  .spin { animation: spin .9s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.list{margin-top:4px}
+.row{
+  display:flex;align-items:center;gap:12px;padding:13px 0;
+  border-top:1px solid var(--outline-variant);font-size:14px;
+}
+.row:first-child{border-top:0}
+.row .name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .name.mono{font-family:var(--mono);font-size:12.5px}
+.row .sub{flex:none;font-size:12px;color:var(--on-surface-variant);font-variant-numeric:tabular-nums}
+.row .tag,.row .chip{flex:none}
+.empty{padding:12px 2px;font-size:13px;color:var(--on-surface-variant)}
 
-  .wrap { padding-bottom: 108px; }
-  .tab { display: none; }
-  .tab.on { display: block; animation: tabin .18s ease both; }
-  #tab-tools.on { display: flex; flex-direction: column; }
-  #groupPathMask { order: -12; }
-  #cardGlobalHide { order: -11; }
-  #cardGlobalScope { order: -10; }
-  #cardCloak { order: -9; }
-  @keyframes tabin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  .navwrap {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-    display: flex; justify-content: center;
-    padding: 0 16px calc(14px + env(safe-area-inset-bottom)) 16px;
-    pointer-events: none;
-  }
-  @media (min-width: 400px) { .navwrap { padding-left: 24px; padding-right: 24px; } }
-  @media (min-width: 600px) { .navwrap { padding-left: 32px; padding-right: 32px; } }
-  .nav {
-    pointer-events: auto;
-    position: relative;
-    display: flex; gap: 4px; padding: 7px;
-    border-radius: 26px;
-    border: 1px solid var(--brd);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
-      linear-gradient(180deg, rgba(14,18,32,.92), rgba(8,10,17,.96));
-    box-shadow:
-      0 14px 38px rgba(0,0,0,.55),
-      0 2px 10px rgba(0,0,0,.35),
-      inset 0 1px 0 rgba(255,255,255,.10),
-      inset 0 -1px 0 rgba(0,0,0,.35);
-    max-width: 100%;
-  }
-  @supports (backdrop-filter: blur(20px)) {
-    .nav {
-      backdrop-filter: blur(24px) saturate(160%);
-      -webkit-backdrop-filter: blur(24px) saturate(160%);
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
-        linear-gradient(180deg, rgba(14,18,32,.62), rgba(8,10,17,.72));
-    }
-  }
+.mrow{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--outline-variant)}
+.mrow:first-child{border-top:0}
+.mname{
+  flex:1 1 auto;min-width:0;font-size:14px;font-weight:600;color:var(--on-surface);
+  overflow-wrap:anywhere;word-break:break-word;
+}
+.mmeta{flex:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.mmeta .files{font-size:12px;color:var(--on-surface-variant);font-variant-numeric:tabular-nums}
 
-  .nav::before {
-    content: ""; position: absolute; inset: 0 14% auto 14%; height: 1px;
-    border-radius: 1px; pointer-events: none;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.34), transparent);
-  }
-  .navb {
-    -webkit-tap-highlight-color: transparent;
-    appearance: none; border: 1px solid transparent; cursor: pointer;
-    position: relative; isolation: isolate;
-    background: transparent; color: var(--muted);
-    position: relative; z-index: 1;
-    min-width: 60px; height: 58px; padding: 0 12px;
-    border-radius: 19px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-    font: 600 11px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    letter-spacing: .01em;
-    transition: color .2s ease, transform .2s cubic-bezier(.2,.7,.3,1),
-                border-color .2s ease, box-shadow .2s ease;
-  }
-  .navb svg {
-    width: 21px; height: 21px;
-    stroke: currentColor;
+.rmbar{position:relative;display:flex;height:12px;border-radius:var(--r-full);overflow:hidden;background:var(--surface-container-highest)}
+.rmbar span{display:block;height:100%}
+.rmlegend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px}
+.rmleg{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--on-surface-variant);min-width:0}
+.rmleg b{color:var(--on-surface);font-weight:600;font-variant-numeric:tabular-nums}
+.rmleg .rmname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.rmsw{width:10px;height:10px;border-radius:3px;flex:none}
 
-    filter: drop-shadow(0 1.5px 0 rgba(0,0,0,.55));
-    transition: transform .2s cubic-bezier(.2,.7,.3,1), filter .2s ease;
-  }
-  .navb:active { transform: scale(.93); }
-  .navb:not(.on):hover { color: #b7c0d4; }
+.swrow{display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--outline-variant)}
+.swrow:first-child{border-top:0}
+.swrow .swi{flex:1 1 auto;min-width:0}
+.swrow .swi .lbl{font-size:15px;font-weight:500;color:var(--on-surface)}
+.swrow .swi .val{
+  font-size:12.5px;color:var(--on-surface-variant);margin-top:2px;
+  font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.swrow .swi .val.multiline{white-space:normal;overflow-wrap:anywhere;font-family:var(--sans)}
+.swrow .act{flex:0 0 auto}
 
-  .navpill {
-    position: absolute; left: 0; top: 7px; z-index: 0;
-    width: 0; height: 58px; border-radius: 19px;
-    opacity: 0; pointer-events: none;
-    border: 1px solid rgba(124,156,255,.55);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.02)),
-      linear-gradient(135deg, rgba(124,156,255,.42), rgba(87,230,195,.28));
-    box-shadow:
-      0 8px 20px rgba(124,156,255,.38),
-      0 2px 6px rgba(0,0,0,.42),
-      inset 0 1px 0 rgba(255,255,255,.38),
-      inset 0 -2px 7px rgba(0,0,0,.30);
+.switch{position:relative;width:52px;height:32px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:2}
+.switch .sl{
+  position:absolute;inset:0;border-radius:var(--r-full);pointer-events:none;
+  background:var(--surface-container-highest);border:2px solid var(--outline);
+  transition:background var(--dur-med) var(--ease-emphasized), border-color var(--dur-med) var(--ease-emphasized);
+}
+.switch .sl::before{
+  content:"";position:absolute;left:5px;top:5px;width:16px;height:16px;border-radius:50%;
+  background:var(--outline);
+  transition:all var(--dur-med) var(--ease-emphasized);
+}
+.switch input:checked + .sl{background:var(--primary);border-color:var(--primary)}
+.switch input:checked + .sl::before{left:23px;top:2px;width:24px;height:24px;background:var(--on-primary)}
+.switch input:checked + .sl::after{
+  content:"";position:absolute;left:31px;top:10px;width:9px;height:5px;
+  border-left:2px solid var(--primary);border-bottom:2px solid var(--primary);
+  transform:rotate(-45deg);border-radius:1px;
+}
+.switch input:disabled{cursor:default}
+.switch input:disabled + .sl{opacity:.4}
+.switch input:focus-visible + .sl{box-shadow:0 0 0 4px color-mix(in srgb, var(--primary) 28%, transparent)}
 
-    transition:
-      transform .42s cubic-bezier(.22,1.55,.36,1),
-      width .46s cubic-bezier(.22,1.62,.38,1),
-      opacity .2s ease;
-  }
-  .navpill.noanim { transition: none; }
-  .navb.on { color: var(--txt); }
-  .navb.on svg {
-    stroke: url(#navGrad);
-    transform: translateY(-.5px) scale(1.06);
-    filter: drop-shadow(0 1px 0 rgba(0,0,0,.5)) drop-shadow(0 0 7px rgba(124,156,255,.55));
-  }
-  .navb.on span:not(.nbdot) {
-    background: linear-gradient(135deg, #ffffff, #cfe0ff 60%, #9df0dc);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .navb, .navb svg { transition: none; }
-    .navb.on { transform: none; }
+.txin,.uidbar input{
+  display:block;width:100%;margin-top:10px;
+  font-family:var(--sans);font-size:14px;color:var(--on-surface);
+  background:var(--surface-container-low);border:1px solid var(--outline);
+  border-radius:var(--r-s);padding:13px 14px;outline:none;
+  transition:border-color var(--dur-short) var(--ease-standard), box-shadow var(--dur-short) var(--ease-standard);
+}
+.txin.mono{font-family:var(--mono);font-size:13px}
+.txin::placeholder,.uidbar input::placeholder{color:var(--on-surface-variant);opacity:.8}
+.txin:focus,.uidbar input:focus{border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)}
+.uidbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.uidbar input{margin-top:0;flex:1 1 100%}
+.uidbar .act{flex:1 1 0}
+.txin.search,.uidbar input{
+  border:0;border-radius:var(--r-full);
+  background:var(--surface-container-high);
+  padding:15px 20px;font-size:15px;
+}
+.txin.search:focus,.uidbar input:focus{box-shadow:inset 0 0 0 2px var(--primary)}
+.searchwrap{position:relative;display:flex;align-items:center;margin:12px 0 14px}
+.searchwrap svg{
+  position:absolute;left:16px;width:20px;height:20px;pointer-events:none;
+  color:var(--on-surface-variant);
+}
+.searchwrap .txin{padding-left:48px;margin-top:0}
 
-    .navpill { transition: opacity .2s ease; }
-  }
-  .navb .nbdot { display: none; }
-  .navb.alert .nbdot {
-    display: block; position: absolute; top: 9px; right: 12px;
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--bad);
-    box-shadow: 0 0 0 2px rgba(8,10,17,.9), 0 0 8px rgba(248,113,122,.8);
-  }
+.pkgwrap{position:relative;flex:1 1 100%;min-width:0}
+.pkgwrap input{width:100%}
+.pkgdd{
+  position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:70;
+  max-height:264px;overflow-y:auto;display:none;
+  background:var(--surface-container-low);border-radius:var(--r-m);box-shadow:var(--elev3);
+}
+.pkgdd.show{display:block}
+.pkgdd .opt{padding:12px 14px;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.pkgdd .opt.sel,.pkgdd .opt:hover{background:var(--surface-container-high)}
+.pkgdd .appicon{width:30px;height:30px;border-radius:8px;flex:0 0 30px}
+.pkgdd .apptext{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pkgdd .opt .pn{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pkgdd .opt .pu{flex:0 0 auto;font-size:11.5px;color:var(--on-surface-variant);font-variant-numeric:tabular-nums}
+.pkgdd .none{padding:12px 14px;font-size:12.5px;color:var(--on-surface-variant)}
+.pkgdd .pkghead{
+  position:sticky;top:0;z-index:1;padding:9px 14px;font-size:11px;font-weight:600;
+  letter-spacing:.4px;text-transform:uppercase;color:var(--on-surface-variant);
+  background:var(--surface-container-low);
+}
+.blocklist{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.blocklist:empty{display:none}
+.blk-none{
+  font-size:12.5px;color:var(--on-surface-variant);padding:12px;text-align:center;
+  border:1px dashed var(--outline-variant);border-radius:var(--r-s);
+}
+.blk-head{
+  font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
+  color:var(--on-surface-variant);margin:4px 2px 2px;
+}
+.blk{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  background:var(--surface-container-low);border-radius:var(--r-s);
+}
+.blk .dot{width:8px;height:8px}
+.blk .bn{flex:1 1 auto;min-width:0;font-size:13.5px;overflow-wrap:anywhere}
+.blk .bs{flex:0 0 auto;font-size:11.5px;color:var(--on-surface-variant);font-variant-numeric:tabular-nums}
+.blk .bx{
+  flex:0 0 auto;width:30px;height:30px;border:0;border-radius:var(--r-full);cursor:pointer;
+  background:transparent;color:var(--on-surface-variant);font-size:14px;
+}
+.blk .bx:hover{background:color-mix(in srgb, var(--error) 14%, transparent);color:var(--error)}
+.blk .bx.save:hover{background:color-mix(in srgb, var(--primary) 14%, transparent);color:var(--primary)}
+.blk .bx:disabled{opacity:.4}
 
-  html[data-theme="light"] {
-    --bg:      #eef1f8;
-    --bg2:     #ffffff;
-    --card:    rgba(16,26,48,0.040);
-    --card2:   rgba(16,26,48,0.022);
-    --brd:     rgba(16,26,48,0.105);
-    --brd2:    rgba(16,26,48,0.070);
-    --txt:     #101725;
-    --muted:   #576179;
-    --faint:   #7a8497;
-    --acc:     #3f63e0;
-    --acc2:    #0f9e84;
-    --ok:      #0e9a6c;
-    --warn:    #a46a00;
-    --bad:     #d23a44;
-    --shadow:  0 12px 30px rgba(20,32,64,0.13);
-  }
-  html[data-theme="light"] body { color: var(--txt); }
-  html[data-theme="light"] h1 {
-    background-image: linear-gradient(90deg, #0d1220, #33499f);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  html[data-theme="light"] .metric { background: rgba(16,26,48,0.045); }
-  html[data-theme="light"] .row { border-top-color: rgba(16,26,48,0.075); }
-  html[data-theme="light"] .tag.suite { background: rgba(16,26,48,0.075); }
-  html[data-theme="light"] code { background: rgba(16,26,48,0.06); }
-  html[data-theme="light"] .nav {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.90), rgba(255,255,255,.72)),
-      linear-gradient(180deg, rgba(236,240,250,.95), rgba(226,232,245,.98));
-    box-shadow:
-      0 14px 34px rgba(20,32,64,.18),
-      0 2px 8px rgba(20,32,64,.10),
-      inset 0 1px 0 rgba(255,255,255,.85),
-      inset 0 -1px 0 rgba(16,26,48,.10);
-  }
-  @supports (backdrop-filter: blur(20px)) {
-    html[data-theme="light"] .nav {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.52)),
-        linear-gradient(180deg, rgba(236,240,250,.60), rgba(226,232,245,.70));
-    }
-  }
-  html[data-theme="light"] .nav::before {
-    background: linear-gradient(90deg, transparent, rgba(16,26,48,.16), transparent);
-  }
-  html[data-theme="light"] .navb svg { filter: drop-shadow(0 1px 0 rgba(255,255,255,.9)); }
-  html[data-theme="light"] .navpill {
-    border-color: rgba(63,99,224,.55);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.55)),
-      linear-gradient(135deg, rgba(63,99,224,.30), rgba(15,158,132,.24));
-    box-shadow:
-      0 8px 18px rgba(63,99,224,.28),
-      0 2px 6px rgba(20,32,64,.16),
-      inset 0 1px 0 rgba(255,255,255,.95),
-      inset 0 -2px 6px rgba(16,26,48,.10);
-  }
-  html[data-theme="light"] .navb.on svg {
-    filter: drop-shadow(0 1px 0 rgba(255,255,255,.9)) drop-shadow(0 0 6px rgba(63,99,224,.45));
-  }
-  html[data-theme="light"] .navb.on span:not(.nbdot) {
-    background-image: linear-gradient(135deg, #0d1220, #2b3f96 60%, #0c7f6b);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  html[data-theme="light"] .navb.alert .nbdot { box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(210,58,68,.7); }
-  html[data-theme="light"] .banner { color: #6b4d00; }
-  html[data-theme="light"] button.act.danger {
-    color: #a3252e; border-color: rgba(210,58,68,0.40); background: rgba(210,58,68,0.08);
-  }
-  html[data-theme="light"] button.act.primary { color: #ffffff; }
-  html[data-theme="light"] .logo svg { stroke: #ffffff; }
+pre.rules,pre.out{
+  margin:12px 0 0;padding:14px;max-height:300px;overflow:auto;
+  font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre;word-break:break-all;
+  color:var(--on-surface-variant);background:var(--surface-container-highest);
+  border-radius:var(--r-m);
+}
+code{font-family:var(--mono);font-size:12px;background:var(--surface-container-highest);padding:1px 6px;border-radius:6px}
 
-  .iconbtn .ico-moon { display: none; }
-  html[data-theme="light"] .iconbtn .ico-moon { display: block; }
-  html[data-theme="light"] .iconbtn .ico-sun  { display: none; }
+.note{margin:12px 0 0;font-size:12.5px;line-height:1.6;color:var(--on-surface-variant)}
+.note b{color:var(--on-surface)}
+.banner{
+  display:none;align-items:flex-start;gap:10px;margin:10px 0 0;padding:14px 16px;
+  background:var(--secondary-container);color:var(--on-secondary-container);
+  border-radius:var(--r-m);font-size:13px;line-height:1.55;
+}
+.foot{
+  margin:26px 4px 0;text-align:center;font-size:11.5px;line-height:1.8;
+  color:var(--on-surface-variant);opacity:.85;
+}
+.foot code{background:var(--surface-container-high)}
 
-  /* A calm, touch-first surface system. Runtime hooks above stay unchanged. */
-  :root {
-    --bg: #121015;
-    --bg2: #121015;
-    --surface: #201d24;
-    --surface-raised: #2b2730;
-    --surface-soft: #19171c;
-    --card: var(--surface);
-    --card2: var(--surface-soft);
-    --brd: #38333d;
-    --brd2: #302c35;
-    --txt: #eee8f0;
-    --muted: #c8c0cb;
-    --faint: #958d99;
-    --acc: #d4baff;
-    --acc2: #d4baff;
-    --acc-container: #4b3868;
-    --on-acc-container: #f0ddff;
-    --secondary-container: #4a4350;
-    --on-secondary-container: #ece1ee;
-    --ok: #93d5b0;
-    --warn: #e7c178;
-    --bad: #ffb2b8;
-    --radius: 18px;
-    --shadow: 0 10px 28px rgba(0, 0, 0, .22);
-  }
+#toast{
+  position:fixed;left:50%;bottom:calc(var(--nav-h) + 30px + env(safe-area-inset-bottom));
+  transform:translate(-50%,16px);opacity:0;pointer-events:none;z-index:80;
+  max-width:min(90vw,420px);padding:14px 18px;border-radius:var(--r-xs);
+  background:var(--inverse-surface);color:var(--inverse-on-surface);
+  font-size:13.5px;font-weight:500;text-align:center;box-shadow:var(--elev3);
+  transition:opacity var(--dur-med) var(--ease-emphasized), transform var(--dur-med) var(--ease-emphasized);
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.ok{background:var(--primary);color:var(--on-primary)}
+#toast.bad{background:var(--error);color:var(--on-error)}
 
-  body {
-    background: var(--bg);
-    padding: 0 16px calc(96px + env(safe-area-inset-bottom));
-    line-height: 1.5;
-  }
-  .wrap { max-width: 720px; }
+.navwrap{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;
+  padding:0 12px calc(12px + env(safe-area-inset-bottom));
+  pointer-events:none;
+}
+.nav{
+  pointer-events:auto;position:relative;display:flex;width:100%;max-width:520px;
+  padding:8px 6px;border-radius:var(--r-xl);
+  background:var(--surface-container-low);box-shadow:var(--elev2);
+}
+.navpill{display:none}
+.navb{
+  appearance:none;border:0;background:transparent;cursor:pointer;flex:1 1 0;min-width:0;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:0;color:var(--on-surface-variant);
+  font-family:var(--sans);font-size:11.5px;font-weight:600;letter-spacing:.2px;
+  transition:color var(--dur-med) var(--ease-emphasized);
+}
+.navb .nbicon{
+  display:grid;place-items:center;width:64px;height:32px;border-radius:var(--r-full);
+  transition:background var(--dur-med) var(--ease-emphasized);
+}
+.navb svg{width:24px;height:24px;fill:currentColor}
+.navb.on{color:var(--on-surface)}
+.navb.on .nbicon{background:var(--secondary-container)}
+.navb:active .nbicon{transform:scale(.94)}
+.navb.alert .nbicon::after{
+  content:"";position:absolute;margin:-14px 0 0 22px;width:7px;height:7px;border-radius:50%;
+  background:var(--error);
+}
+.navb .nbdot{display:none}
 
-  header {
-    margin: 0 -16px 18px;
-    padding: max(20px, env(safe-area-inset-top)) 20px 16px;
-    gap: 12px;
-    background: color-mix(in srgb, var(--bg) 92%, transparent);
-    border-bottom: 0;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .logo {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    background: var(--acc-container);
-    box-shadow: none;
-  }
-  .logo svg { width: 22px; height: 22px; stroke: var(--on-acc-container); }
-  .brand { min-width: 0; }
-  .brand h1 {
-    color: var(--txt);
-    font-size: 20px;
-    font-weight: 650;
-    letter-spacing: -.35px;
-    background: none;
-    -webkit-text-fill-color: currentColor;
-  }
-  .brand p {
-    overflow: hidden;
-    color: var(--faint);
-    font-size: 11px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .hbtns { gap: 6px; }
-  .ver {
-    padding: 5px 9px;
-    color: var(--muted);
-    background: var(--surface);
-    border-color: transparent;
-  }
-  .iconbtn {
-    width: 36px;
-    height: 36px;
-    border-radius: 11px;
-    color: var(--muted);
-    background: var(--surface);
-    border-color: transparent;
-  }
-  .iconbtn:hover { color: var(--txt); background: var(--surface-raised); }
+.spin{animation:nmspin .9s linear infinite}
+@keyframes nmspin{to{transform:rotate(360deg)}}
+.tab{display:none}
+.tab.on{display:block;animation:nmtabin var(--dur-med) var(--ease-emphasized) both}
+@keyframes nmtabin{from{opacity:0}to{opacity:1}}
+.skeleton{
+  background:linear-gradient(90deg,var(--surface-container-high) 25%,var(--surface-container-highest) 37%,var(--surface-container-high) 63%);
+  background-size:400% 100%;animation:nmshimmer 1.3s ease-in-out infinite;border-radius:6px;
+}
+@keyframes nmshimmer{from{background-position:100% 50%}to{background-position:0 50%}}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
-  .group-label {
-    margin: 26px 6px 10px;
-    color: var(--acc);
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0;
-    text-transform: none;
-  }
-  .card,
-  html[data-theme="light"] .card {
-    padding: 18px;
-    margin-bottom: 14px;
-    overflow: hidden;
-    background: var(--surface);
-    border: 1px solid transparent;
-    border-radius: var(--radius);
-    box-shadow: none;
-    backdrop-filter: none;
-  }
-  .card::before,
-  .hero::after,
-  html[data-theme="light"] .card::before { display: none; }
-  .hero,
-  html[data-theme="light"] .hero {
-    padding: 20px 18px 18px;
-    color: var(--on-secondary-container);
-    background: var(--secondary-container);
-  }
-  .hero .sub,
-  .hero .metric .k,
-  .hero .metric .v small { color: color-mix(in srgb, var(--on-secondary-container) 72%, transparent); }
-  .card-h { margin-bottom: 14px; }
-  .card-h h2 { font-size: 15px; font-weight: 600; letter-spacing: 0; }
-  .card-h .ic { color: var(--acc); }
-  .card-h .chip,
-  html[data-theme="light"] .card-h .chip {
-    padding: 3px 9px;
-    color: var(--muted);
-    background: var(--surface-soft);
-    background-image: none;
-    border: 0;
-    box-shadow: none;
-    text-shadow: none;
-  }
-  .card-h .chip.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
-  .card-h .chip.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
-  .card-h .chip.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
-
-  .statusline .st { font-size: 19px; font-weight: 620; }
-  .dot { width: 9px; height: 9px; }
-  .dot.ok,
-  .dot.warn,
-  .dot.bad { box-shadow: none; }
-  .metrics { gap: 8px; margin-top: 15px; }
-  .metric,
-  html[data-theme="light"] .metric {
-    padding: 12px;
-    background: color-mix(in srgb, var(--on-secondary-container) 7%, transparent);
-    border: 0;
-    border-radius: 14px;
-  }
-  .metric .k { font-size: 10.5px; letter-spacing: .02em; text-transform: none; }
-  .metric .v { margin-top: 5px; font-size: 20px; font-weight: 650; }
-  .card:not(.hero) .metric { background: var(--surface-raised); }
-
-  .btns { gap: 8px; margin-top: 15px; }
-  button.act {
-    min-height: 44px;
-    padding: 10px 18px;
-    border-radius: 22px;
-    color: var(--txt);
-    background: var(--surface-raised);
-    border: 0;
-    font-size: 13px;
-    font-weight: 600;
-  }
-  button.act:hover { background: color-mix(in srgb, var(--surface-raised) 86%, var(--acc)); }
-  button.act.primary,
-  html[data-theme="light"] button.act.primary {
-    color: var(--on-acc-container);
-    background: var(--acc-container);
-    border-color: transparent;
-  }
-  button.act.danger,
-  html[data-theme="light"] button.act.danger {
-    color: var(--bad);
-    background: color-mix(in srgb, var(--bad) 10%, transparent);
-    border-color: transparent;
-  }
-
-  .row,
-  .swrow { border-top-color: color-mix(in srgb, var(--muted) 14%, transparent); }
-  .mrow,
-  html[data-theme="light"] .mrow {
-    padding: 11px 12px;
-    background: var(--surface-soft);
-    border-color: transparent;
-    border-radius: 14px;
-    box-shadow: none;
-  }
-  .tag,
-  html[data-theme="light"] .tag {
-    background-image: none;
-    border-color: transparent;
-    box-shadow: none;
-    text-shadow: none;
-  }
-  .note { line-height: 1.6; }
-  code { background: var(--surface-raised); color: var(--acc); }
-  pre.rules {
-    color: var(--muted);
-    background: var(--surface-soft);
-    border-color: transparent;
-    border-radius: 14px;
-  }
-
-  .shield { border-radius: 14px; }
-  .uidbar input,
-  .txin,
-  html[data-theme="light"] .txin {
-    min-height: 43px;
-    color: var(--txt);
-    background: var(--surface-soft);
-    border-color: transparent;
-    border-radius: 14px;
-  }
-  .uidbar input:focus,
-  .txin:focus { border-color: var(--acc); box-shadow: inset 0 0 0 1px var(--acc); }
-  .pkgdd {
-    background: var(--surface-raised);
-    border-color: transparent;
-    border-radius: 16px;
-    box-shadow: var(--shadow);
-  }
-  .pkgdd .pkghead { background: var(--surface-raised); border-color: var(--brd2); }
-  .blk { background: var(--surface-soft); border-color: transparent; }
-
-  .switch { width: 44px; height: 26px; }
-  .switch .sl,
-  html[data-theme="light"] .switch .sl {
-    background: var(--surface-raised);
-    border-color: transparent;
-  }
-  .switch .sl::before { width: 20px; height: 20px; box-shadow: none; }
-  .switch input:checked + .sl { background: var(--acc-container); }
-  .switch input:checked + .sl::before { transform: translateX(18px); background: var(--on-acc-container); }
-
-  .rmbar { height: 10px; background: var(--surface-soft); border-color: transparent; box-shadow: none; }
-  .rmbar::after,
-  html[data-theme="light"] .rmbar::after { display: none; }
-
-  #toast {
-    background: var(--surface-raised);
-    border-color: transparent;
-    border-radius: 16px;
-    box-shadow: var(--shadow);
-  }
-  .navwrap {
-    bottom: 0;
-    padding: 4px 12px calc(4px + env(safe-area-inset-bottom));
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-  .nav,
-  html[data-theme="light"] .nav {
-    width: min(100%, 720px);
-    height: 68px;
-    padding: 4px;
-    gap: 2px;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    backdrop-filter: none;
-  }
-  .nav::before,
-  html[data-theme="light"] .nav::before,
-  .navpill { display: none; }
-  .navb {
-    flex: 1;
-    min-width: 0;
-    height: 58px;
-    padding: 0 6px;
-    gap: 3px;
-    border-radius: 18px;
-    color: var(--muted);
-    font-size: 10.5px;
-    font-weight: 600;
-  }
-  .navb svg,
-  html[data-theme="light"] .navb svg {
-    box-sizing: content-box;
-    width: 20px;
-    height: 20px;
-    padding: 4px 15px;
-    border-radius: 18px;
-    filter: none;
-  }
-  .navb.on { color: var(--on-secondary-container); background: transparent; }
-  .navb.on svg,
-  html[data-theme="light"] .navb.on svg {
-    stroke: var(--on-secondary-container);
-    background: var(--secondary-container);
-    transform: none;
-    filter: none;
-  }
-  .navb.on span:not(.nbdot),
-  html[data-theme="light"] .navb.on span:not(.nbdot) {
-    color: var(--on-secondary-container);
-    background: none;
-  }
-
-  /* Page composition */
-  .page-head {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    min-height: 48px;
-    margin: 4px 4px 18px;
-  }
-  .page-head h2 {
-    margin: 0;
-    color: var(--txt);
-    font-size: 30px;
-    font-weight: 560;
-    line-height: 1.1;
-    letter-spacing: -.7px;
-  }
-  .page-kicker {
-    max-width: 48%;
-    overflow: hidden;
-    color: var(--muted);
-    font-size: 12px;
-    text-align: right;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  #tab-tools > .page-head { order: -20; }
-
-  .overview-panel {
-    padding: 20px;
-    margin-bottom: 28px;
-    color: var(--on-secondary-container);
-    background: var(--secondary-container);
-    border-radius: 26px;
-  }
-  .overview-state {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .state-mark {
-    display: grid;
-    width: 48px;
-    height: 48px;
-    flex: none;
-    place-items: center;
-    background: color-mix(in srgb, var(--on-secondary-container) 10%, transparent);
-    border-radius: 16px;
-  }
-  .state-mark .dot { width: 12px; height: 12px; }
-  .state-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-  .state-label {
-    color: color-mix(in srgb, var(--on-secondary-container) 72%, transparent);
-    font-size: 12px;
-    font-weight: 550;
-  }
-  .state-copy .st { font-size: 20px; font-weight: 620; }
-  .stat-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 20px;
-  }
-  .stat-item {
-    min-width: 0;
-    padding: 12px;
-    background: color-mix(in srgb, var(--on-secondary-container) 7%, transparent);
-    border-radius: 15px;
-  }
-  .stat-item .k {
-    overflow: hidden;
-    color: color-mix(in srgb, var(--on-secondary-container) 68%, transparent);
-    font-size: 10.5px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .stat-item .v { margin-top: 5px; font-size: 19px; font-weight: 650; }
-  .overview-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-  .overview-actions .act.primary {
-    color: var(--on-acc-container);
-    background: var(--acc-container);
-  }
-  .overview-actions .act.danger {
-    color: var(--on-secondary-container);
-    background: color-mix(in srgb, var(--on-secondary-container) 9%, transparent);
-  }
-
-  .section-head {
-    display: flex;
-    align-items: center;
-    min-height: 28px;
-    margin: 0 6px 9px;
-    color: var(--acc);
-  }
-  .section-head:not(:first-child) { margin-top: 26px; }
-  .section-head h3 { margin: 0; font-size: 13px; font-weight: 600; }
-  .section-head .chip { margin-left: auto; }
-
-  .info-group,
-  .guard-panel,
-  .posture-panel,
-  .expand-panel {
-    overflow: hidden;
-    background: var(--surface);
-    border-radius: 22px;
-  }
-  .info-row {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 13px;
-    min-height: 74px;
-    padding: 11px 16px;
-  }
-  .info-row + .info-row { border-top: 2px solid var(--bg); }
-  .info-icon {
-    display: grid;
-    width: 40px;
-    height: 40px;
-    flex: none;
-    color: var(--acc);
-    background: var(--surface-raised);
-    border-radius: 13px;
-    place-items: center;
-  }
-  .info-icon svg { width: 20px; height: 20px; }
-  .info-copy,
-  .info-trailing { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
-  .info-copy .k,
-  .info-trailing .k { color: var(--muted); font-size: 11px; }
-  .info-copy .v,
-  .info-trailing .v { overflow: hidden; color: var(--txt); font-size: 14px; font-weight: 550; text-overflow: ellipsis; }
-  .info-trailing { align-items: flex-end; padding-left: 12px; }
-  .mono-value { font-family: var(--mono); font-size: 11px !important; line-height: 1.45; white-space: normal; word-break: break-all; }
-
-  .guard-panel {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 13px;
-    min-height: 76px;
-    padding: 12px 16px;
-  }
-  .guard-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
-  .guard-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 580; }
-  .guard-title .dot { width: 8px; height: 8px; }
-  .guard-note { color: var(--muted); font-size: 11.5px; }
-  .compact-action { grid-column: 1 / -1; width: 100%; }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 24px;
-    padding: 3px 9px;
-    color: var(--muted);
-    background: var(--surface-raised);
-    border: 0;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 650;
-    white-space: nowrap;
-  }
-  .chip.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
-  .chip.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
-  .chip.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
-
-  .posture-panel { padding: 18px; }
-  .posture-summary { display: flex; align-items: center; gap: 14px; }
-  .posture-summary .t { font-size: 16px; font-weight: 600; }
-  .posture-summary .d { margin-top: 3px; color: var(--muted); font-size: 12px; }
-  .posture-panel > .list { margin-top: 14px; }
-
-  .rules-stack { display: flex; flex-direction: column; gap: 8px; }
-  .expand-trigger {
-    appearance: none;
-    display: grid;
-    width: 100%;
-    min-height: 74px;
-    grid-template-columns: 42px minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 13px;
-    padding: 11px 16px;
-    color: var(--txt);
-    background: transparent;
-    border: 0;
-    font: 580 15px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif;
-    text-align: left;
-  }
-  .expand-trigger:active { background: var(--surface-raised); }
-  .expand-trigger .chev { color: var(--muted); font-size: 20px; transition: transform .2s; }
-  .expand-trigger.open .chev { transform: rotate(90deg); }
-  .expand-body,
-  .inset-list { padding: 0 16px 14px; }
-  .expand-body:empty,
-  .inset-list:empty { display: none; }
-
-  @media (max-width: 560px) {
-    .stat-grid { grid-template-columns: 1fr 1fr; }
-    .page-head h2 { font-size: 28px; }
-  }
-
-  html[data-theme="light"] {
-    --bg: #fbf8fc;
-    --bg2: #fbf8fc;
-    --surface: #f1ebf3;
-    --surface-raised: #e9e2ec;
-    --surface-soft: #f7f2f8;
-    --card: var(--surface);
-    --card2: var(--surface-soft);
-    --brd: #ddd5e0;
-    --brd2: #e6dee8;
-    --txt: #211d23;
-    --muted: #665f69;
-    --faint: #817983;
-    --acc: #76559f;
-    --acc2: #76559f;
-    --acc-container: #eadcff;
-    --on-acc-container: #321653;
-    --secondary-container: #eee2f0;
-    --on-secondary-container: #302a32;
-    --ok: #28764f;
-    --warn: #815b17;
-    --bad: #b33d4b;
-    --shadow: 0 10px 26px rgba(54, 43, 60, .10);
-  }
-  html[data-theme="light"] body { background: var(--bg); }
-  html[data-theme="light"] header {
-    background: color-mix(in srgb, var(--bg) 93%, transparent);
-    border-color: transparent;
-  }
-  html[data-theme="light"] .brand h1 {
-    color: var(--txt);
-    background: none;
-    -webkit-text-fill-color: currentColor;
-  }
-  html[data-theme="light"] .logo svg { stroke: var(--on-acc-container); }
-  html[data-theme="light"] .switch .sl { background: #d4ccd7; }
-  html[data-theme="light"] .switch input:checked + .sl { background: var(--acc-container); }
-  html[data-theme="light"] .switch input:checked + .sl::before { background: var(--on-acc-container); }
-  html[data-theme="light"] pre.rules { color: var(--muted); background: var(--surface-soft); }
-  html[data-theme="light"] #toast { color: #f5eef8; background: #302b32; border-color: transparent; }
-
-  /* Material 3 */
-  html[data-ui="material"] {
-    --bg: #121015;
-    --bg2: #121015;
-    --surface: #201d24;
-    --surface-raised: #2b2730;
-    --surface-soft: #19171c;
-    --card: var(--surface);
-    --card2: var(--surface-soft);
-    --brd: #38333d;
-    --brd2: #302c35;
-    --txt: #eee8f0;
-    --muted: #c8c0cb;
-    --faint: #958d99;
-    --acc: #d4baff;
-    --acc2: #d4baff;
-    --acc-container: #4b3868;
-    --on-acc-container: #f0ddff;
-    --secondary-container: #4a4350;
-    --on-secondary-container: #ece1ee;
-    --ok: #93d5b0;
-    --warn: #e7c178;
-    --bad: #ffb2b8;
-    --shadow: 0 10px 28px rgba(0, 0, 0, .22);
-  }
-  html[data-ui="material"][data-theme="light"] {
-    --bg: #fbf8fc;
-    --bg2: #fbf8fc;
-    --surface: #f1ebf3;
-    --surface-raised: #e9e2ec;
-    --surface-soft: #f7f2f8;
-    --card: var(--surface);
-    --card2: var(--surface-soft);
-    --brd: #ddd5e0;
-    --brd2: #e6dee8;
-    --txt: #211d23;
-    --muted: #665f69;
-    --faint: #817983;
-    --acc: #76559f;
-    --acc2: #76559f;
-    --acc-container: #eadcff;
-    --on-acc-container: #321653;
-    --secondary-container: #eee2f0;
-    --on-secondary-container: #302a32;
-    --ok: #28764f;
-    --warn: #815b17;
-    --bad: #b33d4b;
-    --shadow: 0 10px 26px rgba(54, 43, 60, .10);
-  }
-  html[data-ui="material"] .stylebtn { color: var(--on-acc-container); background: var(--acc-container); }
-  html[data-ui="material"] .overview-panel { background: var(--secondary-container); box-shadow: none; }
-  html[data-ui="material"] .info-group,
-  html[data-ui="material"] .guard-panel,
-  html[data-ui="material"] .posture-panel,
-  html[data-ui="material"] .expand-panel,
-  html[data-ui="material"] .tool-panel { box-shadow: none; }
-  html[data-ui="material"] .tool-panel {
-    padding: 18px;
-    background: var(--surface);
-    border: 0;
-    border-radius: 22px;
-  }
-  html[data-ui="material"] .tool-panel .card-h {
-    min-height: 42px;
-    padding: 0;
-  }
-  html[data-ui="material"] .navwrap {
-    bottom: 0;
-    padding: 4px 12px calc(4px + env(safe-area-inset-bottom));
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
-  }
-  html[data-ui="material"] .nav {
-    width: min(100%, 720px);
-    background: transparent;
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  /* MIUIX */
-  html[data-ui="miuix"] {
-    --bg: #08090b;
-    --bg2: #08090b;
-    --surface: #17181b;
-    --surface-raised: #24262b;
-    --surface-soft: #111216;
-    --card: var(--surface);
-    --card2: var(--surface-soft);
-    --brd: rgba(255, 255, 255, .08);
-    --brd2: rgba(255, 255, 255, .055);
-    --txt: #f5f5f7;
-    --muted: #a7a8ad;
-    --faint: #777980;
-    --acc: #73a9ff;
-    --acc2: #73a9ff;
-    --acc-container: #173d70;
-    --on-acc-container: #e5f0ff;
-    --secondary-container: #17181b;
-    --on-secondary-container: #f5f5f7;
-    --ok: #57c989;
-    --warn: #e8b85f;
-    --bad: #ff7f8b;
-    --shadow: 0 14px 34px rgba(0, 0, 0, .34);
-  }
-  html[data-ui="miuix"][data-theme="light"] {
-    --bg: #f4f4f6;
-    --bg2: #f4f4f6;
-    --surface: #ffffff;
-    --surface-raised: #f0f1f4;
-    --surface-soft: #f8f8fa;
-    --card: var(--surface);
-    --card2: var(--surface-soft);
-    --brd: rgba(25, 27, 32, .08);
-    --brd2: rgba(25, 27, 32, .055);
-    --txt: #1d1e21;
-    --muted: #6f7178;
-    --faint: #92949b;
-    --acc: #1677e8;
-    --acc2: #1677e8;
-    --acc-container: #dceaff;
-    --on-acc-container: #064787;
-    --secondary-container: #ffffff;
-    --on-secondary-container: #1d1e21;
-    --ok: #198653;
-    --warn: #946313;
-    --bad: #d83f50;
-    --shadow: 0 10px 28px rgba(27, 34, 46, .09);
-  }
-  html[data-ui="miuix"] body { background: var(--bg); }
-  html[data-ui="miuix"] header {
-    margin-bottom: 8px;
-    background: color-mix(in srgb, var(--bg) 86%, transparent);
-    border: 0;
-  }
-  html[data-ui="miuix"] .brand h1 { font-weight: 720; letter-spacing: -.55px; }
-  html[data-ui="miuix"] .stylebtn { color: #fff; background: var(--acc); }
-  html[data-ui="miuix"] .iconbtn { border-radius: 12px; }
-  html[data-ui="miuix"] .page-head { min-height: 58px; margin-bottom: 16px; }
-  html[data-ui="miuix"] .page-head h2 { font-size: 32px; font-weight: 720; letter-spacing: -1px; }
-  html[data-ui="miuix"] .overview-panel {
-    padding: 18px;
-    color: var(--txt);
-    background: var(--surface);
-    border: 1px solid var(--brd);
-    border-radius: 24px;
-    box-shadow: var(--shadow);
-  }
-  html[data-ui="miuix"] .state-mark { color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, transparent); }
-  html[data-ui="miuix"] .state-label,
-  html[data-ui="miuix"] .stat-item .k { color: var(--muted); }
-  html[data-ui="miuix"] .stat-grid { gap: 8px; }
-  html[data-ui="miuix"] .stat-item { background: var(--surface-raised); border-radius: 14px; }
-  html[data-ui="miuix"] .overview-actions .act.primary { color: #fff; background: var(--acc); }
-  html[data-ui="miuix"] .overview-actions .act.danger { color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); }
-  html[data-ui="miuix"] button.act { min-height: 42px; border-radius: 13px; }
-  html[data-ui="miuix"] .section-head { color: var(--muted); }
-  html[data-ui="miuix"] .section-head h3,
-  html[data-ui="miuix"] .group-label { font-size: 12px; font-weight: 650; }
-  html[data-ui="miuix"] .info-group,
-  html[data-ui="miuix"] .guard-panel,
-  html[data-ui="miuix"] .posture-panel,
-  html[data-ui="miuix"] .expand-panel,
-  html[data-ui="miuix"] .tool-panel {
-    background: var(--surface);
-    border: 1px solid var(--brd);
-    border-radius: 20px;
-    box-shadow: var(--shadow);
-  }
-  html[data-ui="miuix"] .info-row + .info-row { border-top: 1px solid var(--brd2); }
-  html[data-ui="miuix"] .info-icon { color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, var(--surface-raised)); }
-  html[data-ui="miuix"] .chip { color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
-  html[data-ui="miuix"] .tool-panel {
-    padding: 16px;
-    margin-bottom: 12px;
-  }
-  html[data-ui="miuix"] .tool-panel .card-h {
-    min-height: 46px;
-    padding: 0;
-    margin-bottom: 12px;
-  }
-  html[data-ui="miuix"] .tool-panel.collapsed > .card-h { margin-bottom: 0; }
-  html[data-ui="miuix"] .tool-panel .card-h .ic {
-    box-sizing: content-box;
-    width: 19px;
-    height: 19px;
-    padding: 9px;
-    color: var(--acc);
-    background: color-mix(in srgb, var(--acc) 12%, transparent);
-    border-radius: 12px;
-  }
-  html[data-ui="miuix"] .txin,
-  html[data-ui="miuix"] .uidbar input { background: var(--surface-raised); }
-  html[data-ui="miuix"] .navwrap {
-    bottom: calc(10px + env(safe-area-inset-bottom));
-    padding: 0 14px;
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  html[data-ui="miuix"] .nav {
-    width: min(100%, 560px);
-    height: 66px;
-    padding: 5px;
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
-    border: 1px solid var(--brd);
-    border-radius: 23px;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
-  }
-  html[data-ui="miuix"] .navb { height: 54px; border-radius: 18px; }
-  html[data-ui="miuix"] .navb svg,
-  html[data-ui="miuix"][data-theme="light"] .navb svg { padding: 3px 14px; }
-  html[data-ui="miuix"] .navb.on { color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
-  html[data-ui="miuix"] .navb.on svg,
-  html[data-ui="miuix"][data-theme="light"] .navb.on svg { color: var(--acc); stroke: var(--acc); background: transparent; }
-  html[data-ui="miuix"] .navb.on span:not(.nbdot) { color: var(--acc); }
-
-  @media (max-width: 520px) {
-    body { padding-left: 12px; padding-right: 12px; }
-    header { margin-left: -12px; margin-right: -12px; padding-left: 16px; padding-right: 16px; }
-    .ver { display: none; }
-    .card { padding: 15px; }
-    .metrics { grid-template-columns: 1fr 1fr; }
-  }
+@media (min-width:520px){
+  .pagetitle{font-size:38px}
+  body{padding-left:24px;padding-right:24px}
+  .topbar{margin-left:-24px;margin-right:-24px;padding-left:24px;padding-right:24px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+@media (hover:none){
+  .iconbtn:hover,.menu-item:hover,.mod-more:hover,.blk .bx:hover{background:transparent}
+  .mod-more:hover,.iconbtn:hover{color:var(--on-surface)}
+  .blk .bx:hover{color:var(--on-surface-variant)}
+  .pkgdd .opt:hover{background:transparent}
+}
 </style>
 </head>
 <body>
+<div class="topbar">
+  <span class="topbar-title">NoMount Suite</span>
+  <button class="iconbtn" id="langBtn" type="button" onclick="toggleLang()" data-i18n-title="title_language" data-i18n-aria="title_language" title="Switch language" aria-label="Switch language"><span data-i18n="lang_btn">EN</span></button>
+  <button class="iconbtn" id="themeBtn" type="button" onclick="toggleTheme()" data-i18n-title="title_theme" data-i18n-aria="title_theme" title="Light / dark theme" aria-label="Light / dark theme">
+    <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2z"/></svg>
+  </button>
+  <button class="iconbtn" id="menuBtn" onclick="nmToggleMenu(event)" data-i18n-title="title_menu" data-i18n-aria="title_menu" title="Menu" aria-label="Menu">
+    <svg viewBox="0 -960 960 960"><path d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"/></svg>
+  </button>
+</div>
+<div class="menu" id="appMenu" role="menu">
+  <button class="menu-item" role="menuitem" onclick="nmMenuRefresh(this)" data-i18n="btn_refresh">刷新</button>
+  <button class="menu-item" role="menuitem" onclick="nmMenuReload(this)" data-i18n="btn_reload">重新加载</button>
+  <button class="menu-item danger" role="menuitem" onclick="nmMenuClear(this)" data-i18n="btn_clear_rules">清空规则</button>
+</div>
 <div class="wrap">
-  <header>
-    <div class="brand">
-      <h1 data-i18n="brand_title">NoMount Suite</h1>
-      <p data-i18n="brand_sub">hookless VFS · RRO overlays · sucompat root</p>
-    </div>
-    <div class="hbtns">
-      <span class="ver" id="ver">v…</span>
-      <button class="iconbtn stylebtn" id="styleBtn" onclick="toggleUiStyle()" data-i18n-title="title_ui_style" data-i18n-aria="title_ui_style" title="Switch UI style" aria-label="Switch UI style">
-        <span id="styleGlyph">MX</span>
-      </button>
-      <button class="iconbtn" id="langBtn" onclick="toggleLang()" data-i18n-title="title_language" data-i18n-aria="title_language" title="Switch language" aria-label="Switch language">
-        <span data-i18n="lang_btn">中</span>
-      </button>
-      <button class="iconbtn" id="themeBtn" onclick="toggleTheme()" data-i18n-title="title_theme" data-i18n-aria="title_theme" title="Light / dark theme" aria-label="Light / dark theme">
-        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.4M12 19.2v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.4 12h2.4M19.2 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
-        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4a8.4 8.4 0 1 0 10.5 10.5z"/></svg>
-      </button>
-      <button class="iconbtn" id="refreshBtn" onclick="refreshAll(this)" data-i18n-title="title_refresh" data-i18n-aria="title_refresh" title="Refresh" aria-label="Refresh">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
-      </button>
-    </div>
-  </header>
   <section class="tab on" id="tab-status">
-    <div class="page-head">
-      <h2 data-i18n="nav_status">Status</h2>
-      <span class="page-kicker" id="substate"></span>
-    </div>
-    <div class="banner" id="banner" data-i18n="banner_tip">Open this page from the KernelSU / APatch manager's WebUI to control the module.</div>
+    <div class="banner" id="banner" data-i18n="banner_tip">请从 KernelSU / APatch 管理器的 WebUI 中打开此页面以控制模块。</div>
 
-    <div class="overview-panel">
-      <div class="overview-state">
-        <span class="state-mark"><span class="dot off" id="dot"></span></span>
-        <div class="state-copy">
-          <span class="state-label">NoMount</span>
-          <span class="st" id="state" data-i18n="state_checking">Checking…</span>
+    <div class="card hero" id="heroCard">
+      <div class="hero-main">
+        <div class="hero-badge" aria-hidden="true">
+          <svg class="hb-ok" viewBox="0 -960 960 960"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
+          <svg class="hb-bad" viewBox="0 -960 960 960"><path d="M508.5-291.5Q520-303 520-320t-11.5-28.5Q497-360 480-360t-28.5 11.5Q440-337 440-320t11.5 28.5Q463-280 480-280t28.5-11.5ZM440-440h80v-240h-80v240Zm40 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
+          <span class="dot off" id="dot" hidden></span>
+        </div>
+        <div class="hero-text">
+          <div class="hero-state">
+            <span class="st" id="state" data-i18n="state_checking">检查中…</span>
+          </div>
         </div>
       </div>
-      <div class="stat-grid">
-        <div class="stat-item"><div class="k" data-i18n="metric_rules">Injection rules</div><div class="v" id="mRules">—</div></div>
-        <div class="stat-item"><div class="k" data-i18n="metric_ov">RRO overlays</div><div class="v" id="mOv">—</div></div>
-        <div class="stat-item"><div class="k" data-i18n="metric_su">Root · su</div><div class="v" id="mSu">—</div></div>
-        <div class="stat-item"><div class="k" data-i18n="metric_mod">Modules served</div><div class="v" id="mMod">—</div></div>
+      <div class="hero-sub" id="substate"></div>
+    </div>
+
+    <div class="group-label" data-i18n="gl_version">版本信息</div>
+    <div class="card">
+      <div class="info-row">
+        <div class="info-text">
+          <div class="info-k" data-i18n="k_model">机型</div>
+          <div class="info-v" id="dModel">—</div>
+        </div>
       </div>
-      <div class="overview-actions">
-        <button class="act primary" onclick="reloadRules(this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
-          <span data-i18n="btn_reload">Reload</span>
-        </button>
-        <button class="act danger" onclick="clearRules(this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
-          <span data-i18n="btn_clear_rules">Clear rules</span>
-        </button>
+      <div class="info-row">
+        <div class="info-text">
+          <div class="info-k" data-i18n="k_kernel">内核版本</div>
+          <div class="info-v" id="dKernel">—</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-text">
+          <div class="info-k" data-i18n="k_android">安卓版本</div>
+          <div class="info-v"><span id="dAndroid">—</span><span class="u" data-i18n="k_api_short">· API</span><span class="u" id="dApi">—</span></div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-text">
+          <div class="info-k" data-i18n="k_engine">内核驱动版本</div>
+          <div class="info-v" id="dEngine">—</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-text">
+          <div class="info-k" data-i18n="k_suite">管理器版本</div>
+          <div class="info-v" id="ver">v…</div>
+        </div>
       </div>
     </div>
 
-    <div class="section-head">
-      <h3 data-i18n="h2_device">Device</h3>
-    </div>
-    <div class="info-group">
+    <div class="group-label" data-i18n="gl_state">状态信息</div>
+    <div class="card">
       <div class="info-row">
-        <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></span>
-        <div class="info-copy"><span class="k" data-i18n="k_model">Model</span><span class="v" id="dModel">—</span></div>
+        <div class="info-text">
+          <div class="info-k" data-i18n="metric_rules">注入规则</div>
+          <div class="info-v"><span id="mRules">—</span><span class="u" data-i18n="unit_rules">条</span></div>
+        </div>
       </div>
       <div class="info-row">
-        <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></span>
-        <div class="info-copy"><span class="k" data-i18n="k_android">Android</span><span class="v" id="dAndroid">—</span></div>
-        <div class="info-trailing"><span class="k" data-i18n="k_api">API level</span><span class="v" id="dApi">—</span></div>
+        <div class="info-text">
+          <div class="info-k" data-i18n="metric_ov">RRO 覆盖层</div>
+          <div class="info-v"><span id="mOv">—</span><span class="u" data-i18n="unit_ov">个</span></div>
+        </div>
       </div>
       <div class="info-row">
-        <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M19 9h4M1 15h4M19 15h4"/></svg></span>
-        <div class="info-copy"><span class="k" data-i18n="k_kernel">Kernel</span><span class="v mono-value" id="dKernel">—</span></div>
+        <div class="info-text">
+          <div class="info-k" data-i18n="metric_su">Root · su</div>
+          <div class="info-v" id="mSu">—</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-text">
+          <div class="info-k" data-i18n="metric_mod">已服务模块</div>
+          <div class="info-v"><span id="mMod">—</span><span class="u" data-i18n="unit_mod">个</span></div>
+        </div>
       </div>
     </div>
 
-    <div class="section-head">
-      <h3 data-i18n="h2_bootguard">Bootloop guard</h3>
-    </div>
-    <div class="guard-panel">
-      <span class="info-icon guard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/></svg></span>
-      <div class="guard-copy">
-        <div class="guard-title"><span class="dot ok" id="gdot"></span><span id="gstate" data-i18n="guard_armed">Armed</span></div>
-        <span class="guard-note" data-i18n="guard_trips">trips at boot #3</span>
+    <div class="group-label" data-i18n="h2_bootguard">启动循环保护</div>
+    <div class="card">
+      <div class="info-row">
+        <div class="info-text">
+          <div class="info-k" data-i18n="k_guard_state">保护状态</div>
+          <div class="info-v"><span class="dot ok" id="gdot" style="display:inline-block;vertical-align:middle;margin:0 9px 3px 0"></span><span id="gstate" data-i18n="guard_armed">已就绪</span></div>
+          <div class="info-k" style="margin-top:5px" data-i18n="guard_trips">第 3 次启动时触发</div>
+        </div>
+        <span class="chip" id="gchip">—</span>
       </div>
-      <span class="chip" id="gchip">—</span>
-      <button class="act danger compact-action" id="rearm" onclick="rearm(this)" style="display:none" data-i18n="btn_rearm">Re-arm & enable</button>
+      <button class="act danger" id="rearm" onclick="rearm(this)" style="display:none;margin-top:16px;width:100%" data-i18n="btn_rearm">重新启用</button>
+    </div>
+
+    <div class="foot">
+      NoMount Suite · <span data-i18n="foot_engine">基于 netlink 的无钩子引擎</span> <code>nm</code><br />
+      <span id="footver"></span>
     </div>
   </section>
 
   <section class="tab" id="tab-modules">
-    <div class="page-head"><h2 data-i18n="nav_modules">Modules</h2></div>
-    <div class="posture-panel">
-      <div class="posture-summary">
+    <h1 class="pagetitle" data-i18n="page_modules">模块</h1>
+
+    <div class="card collapsed" id="cardPosture">
+      <div class="card-h clp" onclick="toggleCard(this)">
         <div class="shield clean" id="shield">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+          <svg viewBox="0 -960 960 960"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>
         </div>
-        <div><div class="t" id="stealthT" data-i18n="stealth_title">Detection posture</div><div class="d" id="stealthD" data-i18n="stealth_checking">Checking what apps can see…</div></div>
+        <div class="info-text">
+          <div class="set-title" id="stealthT" data-i18n="stealth_title">检测态势</div>
+          <div class="set-sub" id="stealthD" data-i18n="stealth_checking">正在检查应用可见性…</div>
+        </div>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
       </div>
       <div class="list" id="posture"></div>
-      <p class="note" id="stealthNote"></p>
+      <p class="note" id="stealthNote" hidden></p>
     </div>
-    <div class="section-head"><h3 data-i18n="h2_modules">Modules</h3><span class="chip" id="modcount">0</span></div>
-    <div class="expand-panel">
-      <button class="expand-trigger" onclick="toggleModules(this)">
-        <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
-        <span data-i18n="h2_modules">Modules</span><span class="chev">›</span>
-      </button>
-      <div class="list inset-list" id="modules" style="display:none"></div>
+
+    <div class="searchwrap">
+      <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/></svg>
+      <input class="txin search" id="modSearch" data-i18n-placeholder="ph_search_modules" placeholder="搜索模块" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="nmFilterModules()" />
+    </div>
+
+    <span class="chip" id="modcount" hidden>0</span>
+    <div id="modules"></div>
+
+    <button class="fab" onclick="nmRefreshModules(this)" data-i18n-title="title_refresh_modules" data-i18n-aria="title_refresh_modules" title="刷新模块列表" aria-label="刷新模块列表">
+      <svg viewBox="0 -960 960 960"><path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"/></svg>
+    </button>
+
+    <div class="foot">
+      NoMount Suite · <span data-i18n="foot_engine">基于 netlink 的无钩子引擎</span> <code>nm</code>
     </div>
   </section>
 
   <section class="tab" id="tab-rules">
-    <div class="page-head"><h2 data-i18n="nav_rules">Rules</h2></div>
-    <div class="rules-stack">
-      <div class="expand-panel">
-        <button class="expand-trigger" onclick="toggleRules(this)">
-          <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
-          <span data-i18n="h2_active_rules">Active rules</span><span class="chip" id="rulechip">—</span><span class="chev">›</span>
-        </button>
-        <div class="expand-body">
-          <p class="note" id="rulebreak">—</p>
-          <div id="ruleModuleBar" style="display:none"></div>
-          <div class="uidbar" id="rulefilterbar" style="display:none">
-            <input id="rulefilter" type="text" data-i18n-placeholder="ph_filter_rule" placeholder="Filter by path or module…" oninput="filterRules()" />
-            <button class="act" id="rulegroupBtn" style="flex:1 1 0" onclick="toggleRuleGroup(this)" data-i18n="btn_group_mod">Group by module</button>
-            <button class="act" style="flex:1 1 0" onclick="document.getElementById('rulefilter').value='';filterRules()" data-i18n="btn_clear">Clear</button>
-          </div>
-          <pre class="rules" id="ruleslist" style="display:none">…</pre>
-          <p class="note" id="rulecount" style="display:none"></p>
-        </div>
-      </div>
+    <h1 class="pagetitle" data-i18n="page_rules">规则</h1>
 
-      <div class="expand-panel">
-        <button class="expand-trigger" onclick="toggleVfsFull(this)">
-          <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
-          <span data-i18n="h2_file_redirects">File redirects</span><span class="chip" id="vfscount">0</span><span class="chev">›</span>
-        </button>
-        <div class="expand-body">
-          <div class="uidbar" id="vfsfilterbar" style="display:none;margin-bottom:11px"><input id="vfsfilter" type="text" data-i18n-placeholder="ph_filter_files" placeholder="Filter files…" oninput="renderVfsFull()" /></div>
-          <div class="list" id="vfsdirs" style="display:none"></div>
-          <div class="list" id="vfsfull" style="display:none"></div>
-        </div>
+    <div class="card">
+      <div class="card-h clp" onclick="toggleRules(this)">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <h2 data-i18n="h2_active_rules">活跃规则</h2>
+        <span class="chip" id="rulechip">—</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
       </div>
+      <p class="note" id="rulebreak" style="margin-top:14px">—</p>
+      <div id="ruleModuleBar"></div>
+      <div class="uidbar" id="rulefilterbar" style="display:none">
+        <input id="rulefilter" type="text" data-i18n-placeholder="ph_filter_rule" placeholder="按路径或模块筛选…" oninput="filterRules()" />
+        <button class="act" id="rulegroupBtn" onclick="toggleRuleGroup(this)" data-i18n="btn_group_mod">按模块分组</button>
+        <button class="act" onclick="document.getElementById('rulefilter').value='';filterRules()" data-i18n="btn_clear">清空</button>
+      </div>
+      <pre class="rules" id="ruleslist" style="display:none">…</pre>
+      <p class="note" id="rulecount" style="display:none"></p>
+    </div>
 
-      <div class="expand-panel">
-        <button class="expand-trigger" onclick="toggleOvFull(this)">
-          <span class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
-          <span data-i18n="h2_rro_overlays">RRO overlays</span><span class="chip" id="ovcount">0</span><span class="chev">›</span>
-        </button>
-        <div class="expand-body">
-          <div class="uidbar" id="ovfilterbar" style="display:none;margin-bottom:11px"><input id="ovfilter" type="text" data-i18n-placeholder="ph_filter_overlays" placeholder="Filter overlays…" oninput="renderOvFull()" /></div>
-          <div class="list" id="overlays" style="display:none"></div>
-          <div class="list" id="overlaysfull" style="display:none"></div>
-        </div>
+    <div class="card">
+      <div class="card-h clp" onclick="toggleVfsFull(this)">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+        <h2 data-i18n="h2_file_redirects">文件重定向</h2>
+        <span class="chip" id="vfscount">0</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
       </div>
+      <div class="uidbar" id="vfsfilterbar" style="display:none">
+        <input id="vfsfilter" type="text" data-i18n-placeholder="ph_filter_files" placeholder="筛选文件…" oninput="renderVfsFull()" />
+      </div>
+      <div class="list" id="vfsdirs" style="display:none"></div>
+      <div class="list" id="vfsfull" style="display:none"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-h clp" onclick="toggleOvFull(this)">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+        <h2 data-i18n="h2_rro_overlays">RRO 覆盖层</h2>
+        <span class="chip" id="ovcount">0</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <div class="uidbar" id="ovfilterbar" style="display:none">
+        <input id="ovfilter" type="text" data-i18n-placeholder="ph_filter_overlays" placeholder="筛选覆盖层…" oninput="renderOvFull()" />
+      </div>
+      <div class="list" id="overlays" style="display:none"></div>
+      <div class="list" id="overlaysfull" style="display:none"></div>
+    </div>
+
+    <div class="foot">
+      NoMount Suite · <span data-i18n="foot_engine">基于 netlink 的无钩子引擎</span> <code>nm</code>
     </div>
   </section>
+
   <section class="tab" id="tab-tools">
-  <div class="page-head"><h2 data-i18n="nav_tools">Tools</h2></div>
-  <div class="group-label" data-i18n="gl_spoofing">Spoofing</div>
+    <h1 class="pagetitle" data-i18n="page_tools">隐藏</h1>
 
-  <div class="card tool-panel collapsed" id="cardSpoof">
-    <div class="card-h clp" onclick="toggleCard(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg>
-      <h2 data-i18n="h2_spoofing">Spoofing</h2><span class="chip" id="spchip">—</span><span class="chev">›</span>
+    <div class="card collapsed" id="cardSpoof">
+      <div class="card-h clp" onclick="toggleCard(this)">
+        <svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="m344-60-76-128-144-32 14-148-98-112 98-112-14-148 144-32 76-128 136 58 136-58 76 128 144 32-14 148 98 112-98 112 14 148-144 32-76 128-136-58-136 58Zm136-146 104 44 56-96 110-26-10-112 74-84-74-86 10-112-110-24-58-96-102 44-104-44-56 96-110 24 10 112-74 86 74 84-10 114 110 24 58 96 102-44Z"/></svg>
+        <h2 data-i18n="h2_spoofing">伪装功能</h2>
+        <span class="chip" id="spchip">—</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <div class="spoof-content">
+        <div class="set-row">
+          <div class="info-text"><div class="set-title" data-i18n="lbl_vbmeta">验证启动（哈希 + 大小）</div><div class="set-sub" id="spVbVal">…</div><div class="set-sub" id="spVbCheck"></div></div>
+          <label class="switch"><input type="checkbox" id="spVb" onchange="toggleSpoof('vbmeta_digest',this)"><span class="sl"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="info-text"><div class="set-title" data-i18n="lbl_bootstate">启动状态（属性 + procfs）</div><div class="set-sub" id="spPropsVal">…</div></div>
+          <label class="switch"><input type="checkbox" id="spProps" onchange="toggleSpoofBool('spoof_props',this)"><span class="sl"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="info-text"><div class="set-title" data-i18n="lbl_uname">内核 uname</div><div class="set-sub" id="spUnameVal">…</div></div>
+          <label class="switch"><input type="checkbox" id="spUname" onchange="toggleSpoofBool('spoof_uname',this)"><span class="sl"></span></label>
+        </div>
+        <button class="act ghost" id="spUnameEditBtn" style="width:100%;margin:12px 0 0" onclick="toggleUnameAdv(this)" data-i18n="btn_edit_strings">编辑字符串</button>
+        <div class="set-panel" id="spUnameAdv" style="display:none">
+          <div class="set-sub" id="spUnameCur">current uname: …</div>
+          <input class="txin mono" id="spUnameTail" data-i18n-placeholder="ph_uname_tail" placeholder="uname — 留空保持不变 · 粘贴原厂 uname -r 覆盖" />
+          <div class="set-sub" id="spDateCur" style="margin-top:12px">current date: …</div>
+          <input class="txin mono" id="spUnameDate" data-i18n-placeholder="ph_uname_date" placeholder="日期 — 留空保持不变 · 粘贴原厂 uname -v 或日期" />
+          <div class="btns">
+            <button class="act" onclick="fillUnameRomDate()" data-i18n="btn_use_rom_date">使用 ROM 日期</button>
+            <button class="act" onclick="resetUname(this)" data-i18n="btn_reset_kernel">恢复内核默认值</button>
+            <button class="act primary" onclick="saveUname(this)" data-i18n="btn_save">保存</button>
+          </div>
+        </div>
+        <div class="btns"><button class="act primary" onclick="applySpoof(this)" data-i18n="btn_apply_now">立即应用</button></div>
+      </div>
     </div>
-    <div class="list">
+
+    <div class="group-label" data-i18n="gl_diagnostics">诊断工具</div>
+
+    <div class="card collapsed" id="cardHealth">
+      <div class="card-h clp" onclick="toggleCard(this)">
+        <svg class="ic" viewBox="0 -960 960 960"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></svg>
+        <h2 data-i18n="h2_health_check">健康检查</h2>
+        <span class="chip" id="dchip">—</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <p class="note" data-i18n="note_health">…</p>
+      <div class="btns"><button class="act primary" onclick="runDoctor(this)" data-i18n="btn_run_health">运行健康检查</button></div>
+      <pre class="rules" id="doctorout" style="display:none">…</pre>
+    </div>
+
+    <div class="card collapsed" id="cardRuntime">
+      <div class="card-h clp" onclick="toggleCard(this)">
+        <svg class="ic" viewBox="0 -960 960 960"><path d="M80-600v-120q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v120h-80v-120H160v120H80Zm80 440q-33 0-56.5-23.5T80-240v-120h80v120h640v-120h80v120q0 33-23.5 56.5T800-160H160Zm261-125.5q10-5.5 15-16.5l124-248 44 88q5 11 15 16.5t21 5.5h240v-80H665l-69-138q-5-11-15-15.5t-21-4.5q-11 0-21 4.5T524-658L400-410l-44-88q-5-11-15-16.5t-21-5.5H80v80h215l69 138q5 11 15 16.5t21 5.5q11 0 21-5.5ZM480-480Z"/></svg>
+        <h2 data-i18n="h2_runtime_health">运行时健康度</h2>
+        <span class="chip" id="hchip">—</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <p class="note" data-i18n="note_runtime">…</p>
+      <div class="btns">
+        <button class="act primary" onclick="runSelfcheck(this)" data-i18n="btn_selfcheck">自检</button>
+        <button class="act" onclick="runSnapshot(this)" data-i18n="btn_snapshot">快照</button>
+        <button class="act" onclick="runVerify(this)" data-i18n="btn_verify">校验</button>
+        <button class="act" onclick="runExport(this)" data-i18n="btn_export">导出</button>
+      </div>
+      <pre class="rules" id="healthout" style="display:none">…</pre>
+    </div>
+
+    <div class="card collapsed" id="incidentcard" style="display:none">
+      <div class="card-h clp" onclick="toggleCard(this)">
+        <svg class="ic" viewBox="0 -960 960 960"><path d="M508.5-291.5Q520-303 520-320t-11.5-28.5Q497-360 480-360t-28.5 11.5Q440-337 440-320t11.5 28.5Q463-280 480-280t28.5-11.5ZM440-440h80v-240h-80v240Zm40 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
+        <h2 data-i18n="h2_last_incident">上次异常事件</h2>
+        <span class="chip bad" data-i18n="chip_guard_tripped">保护已触发</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <p class="note" data-i18n="note_incident">…</p>
+      <pre class="rules" id="incidentout">…</pre>
+      <div class="btns"><button class="act danger" onclick="clearIncident(this)" data-i18n="btn_clear_incident">清除事件记录</button></div>
+    </div>
+
+    <div class="group-label" data-i18n="gl_hiding">隐藏</div>
+
+    <div class="card collapsed" id="cardGlobalHide">
+      <div class="card-h clp" onclick="toggleCard(this)">
+        <svg class="ic" viewBox="0 -960 960 960"><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/></svg>
+        <h2 data-i18n="h2_global_hide">全局隐藏应用</h2>
+        <span class="chip" id="ghchip">—</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <p class="note" data-i18n="note_global_hide">…</p>
+      <div class="val multiline" id="ghstatus" data-i18n="gh_checking" style="font-size:12.5px;color:var(--on-surface-variant);margin-top:10px">AppCloak：检查中…</div>
       <div class="swrow">
         <div class="swi">
-          <div class="lbl" data-i18n="lbl_vbmeta">Verified boot (hash + size)</div>
-          <div class="val" id="spVbVal">…</div>
-          <div class="val multiline" id="spVbCheck" style="margin-top:2px"></div>
+          <div class="lbl" data-i18n="gh_pathhide_label">隐藏 APK 路径痕迹</div>
+          <div class="val multiline" data-i18n="gh_pathhide_note">AppCloak 可选补充；仅对生效应用隐藏。</div>
         </div>
-        <label class="switch"><input type="checkbox" id="spVb" onchange="toggleSpoof('vbmeta_digest',this)"><span class="sl"></span></label>
+        <label class="switch"><input type="checkbox" id="ghPathHide"><span class="sl"></span></label>
       </div>
+      <div class="btns">
+        <button class="act" id="ghShow" onclick="toggleAppList('hide',this)" data-i18n="btn_show_list">显示列表</button>
+        <button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">应用并保存</button>
+      </div>
+      <div id="ghListWrap" style="display:none">
+        <input class="txin" id="ghSearch" data-i18n-placeholder="ph_search_apps" placeholder="搜索应用名或包名" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()" />
+        <div class="swrow">
+          <div class="swi"><div class="lbl" data-i18n="app_show_system">显示系统应用</div></div>
+          <label class="switch"><input type="checkbox" id="ghShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label>
+        </div>
+        <div class="list" id="ghList"></div>
+      </div>
+    </div>
+
+    <div class="card collapsed" id="cardGlobalScope">
+      <div class="card-h clp" onclick="toggleCard(this)">
+        <svg class="ic" viewBox="0 -960 960 960"><path d="M40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm720 0v-120q0-44-24.5-84.5T666-434q51 6 96 20.5t84 35.5q36 20 55 44.5t19 53.5v120H760ZM247-527q-47-47-47-113t47-113q47-47 113-47t113 47q47 47 47 113t-47 113q-47 47-113 47t-113-47Zm466 0q-47 47-113 47-11 0-28-2.5t-28-5.5q27-32 41.5-71t14.5-81q0-42-14.5-81T544-792q14-5 28-6.5t28-1.5q66 0 113 47t47 113q0 66-47 113ZM120-240h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-607 440-640t-23.5-56.5Q393-720 360-720t-56.5 23.5Q280-673 280-640t23.5 56.5Q327-560 360-560t56.5-23.5ZM360-240Zm0-400Z"/></svg>
+        <h2 data-i18n="h3_hide_scope">生效应用</h2>
+        <span class="chip" id="gschip">—</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <p class="note" data-i18n="note_hide_scope">…</p>
+      <div class="btns">
+        <button class="act" id="gsShow" onclick="toggleAppList('scope',this)" data-i18n="btn_show_list">显示列表</button>
+        <button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">应用并保存</button>
+      </div>
+      <div id="gsListWrap" style="display:none">
+        <input class="txin" id="gsSearch" data-i18n-placeholder="ph_search_scope" placeholder="搜索生效应用" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()" />
+        <div class="swrow">
+          <div class="swi"><div class="lbl" data-i18n="app_show_system">显示系统应用</div></div>
+          <label class="switch"><input type="checkbox" id="gsShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label>
+        </div>
+        <div class="list" id="gsList"></div>
+      </div>
+    </div>
+
+    <div class="card collapsed" id="cardCloak">
+      <div class="card-h clp" onclick="toggleCard(this)">
+        <svg class="ic" viewBox="0 -960 960 960"><path d="m576-160-56-56 104-104-104-104 56-56 104 104 104-104 56 56-104 104 104 104-56 56-104-104-104 104Zm79-360L513-662l56-56 85 85 170-170 56 57-225 226ZM80-280v-80h360v80H80Zm0-320v-80h360v80H80Z"/></svg>
+        <h2 data-i18n="h2_cloak">路径遮罩</h2>
+        <span class="chip" id="phchip">—</span>
+        <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <p class="note" data-i18n="note_cloak">…</p>
+      <div class="val multiline" id="phSceneStatus" data-i18n="scene_checking" style="font-size:12.5px;color:var(--on-surface-variant);margin-top:10px">Scene：正在检查 debugfs 自动识别状态…</div>
       <div class="swrow">
         <div class="swi">
-          <div class="lbl" data-i18n="lbl_bootstate">Boot-state (props + procfs)</div>
-          <div class="val multiline" id="spPropsVal">…</div>
+          <div class="lbl">Scene debugfs</div>
+          <div class="val" id="phScenePath">—</div>
         </div>
-        <label class="switch"><input type="checkbox" id="spProps" onchange="toggleSpoofBool('spoof_props',this)"><span class="sl"></span></label>
+        <label class="switch"><input type="checkbox" id="phSceneSwitch" disabled><span class="sl"></span></label>
       </div>
-      <div class="swrow">
-        <div class="swi">
-          <div class="lbl" data-i18n="lbl_uname">Kernel uname</div>
-          <div class="val" id="spUnameVal">…</div>
-        </div>
-        <label class="switch"><input type="checkbox" id="spUname" onchange="toggleSpoofBool('spoof_uname',this)"><span class="sl"></span></label>
+      <div class="btns">
+        <button class="act" id="phShow" onclick="phShowList(this)" data-i18n="btn_show_list">显示列表</button>
+        <button class="act danger" id="phOff" onclick="cloakAllOff(this)" data-i18n="btn_turn_off_all">一键关闭</button>
       </div>
-      <button class="act" id="spUnameEditBtn" style="margin-top:10px" onclick="toggleUnameAdv(this)" data-i18n="btn_edit_strings">Edit strings</button>
-      <div id="spUnameAdv" style="display:none">
-        <div class="val" id="spUnameCur" style="margin-bottom:9px">current uname: …</div>
-        <input class="txin" id="spUnameTail" data-i18n-placeholder="ph_uname_tail" placeholder="uname  —  blank = keep · paste stock uname -r to override">
-        <div class="val" id="spDateCur" style="margin-top:9px">current date: …</div>
-        <input class="txin" id="spUnameDate" data-i18n-placeholder="ph_uname_date" placeholder="date  —  blank = keep · paste stock uname -v (or a date)">
-        <div class="btns" style="flex-wrap:wrap;margin-top:9px">
-          <button class="act" onclick="fillUnameRomDate()" data-i18n="btn_use_rom_date">Use ROM date</button>
-          <button class="act" onclick="resetUname(this)" data-i18n="btn_reset_kernel">Reset to kernel default</button>
-          <button class="act primary" onclick="saveUname(this)" data-i18n="btn_save">Save</button>
-        </div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <input class="txin mono" id="phManual" data-i18n-placeholder="ph_add_path" placeholder="添加绝对路径" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1;margin-top:0" />
+        <button class="act mini" onclick="addCloak()" data-i18n="btn_add">添加</button>
       </div>
+      <input class="txin" id="phSearch" data-i18n-placeholder="ph_search_path" placeholder="搜索完整路径" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderCloak()" />
+      <div class="list" id="phList" style="display:none"></div>
+      <div class="btns"><button class="act primary" id="phApply" onclick="applyCloak(this)" data-i18n="btn_apply_save">应用并保存</button></div>
     </div>
-    <div class="btns"><button class="act primary" onclick="applySpoof(this)" data-i18n="btn_apply_now">Apply now</button></div>
-    <p class="note" id="spNote" data-i18n="note_spoof">Verified boot recomputes <code>ro.boot.vbmeta.digest</code> and <code>.size</code> from the real AVB chain on-device. Boot-state normalizes the lock-state/warranty/debuggable props and, where the kernel exposes it, the raw <code>/proc/cmdline</code> + <code>/proc/bootconfig</code> boot-state to match — only ever changing a prop that already exists, and skipping procfs if the kernel has no nomount knobs. Kernel uname keeps the running kernel's base and swaps the tail + build date so <code>uname</code> matches the ROM; blank keeps the current values, or paste them from a stock device. <b>Apply now</b> runs it immediately.</p>
-  </div>
-  <div class="group-label" data-i18n="gl_diagnostics">Diagnostics</div>
 
-  <div class="card tool-panel collapsed" id="cardHealth">
-    <div class="card-h clp" onclick="toggleCard(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
-      <h2 data-i18n="h2_health_check">Health check</h2><span class="chip" id="dchip">—</span><span class="chev">›</span>
+    <div class="foot">
+      NoMount Suite · <span data-i18n="foot_engine">基于 netlink 的无钩子引擎</span> <code>nm</code>
     </div>
-    <p class="note" data-i18n="note_health">Lints the mount plan the way it will actually be applied, plus the live rules — partition-root redirects, overlay APKs on partitions zygote will not accept, missing backings, and targets two modules both claim. Run it before rebooting after a module change.</p>
-    <div class="btns"><button class="act primary" onclick="runDoctor(this)" data-i18n="btn_run_health">Run health check</button></div>
-    <pre class="rules" id="doctorout" style="display:none">…</pre>
-  </div>
-
-  <div class="card tool-panel collapsed" id="cardRuntime">
-    <div class="card-h clp" onclick="toggleCard(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>
-      <h2 data-i18n="h2_runtime_health">Runtime health</h2><span class="chip" id="hchip">—</span><span class="chev">›</span>
-    </div>
-    <p class="note" data-i18n="note_runtime">The live counterpart to the plan-time check above. <b>Self-check</b> runs the per-UID consistency canary — does a normal app see the same injected files as root? — and reports engine, mounts and guard. <b>Snapshot</b> freezes today's healthy state; <b>Verify</b> diffs the live system against it and names any drift. <b>Export</b> dumps diagnostics to <code>/sdcard/Download</code>.</p>
-    <div class="btns" style="flex-wrap:wrap">
-      <button class="act primary" onclick="runSelfcheck(this)" data-i18n="btn_selfcheck">Self-check</button>
-      <button class="act" onclick="runSnapshot(this)" data-i18n="btn_snapshot">Snapshot</button>
-      <button class="act" onclick="runVerify(this)" data-i18n="btn_verify">Verify</button>
-      <button class="act" onclick="runExport(this)" data-i18n="btn_export">Export</button>
-    </div>
-    <pre class="rules" id="healthout" style="display:none">…</pre>
-  </div>
-
-  <div class="card tool-panel collapsed" id="incidentcard" style="display:none">
-    <div class="card-h clp" onclick="toggleCard(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v5"/><path d="M12 17.5v.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-      <h2 data-i18n="h2_last_incident">Last incident</h2><span class="chip bad" data-i18n="chip_guard_tripped">guard tripped</span><span class="chev">›</span>
-    </div>
-    <p class="note" data-i18n="note_incident">Recorded when the bootloop guard self-disabled the Suite — including the newest native crash and its abort message, which usually names the offending path outright. This is a saved record, not live state — it survives reboots until a new trip overwrites it or you clear it. Whether the Suite is disabled <em>right now</em> is the guard chip on Status.</p>
-    <pre class="rules" id="incidentout">…</pre>
-    <div class="btns"><button class="act danger" onclick="clearIncident(this)" data-i18n="btn_clear_incident">Clear incident</button></div>
-  </div>
-  <div class="group-label" id="groupPathMask" data-i18n="gl_hiding">Hiding</div>
-
-  <div class="card tool-panel" id="cardGlobalHide">
-    <div class="card-h clp" onclick="toggleCard(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M2 2l20 20"/></svg>
-      <h2 data-i18n="h2_global_hide">Global hidden applications</h2><span class="chip" id="ghchip">—</span><span class="chev">›</span>
-    </div>
-    <p class="note" data-i18n="note_global_hide">Choose applications to hide. Detected Xposed modules and HMA blacklist entries are selected automatically.</p>
-    <div class="val multiline" id="ghstatus" data-i18n="gh_checking">AppCloak: checking…</div>
-    <div class="swrow"><div class="swi"><div class="lbl" data-i18n="gh_pathhide_label">Hide APK path evidence</div><div class="val" data-i18n="gh_pathhide_note">Optional AppCloak supplement; scoped callers only.</div></div><label class="switch"><input type="checkbox" id="ghPathHide"><span class="sl"></span></label></div>
-    <div class="btns">
-      <button class="act" id="ghShow" onclick="toggleAppList('hide',this)" data-i18n="btn_show_list">Show list</button>
-      <button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button>
-    </div>
-    <div id="ghListWrap" style="display:none">
-      <div style="margin:8px 0 2px"><input class="txin" id="ghSearch" data-i18n-placeholder="ph_search_apps" placeholder="search app name or package" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
-      <div class="swrow"><div class="swi"><div class="lbl" data-i18n="app_show_system">Show system applications</div></div><label class="switch"><input type="checkbox" id="ghShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label></div>
-      <div class="list" id="ghList"></div>
-    </div>
-  </div>
-  <div class="card tool-panel" id="cardGlobalScope">
-    <div class="card-h clp" onclick="toggleCard(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v2"/></svg>
-      <h2 data-i18n="h3_hide_scope">Effective applications</h2><span class="chip" id="gschip">—</span><span class="chev">›</span>
-    </div>
-    <p class="note" data-i18n="note_hide_scope">Only checked caller applications cannot see the hidden targets.</p>
-    <div class="btns">
-      <button class="act" id="gsShow" onclick="toggleAppList('scope',this)" data-i18n="btn_show_list">Show list</button>
-      <button class="act primary" onclick="applyGlobalHide(this)" data-i18n="btn_apply_save">Apply & save</button>
-    </div>
-    <div id="gsListWrap" style="display:none">
-      <div style="margin:8px 0 2px"><input class="txin" id="gsSearch" data-i18n-placeholder="ph_search_scope" placeholder="search effective applications" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderGlobalHide()"></div>
-      <div class="swrow"><div class="swi"><div class="lbl" data-i18n="app_show_system">Show system applications</div></div><label class="switch"><input type="checkbox" id="gsShowSystem" onchange="renderGlobalHide()"><span class="sl"></span></label></div>
-      <div class="list" id="gsList"></div>
-    </div>
-  </div>
-  <div class="card tool-panel" id="cardCloak">
-    <div class="card-h clp" onclick="toggleCard(this)">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
-      <h2 data-i18n="h2_cloak">Path masking</h2><span class="chip" id="phchip">—</span><span class="chev">›</span>
-    </div>
-    <p class="note" data-i18n="note_cloak">PathMask is always global and hides only the full file paths shown below. Paths are added manually; only Scene debugfs is discovered automatically.</p>
-    <div class="val multiline" id="phSceneStatus" data-i18n="scene_checking">Scene: checking automatic debugfs detection…</div>
-    <div class="swrow">
-      <div class="swi"><div class="lbl">Scene debugfs</div><div class="val" id="phScenePath">—</div></div>
-      <label class="switch"><input type="checkbox" id="phSceneSwitch" disabled><span class="sl"></span></label>
-    </div>
-    <div class="btns">
-      <button class="act" id="phShow" onclick="phShowList(this)" data-i18n="btn_show_list">Show list</button>
-      <button class="act danger" id="phOff" onclick="cloakAllOff(this)" data-i18n="btn_turn_off_all">Turn off all</button>
-    </div>
-    <div style="display:flex;gap:8px;margin:8px 0 2px">
-      <input class="txin" id="phManual" data-i18n-placeholder="ph_add_path" placeholder="add an absolute path" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1">
-      <button class="act" style="flex:none;min-width:0;padding:7px 13px" onclick="addCloak()" data-i18n="btn_add">Add</button>
-    </div>
-        <div style="margin:8px 0 2px">
-      <input class="txin" id="phSearch" data-i18n-placeholder="ph_search_path" placeholder="search full paths" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderCloak()">
-    </div>
-    <div class="list" id="phList" style="display:none"></div>
-    <div class="btns"><button class="act primary" id="phApply" onclick="applyCloak(this)" data-i18n="btn_apply_save">Apply & save</button></div>
-  </div>
   </section>
-  <div class="foot">NoMount Suite · <span data-i18n="foot_engine">hookless engine via netlink</span> <code>nm</code><br/><span id="footver"></span></div>
 </div>
-<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
-  <defs>
-    <linearGradient id="navGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#a9c0ff"/>
-      <stop offset="55%"  stop-color="#7c9cff"/>
-      <stop offset="100%" stop-color="#57e6c3"/>
-    </linearGradient>
-  </defs>
-</svg>
+
 <nav class="navwrap" role="tablist" aria-label="Sections">
   <div class="nav">
     <span class="navpill noanim" id="navpill"></span>
     <button class="navb on" id="nb-status" role="tab" aria-selected="true" onclick="showTab('status',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7z"/></svg>
-      <span data-i18n="nav_status">Status</span><span class="nbdot"></span>
+      <span class="nbicon"><svg viewBox="0 -960 960 960"><path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z"/></svg></span>
+      <span data-i18n="nav_status">状态</span><span class="nbdot"></span>
     </button>
     <button class="navb" id="nb-modules" role="tab" aria-selected="false" onclick="showTab('modules',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-      <span data-i18n="nav_modules">Modules</span><span class="nbdot"></span>
+      <span class="nbicon"><svg viewBox="0 -960 960 960"><path d="M200-200h520v-184l45-22q16-8 25.5-22t9.5-32q0-17-9.5-31.5T765-514l-45-21v-185H528l-10-68q-3-22-19.5-37T460-840q-23 0-39.5 15T401-788l-10 68H200v86q56 21 88 68t32 106q0 60-32 107t-88 68v85Zm0 80q-34 0-57-23t-23-57v-152q48 0 84-30.5t36-77.5q0-46-36-76t-84-32v-152q0-33 23.5-56.5T200-800h122q7-51 46-85.5t92-34.5q52 0 91 34.5t47 85.5h122q33 0 56.5 23.5T800-720v134q36 18 58 52t22 74q0 41-22 75t-58 51v134q0 34-23.5 57T720-120H200Zm300-340Z"/></svg></span>
+      <span data-i18n="nav_modules">模块</span><span class="nbdot"></span>
     </button>
     <button class="navb" id="nb-rules" role="tab" aria-selected="false" onclick="showTab('rules',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-      <span data-i18n="nav_rules">Rules</span><span class="nbdot"></span>
+      <span class="nbicon"><svg viewBox="0 -960 960 960"><path d="m576-160-56-56 104-104-104-104 56-56 104 104 104-104 56 56-104 104 104 104-56 56-104-104-104 104Zm79-360L513-662l56-56 85 85 170-170 56 57-225 226ZM80-280v-80h360v80H80Zm0-320v-80h360v80H80Z"/></svg></span>
+      <span data-i18n="nav_rules">规则</span><span class="nbdot"></span>
     </button>
     <button class="navb" id="nb-tools" role="tab" aria-selected="false" onclick="showTab('tools',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4l-2.5 2.5-1.4-1.4 2.5-2.5z"/></svg>
-      <span data-i18n="nav_tools">Tools</span><span class="nbdot"></span>
+      <span class="nbicon"><svg viewBox="0 -960 960 960"><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/></svg></span>
+      <span data-i18n="nav_tools">隐藏</span><span class="nbdot"></span>
     </button>
   </div>
 </nav>
 <div id="toast"></div>
+
 <script>
   "use strict";
 
   const i18n = {
     en: {
-      brand_title: "NoMount Suite",
       brand_sub: "hookless VFS · RRO overlays · sucompat root",
       lang_btn: "中",
       title_language: "Switch language",
       title_theme: "Light / dark theme",
-      title_ui_style: "Switch MIUIX / Material style",
       title_refresh: "Refresh",
       banner_tip: "Open this page from the KernelSU / APatch manager's WebUI to control the module.",
       state_checking: "Checking…",
@@ -1724,7 +1016,6 @@
       ph_filter_files: "Filter files…",
       h2_rro_overlays: "RRO overlays",
       ph_filter_overlays: "Filter overlays…",
-      gl_spoofing: "Spoofing",
       h2_spoofing: "Spoofing",
       lbl_vbmeta: "Verified boot (hash + size)",
       lbl_bootstate: "Boot-state (props + procfs)",
@@ -1736,7 +1027,6 @@
       btn_reset_kernel: "Reset to kernel default",
       btn_save: "Save",
       btn_apply_now: "Apply now",
-      note_spoof: 'Verified boot recomputes <code>ro.boot.vbmeta.digest</code> and <code>.size</code> from the real AVB chain on-device. Boot-state normalizes the lock-state/warranty/debuggable props and, where the kernel exposes it, the raw <code>/proc/cmdline</code> + <code>/proc/bootconfig</code> boot-state to match — only ever changing a prop that already exists, and skipping procfs if the kernel has no nomount knobs. Kernel uname keeps the running kernel\'s base and swaps the tail + build date so <code>uname</code> matches the ROM; blank keeps the current values, or paste them from a stock device. <b>Apply now</b> runs it immediately.',
       gl_diagnostics: "Diagnostics",
       h2_health_check: "Health check",
       note_health: "Lints the mount plan the way it will actually be applied, plus the live rules — partition-root redirects, overlay APKs on partitions zygote will not accept, missing backings, and targets two modules both claim. Run it before rebooting after a module change.",
@@ -1777,15 +1067,13 @@
       nav_status: "Status",
       nav_modules: "Modules",
       nav_rules: "Rules",
-      nav_tools: "Tools"
+      nav_tools: "Hiding"
     },
     zh: {
-      brand_title: "NoMount Suite",
       brand_sub: "无钩子 VFS · RRO 覆盖层 · sucompat 根权限",
       lang_btn: "EN",
       title_language: "切换语言",
       title_theme: "切换浅色 / 深色主题",
-      title_ui_style: "切换 MIUIX / Material 风格",
       title_refresh: "刷新",
       banner_tip: "请从 KernelSU / APatch 管理器的 WebUI 中打开此页面以控制模块。",
       state_checking: "检查中…",
@@ -1815,8 +1103,7 @@
       ph_filter_files: "筛选文件…",
       h2_rro_overlays: "RRO 覆盖层",
       ph_filter_overlays: "筛选覆盖层…",
-      gl_spoofing: "伪装功能",
-      h2_spoofing: "参数伪装",
+      h2_spoofing: "伪装功能",
       lbl_vbmeta: "验证启动（哈希 + 大小）",
       lbl_bootstate: "启动状态（属性 + procfs）",
       lbl_uname: "内核 uname",
@@ -1827,7 +1114,6 @@
       btn_reset_kernel: "恢复内核默认值",
       btn_save: "保存",
       btn_apply_now: "立即应用",
-      note_spoof: '验证启动功能会根据设备真实 AVB 链重新计算 <code>ro.boot.vbmeta.digest</code> 和 <code>.size</code>。启动状态功能会标准化锁状态/保修/可调试属性，并在内核支持的情况下同步 <code>/proc/cmdline</code> + <code>/proc/bootconfig</code> 中的启动状态——仅修改已存在的属性，若内核无 nomount 接口则跳过 procfs。内核 uname 保留运行内核基础版本，替换尾部和编译日期使 <code>uname</code> 与 ROM 匹配；留空则保持当前值，也可粘贴原厂设备的值。点击<b>立即应用</b>即刻生效。',
       gl_diagnostics: "诊断工具",
       h2_health_check: "健康检查",
       note_health: "按实际应用方式检查挂载计划及活跃规则——包括分区根重定向、zygote 不接受的分区上的覆盖 APK、缺失的后备文件、两个模块同时声明的目标。更换模块后重启前建议运行。",
@@ -1868,22 +1154,18 @@
       nav_status: "状态",
       nav_modules: "模块",
       nav_rules: "规则",
-      nav_tools: "工具"
+      nav_tools: "隐藏"
     }
   };
 
   let currentLang = "en";
 
-  function applyLang(lang) {
-    currentLang = lang;
-    const dict = i18n[lang];
+  function translateElements(dict) {
     if (!dict) return;
-
     document.querySelectorAll("[data-i18n]").forEach(el => {
       const key = el.getAttribute("data-i18n");
       if (dict[key] !== undefined) el.innerHTML = dict[key];
     });
-
     document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
       const key = el.getAttribute("data-i18n-placeholder");
       if (dict[key] !== undefined) el.placeholder = dict[key];
@@ -1896,7 +1178,11 @@
       const key = el.getAttribute("data-i18n-aria");
       if (dict[key] !== undefined) el.setAttribute("aria-label", dict[key]);
     });
+  }
 
+  function applyLang(lang) {
+    currentLang = lang;
+    translateElements(i18n[lang]);
     document.title = "NoMount Suite";
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
 
@@ -1939,7 +1225,7 @@
   let execId = 0;
   const KSU = window.ksu;
   const $ = (id) => document.getElementById(id);
-  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   function ksuPackageInfo(type) {
     if (!KSU || typeof KSU.listPackages !== "function" || typeof KSU.getPackagesInfo !== "function") return [];
     try {
@@ -2013,6 +1299,9 @@
     $("dKernel").textContent = p[5] || "—";
   }
   async function refreshStealth() {
+    const stealthNote = $("stealthNote");
+    stealthNote.textContent = "";
+    stealthNote.hidden = true;
     const r = await exec(
       'echo "sucompat=$(/data/adb/ksud feature list 2>/dev/null | grep su_compat | grep -q ENABLED && echo 1 || echo 0)"; ' +
       'echo "root_ov=$(grep -c \'^nomount_ov \' /proc/self/mounts 2>/dev/null)"; ' +
@@ -2083,7 +1372,8 @@
     if (extraTells.length) {
       shield.className = "shield warn";
       if (appNm > 0) {
-        $("stealthNote").innerHTML += (currentLang === "zh" ? " 扫描器还可读取：" : " Also readable by a scanner: ") + extraTells.map(esc).join(", ") + ".";
+        stealthNote.textContent = (currentLang === "zh" ? "扫描器还可读取：" : "Also readable by a scanner: ") + extraTells.join(", ") + ".";
+        stealthNote.hidden = false;
       } else {
         $("stealthT").textContent = currentLang === "zh" ? "存在残留特征" : "Residual tells present";
         $("stealthD").textContent = extraTells.join(" · ");
@@ -2102,24 +1392,6 @@
       $("gdot").className = "dot ok"; $("rearm").style.display = "none";
     }
   }
-  function applyUiStyle(style) {
-    const next = style === "material" ? "material" : "miuix";
-    document.documentElement.setAttribute("data-ui", next);
-    const glyph = document.getElementById("styleGlyph");
-    if (glyph) glyph.textContent = next === "material" ? "M3" : "MX";
-    try { localStorage.setItem("nm_ui_style", next); } catch (e) {}
-  }
-  function toggleUiStyle() {
-    const current = document.documentElement.getAttribute("data-ui") === "material" ? "material" : "miuix";
-    applyUiStyle(current === "material" ? "miuix" : "material");
-    movePill(false);
-  }
-  (function initUiStyle() {
-    let style = null;
-    try { style = localStorage.getItem("nm_ui_style"); } catch (e) {}
-    applyUiStyle(style === "material" ? "material" : "miuix");
-  })();
-
   function applyTheme(t) {
     document.documentElement.setAttribute("data-theme", t);
     try { localStorage.setItem("nm_theme", t); } catch (e) {}
@@ -2305,7 +1577,7 @@
       '[ -n "$(find $roots -type f ! -path "*/overlay/*" -print -quit 2>/dev/null)" ] && vf=1; ' +
       'if [ "$ov" = 1 ] && [ "$vf" = 1 ]; then mech="vfs+overlay"; ' +
       'elif [ "$ov" = 1 ]; then mech="overlay"; elif [ "$vf" = 1 ]; then mech="vfs"; fi; fi; ' +
-      'mnt=$(grep -cE "/data/adb/modules/$id(/|$)" /proc/self/mountinfo 2>/dev/null); ' +
+      'mnt=$(NM_P="/data/adb/modules/$id" awk \'$4==ENVIRON["NM_P"] || index($4, ENVIRON["NM_P"] "/")==1 {n++} END{print n+0}\' /proc/self/mountinfo 2>/dev/null); ' +
       'echo "$id|$st|$mech|$cnt|$mnt"; done'
     )).stdout.trim();
     if (!out) {
@@ -2669,22 +1941,25 @@
     toast(currentLang === "zh" ? "已恢复内核默认值" : "Reset to kernel default", "ok");
     refreshSpoof();
   }
-  const CARD_STATE_PREFIX = "nmcol:v15:";
+  const CARD_STATE_PREFIX = "nmcol:v16:";
   function toggleCard(h) {
     const card = h.closest(".card");
     const on = card.classList.toggle("collapsed");
     h.classList.toggle("open", !on);
+    if (h.tagName === "BUTTON") h.setAttribute("aria-expanded", String(!on));
     if (card.id) { try { localStorage.setItem(CARD_STATE_PREFIX + card.id, on ? "1" : "0"); } catch (e) {} }
   }
   function applyCardState() {
     document.querySelectorAll("#tab-tools .card[id]").forEach(card => {
       let v = null;
       try { v = localStorage.getItem(CARD_STATE_PREFIX + card.id); } catch (e) {}
-      const defaultOpen = card.id === "cardGlobalHide" || card.id === "cardGlobalScope" || card.id === "cardCloak";
-      const collapsed = v == null ? !defaultOpen : v !== "0";
+      const collapsed = v == null ? true : v !== "0";
       card.classList.toggle("collapsed", collapsed);
-      const h = card.querySelector(".card-h");
-      if (h) h.classList.toggle("open", !collapsed);
+      const h = card.querySelector(".card-h.clp");
+      if (h) {
+        h.classList.toggle("open", !collapsed);
+        if (h.tagName === "BUTTON") h.setAttribute("aria-expanded", String(!collapsed));
+      }
     });
   }
   async function refreshAll(btn) {
@@ -2693,7 +1968,7 @@
     const engineVersion = (await nm("version")).stdout.trim().replace(/^nomount\s*/i, "");
     const suiteVersion = (await exec("sed -n 's/^version=//p' /data/adb/modules/meta-nomount/module.prop 2>/dev/null | head -n1")).stdout.trim();
     $("ver").textContent = suiteVersion || engineVersion || "v?";
-    const protocol = currentLang === "zh" ? "内核协议 v14" : "kernel protocol v14";
+    const protocol = (currentLang === "zh" ? "内核协议 " : "kernel protocol ") + (engineVersion || "v?");
     $("footver").textContent = suiteVersion ? ("Suite " + suiteVersion + " · " + protocol) : protocol;
     await Promise.all([
       refreshStatus(), refreshDevice(), refreshStealth(), refreshGuard(),
@@ -2978,6 +2253,533 @@
   refreshAll();
   loadCloak();
   loadGlobalHide();
+</script>
+<script>
+(function () {
+  "use strict";
+
+  Object.assign(i18n.en, {
+    page_status: "Status",
+    page_modules: "Modules",
+    page_rules: "Rules",
+    page_tools: "Hiding",
+    gl_version: "Version info",
+    gl_state: "Status info",
+    hero_engine: "Engine",
+    hero_chip: "hookless",
+    k_guard_state: "Guard state",
+    k_engine: "Kernel driver version",
+    k_suite: "Manager version",
+    k_api_short: "· API",
+    gl_app: "App settings",
+    k_language: "App language",
+    lang_current: "English",
+    title_menu: "Menu",
+    btn_refresh: "Refresh",
+    ph_search_modules: "Search modules",
+    gl_posture: "Detection posture",
+    title_refresh_modules: "Refresh module list",
+    title_mod_rules: "Injection rules",
+    unit_rules: "",
+    unit_ov: "",
+    unit_mod: ""
+  });
+  Object.assign(i18n.zh, {
+    page_status: "状态",
+    page_modules: "模块",
+    page_rules: "规则",
+    page_tools: "隐藏",
+    gl_version: "版本信息",
+    gl_state: "状态信息",
+    hero_engine: "引擎",
+    hero_chip: "无钩子",
+    k_guard_state: "保护状态",
+    k_engine: "内核驱动版本",
+    k_suite: "管理器版本",
+    k_api_short: "· API",
+    gl_app: "应用设置",
+    k_language: "应用语言",
+    lang_current: "简体中文",
+    title_menu: "菜单",
+    btn_refresh: "刷新",
+    ph_search_modules: "搜索模块",
+    gl_posture: "检测态势",
+    title_refresh_modules: "刷新模块列表",
+    title_mod_rules: "查看注入规则",
+    unit_rules: "条",
+    unit_ov: "个",
+    unit_mod: "个"
+  });
+
+  function nmApplyI18n() {
+    translateElements(i18n[currentLang]);
+    document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
+  }
+  nmApplyI18n();
+
+  function nmHeroSub() {
+    const el = document.getElementById("substate");
+    const mods = document.getElementById("mMod");
+    const rules = document.getElementById("mRules");
+    if (!el || !mods || !rules) return;
+    const n = (mods.textContent || "").trim();
+    const r = (rules.textContent || "").trim();
+    if (!/^\d+$/.test(n) || !/^\d+$/.test(r)) return;
+    if (r === "0") return;
+    el.textContent = currentLang === "zh"
+      ? "已注入 " + n + " 个模块"
+      : n + " module" + (n === "1" ? "" : "s") + " injected";
+  }
+  ["mMod", "mRules"].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el && window.MutationObserver) {
+      new MutationObserver(nmHeroSub).observe(el, { childList: true, characterData: true, subtree: true });
+    }
+  });
+  setTimeout(nmHeroSub, 1500);
+
+  const nmOriginalApplyLang = applyLang;
+  applyLang = function () {
+    const out = nmOriginalApplyLang.apply(this, arguments);
+    nmHeroSub();
+    return out;
+  };
+
+  function nmToggleMenu(ev) {
+    if (ev && ev.stopPropagation) ev.stopPropagation();
+    const menu = document.getElementById("appMenu");
+    if (menu) menu.classList.toggle("show");
+  }
+  function nmCloseMenu() {
+    const menu = document.getElementById("appMenu");
+    if (menu) menu.classList.remove("show");
+  }
+  function nmMenuRefresh() { nmCloseMenu(); refreshAll(); }
+  function nmMenuReload(el) { nmCloseMenu(); return reloadRules(el); }
+  function nmMenuClear(el) { nmCloseMenu(); return clearRules(el); }
+  document.addEventListener("click", nmCloseMenu);
+  window.addEventListener("scroll", nmCloseMenu, { passive: true });
+  window.nmToggleMenu = nmToggleMenu;
+  window.nmMenuRefresh = nmMenuRefresh;
+  window.nmMenuReload = nmMenuReload;
+  window.nmMenuClear = nmMenuClear;
+
+  const NM_SEP = String.fromCharCode(31);
+
+  const NM_MODMETA_CMD =
+    'for d in /data/adb/modules/*/; do [ -d "$d" ] || continue; ' +
+    'id=${d%/}; id=${id##*/}; ' +
+    'name=$(sed -n "s/^name=//p" "$d/module.prop" 2>/dev/null | head -n1); ' +
+    'ver=$(sed -n "s/^version=//p" "$d/module.prop" 2>/dev/null | head -n1); ' +
+    'author=$(sed -n "s/^author=//p" "$d/module.prop" 2>/dev/null | head -n1); ' +
+    'desc=$(sed -n "s/^description=//p" "$d/module.prop" 2>/dev/null | head -n1); ' +
+    'en=1; { [ -f "$d/disable" ] || [ -f "$d/remove" ] || [ -f "$d/skip_mount" ] || [ -f "$d/skip_mountify" ]; } && en=0; ' +
+    'printf "%s\\037%s\\037%s\\037%s\\037%s\\037%s\\n" "$id" "$name" "$ver" "$author" "$desc" "$en"; done';
+
+  let nmModMeta = null;
+  let nmModRulesRaw = null;
+
+  const NM_MORE_ICON = '<svg viewBox="0 -960 960 960"><path d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"/></svg>';
+
+  function nmChipClass(cls) {
+    cls = (cls || "").replace(/\btag\b/g, "").trim();
+    if (cls === "off") return "";
+    if (cls === "warn") return "warn";
+    if (cls === "ov") return "ov";
+    return "cont";
+  }
+
+  async function nmLoadModMeta() {
+    try {
+      const r = await exec(NM_MODMETA_CMD);
+      const map = {};
+      (r.stdout || "").split("\n").forEach(function (line) {
+        if (!line) return;
+        const p = line.split(NM_SEP);
+        if (!p[0]) return;
+        map[p[0]] = { name: p[1] || "", ver: p[2] || "", author: p[3] || "", desc: p[4] || "", en: p[5] };
+      });
+      if (Object.keys(map).length) nmModMeta = map;
+    } catch (e) {}
+    nmDecorateModules();
+  }
+
+  function nmDecorateModules() {
+    const box = document.getElementById("modules");
+    if (!box || !nmModMeta) return;
+    Array.prototype.forEach.call(box.querySelectorAll(".mrow"), function (row) {
+      if (row.dataset.nmCard) return;
+      const idEl = row.querySelector(".mname");
+      if (!idEl) return;
+      const id = idEl.textContent.trim();
+      const meta = nmModMeta[id] || {};
+      const filesEl = row.querySelector(".files");
+      const files = filesEl ? filesEl.textContent.trim() : "";
+      const tags = Array.prototype.slice.call(row.querySelectorAll(".tag")).map(function (t) {
+        return { text: t.textContent.trim(), cls: t.className, tip: t.getAttribute("title") || "" };
+      });
+      row.dataset.nmRank = tags.some(function (t) { return /\b(vfs|ov)\b/.test(t.cls); }) ? "0" : "1";
+
+      let html = '<div class="mod-head"><div class="mod-titles">';
+      html += '<div class="mod-title">' + esc(meta.name || id) + '</div>';
+      html += '</div></div>';
+      html += '<div class="mod-chips">';
+      tags.forEach(function (t) {
+        const kind = nmChipClass(t.cls);
+        html += '<span class="mchip' + (kind ? " " + kind : "") + '"' +
+                (t.tip ? ' title="' + esc(t.tip) + '"' : "") + '>' + esc(t.text) + '</span>';
+      });
+      if (files) html += '<span class="mchip">' + esc(files) + '</span>';
+      html += '<button class="mod-more" data-id="' + esc(id) + '" onclick="nmModInfo(this)"' +
+              ' data-i18n-title="title_mod_rules" data-i18n-aria="title_mod_rules" title="查看注入规则" aria-label="查看注入规则">' +
+              NM_MORE_ICON + '</button>';
+      html += '</div>';
+      html += '<div class="mod-rules" style="display:none"></div>';
+      row.innerHTML = html;
+      row.dataset.nmCard = "1";
+    });
+    nmSortModules();
+    nmApplyI18n();
+    nmFilterModules();
+  }
+
+  function nmSortModules() {
+    const box = document.getElementById("modules");
+    if (!box) return;
+    const rows = Array.prototype.filter.call(box.children, function (c) {
+      return c.classList && c.classList.contains("mrow");
+    });
+    if (rows.length < 2) return;
+    const rank = rows.map(function (r) { return r.dataset.nmRank || "0"; });
+    let sorted = true;
+    for (let i = 1; i < rank.length; i++) {
+      if (rank[i - 1] > rank[i]) { sorted = false; break; }
+    }
+    if (sorted) return;
+    rows.slice().sort(function (a, b) {
+      return (a.dataset.nmRank || "0").localeCompare(b.dataset.nmRank || "0");
+    }).forEach(function (r) { box.appendChild(r); });
+  }
+
+  function nmFilterModules() {
+    const input = document.getElementById("modSearch");
+    const q = (input && input.value || "").trim().toLowerCase();
+    const box = document.getElementById("modules");
+    if (!box) return;
+    Array.prototype.forEach.call(box.querySelectorAll(".mrow"), function (row) {
+      const hit = !q || (row.textContent || "").toLowerCase().indexOf(q) !== -1;
+      row.style.display = hit ? "" : "none";
+    });
+  }
+
+  async function nmModInfo(btn) {
+    const card = btn.closest(".mrow");
+    if (!card) return;
+    const panel = card.querySelector(".mod-rules");
+    if (!panel) return;
+    if (panel.style.display !== "none") { panel.style.display = "none"; return; }
+    panel.style.display = "";
+    if (!panel.dataset.filled) {
+      panel.innerHTML = '<div class="empty">…</div>';
+      if (nmModRulesRaw === null) {
+        const r = await nm("vfs list");
+        nmModRulesRaw = (r.errno === 0 ? r.stdout : "") || "";
+      }
+      const id = btn.dataset.id || "";
+      const lines = nmModRulesRaw.split("\n").map(function (s) { return s.trim(); })
+        .filter(function (s) { return s && s.indexOf("/data/adb/modules/" + id + "/") !== -1; });
+      panel.innerHTML = lines.length
+        ? lines.map(function (l) {
+            const vp = (l.split(" ->")[0] || "").trim();
+            return '<div class="row"><span class="name mono">' + esc(vp) + '</span></div>';
+          }).join("")
+        : '<div class="empty">' + (currentLang === "zh" ? "该模块没有注入规则。" : "No injection rules for this module.") + '</div>';
+      panel.dataset.filled = "1";
+    }
+  }
+
+  function nmRefreshModules(btn) {
+    if (btn) { btn.disabled = true; setTimeout(function () { btn.disabled = false; }, 1200); }
+    nmModRulesRaw = null;
+    nmLoadModMeta();
+    refreshModules();
+  }
+  window.nmFilterModules = nmFilterModules;
+  window.nmModInfo = nmModInfo;
+  window.nmRefreshModules = nmRefreshModules;
+
+
+  let nmGestureAt = 0;
+  ["pointerdown", "touchstart", "mousedown", "keydown"].forEach(function (ev) {
+    document.addEventListener(ev, function () { nmGestureAt = Date.now(); }, true);
+  });
+  const NM_SPOOF_SWITCHES = [["vbmeta_digest", "spVb"], ["spoof_props", "spProps"], ["spoof_uname", "spUname"]];
+  const nmIntended = {};
+  function nmRememberSpoofState() {
+    NM_SPOOF_SWITCHES.forEach(function (p) {
+      const el = document.getElementById(p[1]);
+      if (el) nmIntended[p[0]] = el.checked;
+    });
+  }
+  function nmGuardSpoof(key, el) {
+    if (nmGestureAt !== 0) return true;
+    const want = nmIntended[key];
+    if (el && typeof want === "boolean") el.checked = want;
+    nmSyncUnameRow();
+    return false;
+  }
+  const nmBaseToggleSpoof = toggleSpoof;
+  toggleSpoof = async function (key, el) {
+    if (!nmGuardSpoof(key, el)) return;
+    const out = await nmBaseToggleSpoof.apply(this, arguments);
+    setTimeout(refreshSpoof, 50);
+    return out;
+  };
+  const nmBaseToggleSpoofBool = toggleSpoofBool;
+  toggleSpoofBool = async function (key, el) {
+    if (!nmGuardSpoof(key, el)) return;
+    const out = await nmBaseToggleSpoofBool.apply(this, arguments);
+    setTimeout(refreshSpoof, 50);
+    return out;
+  };
+
+  function nmSyncUnameRow() {
+    const sw = document.getElementById("spUname");
+    const btn = document.getElementById("spUnameEditBtn");
+    const adv = document.getElementById("spUnameAdv");
+    const on = !!(sw && sw.checked);
+    if (btn) btn.style.display = on ? "" : "none";
+    if (adv && !on) adv.style.display = "none";
+  }
+  const nmBaseRefreshSpoof = refreshSpoof;
+  refreshSpoof = async function () {
+    const out = await nmBaseRefreshSpoof.apply(this, arguments);
+    nmRememberSpoofState();
+    nmSyncUnameRow();
+    return out;
+  };
+  (function nmUnameBoot() {
+    const sw = document.getElementById("spUname");
+    if (sw) sw.addEventListener("change", nmSyncUnameRow);
+    setTimeout(function () { nmRememberSpoofState(); nmSyncUnameRow(); }, 2500);
+  })();
+
+  (function nmModulesBoot() {
+    const box = document.getElementById("modules");
+    if (box && window.MutationObserver) {
+      new MutationObserver(function () { nmDecorateModules(); })
+        .observe(box, { childList: true });
+    }
+    nmLoadModMeta();
+  })();
+
+  (async function nmEngineRow() {
+    const el = document.getElementById("dEngine");
+    if (!el) return;
+    try {
+      const r = await nm("version");
+      const v = (r.stdout || "").trim().replace(/^nomount\s*/i, "");
+      if (v) el.textContent = v;
+    } catch (e) {}
+  })();
+
+  const NM_BASES = ["accent1", "accent2", "accent3", "neutral1", "neutral2"];
+  const NM_TONES = [0, 10, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+  const NM_CACHE_KEY = "nm_monet_v1";
+
+  const NM_LIGHT = [
+    ["primary", "accent1", 40], ["onPrimary", "accent1", 100],
+    ["primaryContainer", "accent1", 90], ["onPrimaryContainer", "accent1", 10],
+    ["secondary", "accent2", 40], ["onSecondary", "accent2", 100],
+    ["secondaryContainer", "accent2", 90], ["onSecondaryContainer", "accent2", 10],
+    ["tertiary", "accent3", 40], ["onTertiary", "accent3", 100],
+    ["tertiaryContainer", "accent3", 90], ["onTertiaryContainer", "accent3", 10],
+    ["surfaceDim", "neutral1", 87], ["surface", "neutral1", 98],
+    ["surfaceBright", "neutral1", 98],
+    ["surfaceContainerLowest", "neutral1", 100], ["surfaceContainerLow", "neutral1", 96],
+    ["surfaceContainer", "neutral1", 94], ["surfaceContainerHigh", "neutral1", 92],
+    ["surfaceContainerHighest", "neutral1", 90],
+    ["onSurface", "neutral1", 10], ["onSurfaceVariant", "neutral2", 30],
+    ["surfaceVariant", "neutral2", 90],
+    ["outline", "neutral2", 50], ["outlineVariant", "neutral2", 80],
+    ["inverseSurface", "neutral1", 20], ["inverseOnSurface", "neutral1", 95],
+    ["inversePrimary", "accent1", 80], ["scrim", "neutral1", 0]
+  ];
+  const NM_DARK = [
+    ["primary", "accent1", 80], ["onPrimary", "accent1", 20],
+    ["primaryContainer", "accent1", 30], ["onPrimaryContainer", "accent1", 90],
+    ["secondary", "accent2", 80], ["onSecondary", "accent2", 20],
+    ["secondaryContainer", "accent2", 30], ["onSecondaryContainer", "accent2", 90],
+    ["tertiary", "accent3", 80], ["onTertiary", "accent3", 20],
+    ["tertiaryContainer", "accent3", 30], ["onTertiaryContainer", "accent3", 90],
+    ["surfaceDim", "neutral1", 6], ["surface", "neutral1", 6],
+    ["surfaceBright", "neutral1", 24],
+    ["surfaceContainerLowest", "neutral1", 4], ["surfaceContainerLow", "neutral1", 10],
+    ["surfaceContainer", "neutral1", 12], ["surfaceContainerHigh", "neutral1", 17],
+    ["surfaceContainerHighest", "neutral1", 22],
+    ["onSurface", "neutral1", 90], ["onSurfaceVariant", "neutral2", 80],
+    ["surfaceVariant", "neutral2", 30],
+    ["outline", "neutral2", 60], ["outlineVariant", "neutral2", 30],
+    ["inverseSurface", "neutral1", 90], ["inverseOnSurface", "neutral1", 20],
+    ["inversePrimary", "accent1", 40], ["scrim", "neutral1", 0]
+  ];
+  const NM_ERROR = {
+    error: "#BA1A1A", onError: "#FFFFFF",
+    errorContainer: "#FFDAD6", onErrorContainer: "#410002"
+  };
+  const NM_ERROR_DARK = {
+    error: "#FFB4AB", onError: "#690005",
+    errorContainer: "#93000A", onErrorContainer: "#FFDAD6"
+  };
+
+  function nmHexToRgb(h) {
+    h = String(h).replace("#", "");
+    if (h.length === 8) h = h.slice(2);
+    return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255,
+            parseInt(h.slice(4, 6), 16) / 255];
+  }
+  function nmLin(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function nmUnlin(c) {
+    c = Math.max(0, Math.min(1, c));
+    return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  }
+  function nmHexToLab(h) {
+    const rgb = nmHexToRgb(h).map(nmLin);
+    const x = rgb[0] * 0.4124564 + rgb[1] * 0.3575761 + rgb[2] * 0.1804375;
+    const y = rgb[0] * 0.2126729 + rgb[1] * 0.7151522 + rgb[2] * 0.0721750;
+    const z = rgb[0] * 0.0193339 + rgb[1] * 0.1191920 + rgb[2] * 0.9503041;
+    const f = function (t) { return t > 216 / 24389 ? Math.cbrt(t) : (841 / 108) * t + 4 / 29; };
+    const fx = f(x / 0.95047), fy = f(y), fz = f(z / 1.08883);
+    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+  }
+  function nmLabToHex(lab) {
+    const fy = (lab[0] + 16) / 116, fx = lab[1] / 500 + fy, fz = fy - lab[2] / 200;
+    const g = function (t) { return t > 6 / 29 ? t * t * t : (t - 4 / 29) * 108 / 841; };
+    const x = 0.95047 * g(fx), y = g(fy), z = 1.08883 * g(fz);
+    const r = 3.2404542 * x - 1.5371385 * y - 0.4985314 * z;
+    const gg = -0.9692660 * x + 1.8760108 * y + 0.0415560 * z;
+    const b = 0.0556434 * x - 0.2040259 * y + 1.0572252 * z;
+    const hx = function (c) {
+      const v = Math.max(0, Math.min(255, Math.round(nmUnlin(c) * 255)));
+      return ("0" + v.toString(16)).slice(-2);
+    };
+    return "#" + hx(r) + hx(gg) + hx(b);
+  }
+
+  function nmBuildPalettes(ramps) {
+    const pals = {};
+    for (const base of NM_BASES) {
+      const tones = ramps[base];
+      if (!tones) return null;
+      const keys = Object.keys(tones).map(Number).sort(function (a, b) { return a - b; });
+      if (keys.length < 2) return null;
+      const labs = {};
+      keys.forEach(function (k) { labs[k] = nmHexToLab(tones[k]); });
+      pals[base] = {
+        tone: function (hct) {
+          const dev = 1000 - 10 * hct;
+          if (dev <= keys[0]) return nmLabToHex(labs[keys[0]]);
+          if (dev >= keys[keys.length - 1]) return nmLabToHex(labs[keys[keys.length - 1]]);
+          for (let i = 0; i < keys.length - 1; i++) {
+            const lo = keys[i], hi = keys[i + 1];
+            if (dev >= lo && dev <= hi) {
+              const t = (dev - lo) / (hi - lo);
+              const a = labs[lo], b = labs[hi];
+              return nmLabToHex([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]);
+            }
+          }
+          return nmLabToHex(labs[keys[0]]);
+        }
+      };
+    }
+    return pals;
+  }
+
+  function nmScheme(pals, spec, fixed) {
+    const out = {};
+    for (const k in fixed) out[k] = fixed[k];
+    for (const row of spec) out[row[0]] = pals[row[1]] ? pals[row[1]].tone(row[2]) : "#FF00FF";
+    return out;
+  }
+
+  function nmApplySchemes(light, dark) {
+    let style = document.getElementById("nmPalette");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "nmPalette";
+      document.head.appendChild(style);
+    }
+    const block = function (sel, roles) {
+      const vars = Object.keys(roles).map(function (k) {
+        return "--" + k.replace(/[A-Z]/g, function (m) { return "-" + m.toLowerCase(); }) + ":" + roles[k];
+      });
+      return sel + "{" + vars.join(";") + "}";
+    };
+    style.textContent = block(":root", light) + block('html[data-theme="dark"]', dark);
+  }
+
+  function nmApplyFromRamps(ramps) {
+    const pals = nmBuildPalettes(ramps);
+    if (!pals) return false;
+    nmApplySchemes(nmScheme(pals, NM_LIGHT, NM_ERROR), nmScheme(pals, NM_DARK, NM_ERROR_DARK));
+    return true;
+  }
+
+  function nmParseRamps(text) {
+    const ramps = {};
+    String(text || "").split("\n").forEach(function (line) {
+      const m = line.trim().match(/^(accent[123]|neutral[12])_(\d+)=(#[0-9a-fA-F]{8}|#[0-9a-fA-F]{6})$/);
+      if (!m) return;
+      if (!ramps[m[1]]) ramps[m[1]] = {};
+      ramps[m[1]][Number(m[2])] = m[3];
+    });
+    return NM_BASES.every(function (base) {
+      return NM_TONES.every(function (tone) { return ramps[base] && ramps[base][tone]; });
+    }) ? ramps : null;
+  }
+
+  const NM_READ_CMD =
+    'for b in accent1 accent2 accent3 neutral1 neutral2; do ' +
+    'for t in 0 10 50 100 200 300 400 500 600 700 800 900 1000; do ' +
+    'printf "%s_%s=%s\\n" "$b" "$t" "$(cmd overlay lookup --user 0 android android:color/system_${b}_${t} 2>/dev/null)"; ' +
+    'done; done';
+
+  function nmReadCache() {
+    try {
+      const raw = localStorage.getItem(NM_CACHE_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !/^#[0-9a-fA-F]{6,8}$/.test(obj.fp || "")) return null;
+      const valid = NM_BASES.every(function (base) {
+        return NM_TONES.every(function (tone) {
+          return /^#[0-9a-fA-F]{6,8}$/.test(obj.ramps?.[base]?.[tone] || "");
+        });
+      });
+      return valid ? obj : null;
+    } catch (e) { return null; }
+  }
+  function nmSaveCache(fp, ramps) {
+    try { localStorage.setItem(NM_CACHE_KEY, JSON.stringify({ fp: fp, ramps: ramps })); } catch (e) {}
+  }
+
+  const nmCached = nmReadCache();
+  if (nmCached) nmApplyFromRamps(nmCached.ramps);
+
+  (async function nmMonetBoot() {
+    try {
+      const probe = await exec("cmd overlay lookup --user 0 android android:color/system_accent1_500");
+      const fp = (probe.stdout || "").trim();
+      if (!/^#[0-9a-fA-F]{6,8}$/.test(fp)) return;
+      if (nmCached && nmCached.fp === fp) return;
+      const all = await exec(NM_READ_CMD);
+      const ramps = nmParseRamps(all.stdout);
+      if (!ramps) return;
+      if (nmApplyFromRamps(ramps)) nmSaveCache(fp, ramps);
+    } catch (e) {}
+  })();
+
+})();
+
 </script>
 </body>
 </html>
