@@ -93,7 +93,20 @@ body{
   backdrop-filter:blur(14px) saturate(140%);
   -webkit-backdrop-filter:blur(14px) saturate(140%);
 }
-.topbar .spacer{flex:1 1 auto;min-width:0}
+.topbar-title{
+  flex:1 1 auto;min-width:0;
+  font-size:22px;font-weight:500;letter-spacing:-.2px;color:var(--on-surface);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  opacity:0;
+}
+@supports (animation-timeline:scroll()) {
+  .topbar-title{
+    animation:nmTitleFade linear both;
+    animation-timeline:scroll(root);
+    animation-range:28px 88px;
+  }
+}
+@keyframes nmTitleFade{from{opacity:0}to{opacity:1}}
 .iconbtn{
   flex:none;width:40px;height:40px;border:0;border-radius:var(--r-full);
   display:grid;place-items:center;cursor:pointer;
@@ -574,7 +587,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
 </head>
 <body>
 <div class="topbar">
-  <span class="spacer" aria-hidden="true"></span>
+  <span class="topbar-title" id="topbarTitle" aria-hidden="true"></span>
   <button class="iconbtn" id="langBtn" type="button" onclick="toggleLang()" data-i18n-title="title_language" data-i18n-aria="title_language" title="Switch language" aria-label="Switch language"><span data-i18n="lang_btn">EN</span></button>
   <button class="iconbtn" id="themeBtn" type="button" onclick="toggleTheme()" data-i18n-title="title_theme" data-i18n-aria="title_theme" title="Light / dark theme" aria-label="Light / dark theme">
     <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -2341,6 +2354,40 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     nmHeroSub();
     return out;
   };
+
+  function nmSyncTopTitle() {
+    const el = document.getElementById("topbarTitle");
+    if (!el) return;
+    const active = document.querySelector(".tab.on .pagetitle");
+    el.textContent = active ? active.textContent.trim() : "";
+  }
+  const nmBaseShowTab = showTab;
+  showTab = function () {
+    const out = nmBaseShowTab.apply(this, arguments);
+    nmSyncTopTitle();
+    return out;
+  };
+  nmSyncTopTitle();
+  window.addEventListener("load", nmSyncTopTitle);
+  const nmBaseApplyLang2 = applyLang;
+  applyLang = function () {
+    const out = nmBaseApplyLang2.apply(this, arguments);
+    nmSyncTopTitle();
+    return out;
+  };
+  (function nmTitleFadeFallback() {
+    const ok = window.CSS && CSS.supports && CSS.supports("animation-timeline", "scroll()");
+    if (ok) return;
+    const el = document.getElementById("topbarTitle");
+    if (!el) return;
+    el.style.animation = "none";
+    const onScroll = function () {
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      el.style.opacity = String(Math.max(0, Math.min(1, (y - 28) / 60)));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  })();
 
   function nmToggleMenu(ev) {
     if (ev && ev.stopPropagation) ev.stopPropagation();
