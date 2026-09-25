@@ -207,7 +207,7 @@ html[data-theme="dark"] .iconbtn .ico-moon{display:none}
   font-size:12px;font-weight:500;padding:4px 10px;border-radius:var(--r-xs);
   background:var(--primary);color:var(--on-primary);white-space:nowrap;
 }
-.hero-sub{margin-top:3px;padding-left:35px;font-size:13px;line-height:1.3;opacity:.9}
+.hero-sub{margin-top:3px;font-size:13px;line-height:1.3;opacity:.9}
 .hero:has(#dot.bad){background:var(--error-container);color:var(--on-error-container)}
 .hero:has(#dot.bad) .hero-badge{background:color-mix(in srgb, var(--on-error-container) 10%, transparent)}
 .hero:has(#dot.bad) .hero-chip{background:var(--error);color:var(--on-error)}
@@ -618,9 +618,9 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
           <div class="hero-state">
             <span class="st" id="state" data-i18n="state_checking">检查中…</span>
           </div>
+          <div class="hero-sub" id="substate"></div>
         </div>
       </div>
-      <div class="hero-sub" id="substate"></div>
     </div>
 
     <div class="group-label" data-i18n="gl_version">版本信息</div>
@@ -1651,9 +1651,13 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
   }
   const _refreshModulesImpl = refreshModules;
   let _refreshModulesPending = null;
+  let _modulesDataLoaded = false;
   refreshModules = function () {
     if (_refreshModulesPending) return _refreshModulesPending;
-    _refreshModulesPending = _refreshModulesImpl().finally(function () { _refreshModulesPending = null; });
+    _refreshModulesPending = _refreshModulesImpl().then(function (result) {
+      _modulesDataLoaded = true;
+      return result;
+    }).finally(function () { _refreshModulesPending = null; });
     return _refreshModulesPending;
   };
   async function refreshRuleSummary() {
@@ -2026,7 +2030,9 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
         await Promise.all([refreshVersionInfo(), refreshStatus(), refreshDevice(), refreshGuard()]);
         refreshModules().catch(function () {});
       } else if (name === "modules") {
-        await Promise.all([refreshStealth(), refreshModules(), nmLoadModMeta()]);
+        const tasks = [refreshStealth(), nmLoadModMeta()];
+        if (force || !_modulesDataLoaded) tasks.push(refreshModules());
+        await Promise.all(tasks);
       } else if (name === "rules") {
         await Promise.all([refreshRuleSummary(), refreshVfs(), refreshOverlays()]);
         if (rulesShown) await loadRules();
@@ -2044,6 +2050,35 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
     _refreshingTabs.set(name, task);
     try { await task; }
     finally { _refreshingTabs.delete(name); }
+  }
+  function warmOtherTabs(activeName) {
+    const queue = ["status", "modules", "rules", "tools"].filter(function (name) {
+      return name !== activeName;
+    });
+    function scheduleNext() {
+      if (!queue.length) return;
+      if (document.visibilityState === "hidden") {
+        const resume = function () {
+          if (document.visibilityState === "hidden") return;
+          document.removeEventListener("visibilitychange", resume);
+          scheduleNext();
+        };
+        document.addEventListener("visibilitychange", resume);
+        return;
+      }
+      const name = queue.shift();
+      const load = function () {
+        refreshTabData(name, false, true)
+          .catch(function () {})
+          .finally(function () { window.setTimeout(scheduleNext, 300); });
+      };
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(load, { timeout: 1800 });
+      } else {
+        window.setTimeout(load, 600);
+      }
+    }
+    window.setTimeout(scheduleNext, 500);
   }
   async function refreshAll(btn) {
     const ic = btn && btn.querySelector("svg");
@@ -2328,7 +2363,10 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface-container-h
   uiReady = true;
   window.addEventListener("load", function () {
     const initialTab = document.querySelector(".tab.on");
-    refreshTabData(initialTab ? initialTab.id.replace(/^tab-/, "") : "status", false, true);
+    const initialName = initialTab ? initialTab.id.replace(/^tab-/, "") : "status";
+    refreshTabData(initialName, false, true)
+      .catch(function () {})
+      .finally(function () { warmOtherTabs(initialName); });
   });
 </script>
 <script>
