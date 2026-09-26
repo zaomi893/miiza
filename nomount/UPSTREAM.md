@@ -64,9 +64,31 @@ Local adaptations retained alongside the upstream v33 engine:
   to restore the default `my_hookless` marker. Obsolete trial and boot-loop text
   is not compiled into the released engine.
 
-PathMask uses compile-time VFS call sites; the old arm64 syscall kretprobe
-fallback is compiled out because it duplicated those checks on system-wide hot
-paths. A two-hash 2-Kbit inode filter keeps ordinary permission/stat/readdir
-traffic out of the linear rule matcher even with a large AppCloak list.
-AppCloak remains a small independent package-visibility component maintained
-in this repository.
+LKM-PathMask resolves configured paths to `(device, inode)` identities, then
+filters inode permission, metadata and directory-listing paths. It also has
+arm64 syscall-entry fallbacks because ThinLTO can inline VFS functions and skip
+out-of-line hooks; its default fallback set deliberately omits `faccessat` due
+measurable timing overhead. Its global scope hides paths from root too; its
+UID allow-list mode is a static UID exception list, not a KernelSU root-grant
+check.
+
+NoMount keeps its lower-overhead source-integrated VFS checks and two-hash
+2-Kbit inode filter. The syscall fallbacks are now registered only while a
+rule needs text matching (a directory prefix, unresolved target, or inode 0
+such as some FUSE files), and the old getdents kretprobe is removed because
+the kernel-source readdir hook already handles normal inode identities. A
+source hook in `vfs_getattr_nosec()` already checks metadata paths, so the
+redundant `newfstatat` and `statx` syscall probes are omitted. Only four
+fallback probes remain for path operations not covered by that metadata hook:
+`faccessat2`, `readlinkat`, `openat`, and `openat2`. A
+matching path is exempted for root and KernelSU-authorized UIDs only after a
+rule actually matches, avoiding the authorization lookup on unrelated file
+traffic. Text matching now discovers the four common shared-storage roots and
+uses only roots proven to resolve to the same `(device, inode)`; paths below
+those roots match by their saved relative suffix regardless of which alias an
+app uses. Suffix offsets and lengths are derived from the bounded stored rule
+string, with explicit range checks before comparing, so long paths cannot
+read beyond the saved target. FUSE entries with inode 0 are still omitted from
+inode-based directory-list filtering; the syscall fallback covers direct
+absolute-path checks, not `getdents` names. AppCloak remains a small independent
+package-visibility component maintained in this repository.

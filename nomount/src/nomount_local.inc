@@ -209,7 +209,7 @@ static void nm_procspoof_exit(void)
  *   write '+<path>'   -> add a manual hide rule (prefix match on '/' boundary)
  *   write '&<path>'   -> add an AppCloak-supplement hide rule
  *   write '-<path>'   -> remove one rule
- *   write '@global'   -> apply rules to every process (default)
+ *   write '@global'   -> apply rules globally except root-authorized callers
  *   write '@deny'     -> apply rules only to NoMount-blocked UIDs
  *   write '@uid:<id>' -> allow this caller UID to see '&' AppCloak rules
  *   write '@appcloak-clear' -> clear only '&' rules and caller UIDs
@@ -219,6 +219,8 @@ static void nm_procspoof_exit(void)
 #define NM_PATHHIDE_MAX_PATH_LEN 512
 #define NM_PATHHIDE_MAX_APP_UIDS 256
 #define NM_PATHHIDE_INODE_BLOOM_BITS 2048
+#define NM_PATHHIDE_STORAGE_ROOTS 4
+#define NM_PATHHIDE_STORAGE_ROOT_LEN 32
 
 enum nm_pathhide_scope {
 	NM_PATHHIDE_SCOPE_DENY = 0,
@@ -229,15 +231,26 @@ struct nm_pathhide_rule {
 	char path[NM_PATHHIDE_MAX_PATH_LEN];
 	dev_t dev;
 	unsigned long ino;
+	u16 storage_suffix_off;
+	u16 storage_suffix_len;
 	bool inode_valid;
 	bool needs_path_match;
+	bool under_storage;
 	bool appcloak_scope;
+};
+
+struct nm_pathhide_storage_root {
+	char path[NM_PATHHIDE_STORAGE_ROOT_LEN];
+	dev_t dev;
+	unsigned long ino;
+	u16 len;
 };
 
 struct nm_pathhide_table {
 	struct rcu_head rcu;
 	u16 count;
 	u16 appcloak_uid_count;
+	u8 storage_root_count;
 	u8 scope;
 	bool has_path_rules;
 	/* Two-hash 2-Kbit filter. The old single-word filter saturated quickly
@@ -245,6 +258,7 @@ struct nm_pathhide_table {
 	 * into a linear rule scan on ordinary filesystem traffic. */
 	unsigned long inode_bloom[BITS_TO_LONGS(NM_PATHHIDE_INODE_BLOOM_BITS)];
 	u32 appcloak_uids[NM_PATHHIDE_MAX_APP_UIDS];
+	struct nm_pathhide_storage_root storage_roots[NM_PATHHIDE_STORAGE_ROOTS];
 	struct nm_pathhide_rule rules[];
 };
 
@@ -254,41 +268,37 @@ static struct nm_pathhide_table __rcu *nm_pathhide_rules;
 static struct proc_dir_entry *nm_pathhide_pde;
 bool nomount_pathhide_match_path(const char *path);
 static bool nm_pathhide_scope_matches(const struct nm_pathhide_table *table);
+#ifdef CONFIG_KSU
+extern bool __ksu_is_allow_uid(uid_t uid) __weak;
+#endif
 
-/* The integration patch already checks PathMask in namei/stat/readdir/proc.
- * Do not add syscall kretprobes on top of those VFS hooks: open/stat/access and
- * getdents are system-wide hot paths, and probing them duplicates the result
- * while measurably increasing CPU residency and power use. */
-#if 0 && defined(CONFIG_KPROBES) && defined(CONFIG_ARM64)
+static bool nm_pathhide_caller_exempt(void)
+{
+	kuid_t euid = current_euid();
+
+	if (uid_eq(euid, GLOBAL_ROOT_UID) ||
+	    uid_eq(current_fsuid(), GLOBAL_ROOT_UID))
+		return true;
+#ifdef CONFIG_KSU
+	if (!__ksu_is_allow_uid)
+		return false;
+	return __ksu_is_allow_uid(__kuid_val(current_uid()));
+#else
+	return false;
+#endif
+}
+
+/* Source-integrated VFS checks handle normal inode rules. Path-only rules need
+ * syscall fallbacks because inode_permission() does not receive a pathname.
+ * Keep those probes off unless a directory, unresolved path, or zero-inode
+ * target requires textual matching. */
+#if defined(CONFIG_KPROBES) && defined(CONFIG_ARM64)
 struct nm_pathhide_syscall_data {
 	bool matched;
 	bool close_result;
 };
 
 static bool nm_pathhide_syscalls_registered;
-static bool nm_pathhide_getdents_registered;
-
-static bool nm_pathhide_match_ino(u64 ino)
-{
-	const struct nm_pathhide_table *table;
-	bool hide = false;
-	int i;
-
-	if (!ino || !static_branch_unlikely(&nm_pathhide_active))
-		return false;
-	rcu_read_lock();
-	table = rcu_dereference(nm_pathhide_rules);
-	if (table && nm_pathhide_scope_matches(table)) {
-		for (i = 0; i < table->count; i++) {
-			if (table->rules[i].inode_valid && table->rules[i].ino == ino) {
-				hide = true;
-				break;
-			}
-		}
-	}
-	rcu_read_unlock();
-	return hide;
-}
 
 static bool nm_pathhide_match_user_filename(struct pt_regs *regs)
 {
@@ -349,95 +359,10 @@ static struct nm_pathhide_syscall_probe {
 	struct kretprobe probe;
 	bool registered;
 } nm_pathhide_syscall_probes[] = {
-	{ .symbol = "__arm64_sys_newfstatat", .entry = nm_pathhide_syscall_entry },
-	{ .symbol = "__arm64_sys_statx", .entry = nm_pathhide_syscall_entry },
 	{ .symbol = "__arm64_sys_faccessat2", .entry = nm_pathhide_syscall_entry },
 	{ .symbol = "__arm64_sys_readlinkat", .entry = nm_pathhide_syscall_entry },
 	{ .symbol = "__arm64_sys_openat", .entry = nm_pathhide_open_entry },
 	{ .symbol = "__arm64_sys_openat2", .entry = nm_pathhide_open_entry },
-};
-
-#define NM_PATHHIDE_GETDENTS_LIMIT 65536u
-struct nm_pathhide_getdents_data {
-	struct linux_dirent64 __user *dirent;
-	void *buf;
-	size_t buf_len;
-};
-
-static int nm_pathhide_getdents_entry(struct kretprobe_instance *ri,
-				      struct pt_regs *regs)
-{
-	struct nm_pathhide_getdents_data *data =
-		(struct nm_pathhide_getdents_data *)ri->data;
-	struct pt_regs *user_regs = (struct pt_regs *)regs->regs[0];
-	unsigned int count;
-
-	data->dirent = NULL;
-	data->buf = NULL;
-	data->buf_len = 0;
-	if (!user_regs || !static_branch_unlikely(&nm_pathhide_active))
-		return 0;
-	count = min_t(unsigned int, (unsigned int)user_regs->regs[2],
-		      NM_PATHHIDE_GETDENTS_LIMIT);
-	if (!count)
-		return 0;
-	data->dirent = (struct linux_dirent64 __user *)user_regs->regs[1];
-	data->buf = kmalloc(count, GFP_KERNEL);
-	if (data->buf)
-		data->buf_len = count;
-	return 0;
-}
-
-static int nm_pathhide_getdents_exit(struct kretprobe_instance *ri,
-				     struct pt_regs *regs)
-{
-	struct nm_pathhide_getdents_data *data =
-		(struct nm_pathhide_getdents_data *)ri->data;
-	long ret = (long)regs->regs[0], pos = 0, new_len = ret;
-	struct linux_dirent64 *cur, *prev = NULL;
-	const size_t min_len = offsetof(struct linux_dirent64, d_name) + 1;
-	bool changed = false;
-
-	if (ret <= 0 || !data->dirent || !data->buf ||
-	    (size_t)ret > data->buf_len ||
-	    copy_from_user(data->buf, data->dirent, ret))
-		goto out;
-	while (pos + (long)offsetof(struct linux_dirent64, d_name) < new_len) {
-		unsigned short reclen;
-
-		cur = (struct linux_dirent64 *)((char *)data->buf + pos);
-		reclen = cur->d_reclen;
-		if (reclen < min_len || reclen > new_len - pos)
-			break;
-		if (nm_pathhide_match_ino(cur->d_ino)) {
-			changed = true;
-			if (prev && (unsigned int)prev->d_reclen + reclen <= 65535u) {
-				prev->d_reclen += reclen;
-				pos += reclen;
-				continue;
-			}
-			new_len -= reclen;
-			if (new_len > pos)
-				memmove(cur, (char *)cur + reclen, new_len - pos);
-			continue;
-		}
-		prev = cur;
-		pos += reclen;
-	}
-	if (changed && !copy_to_user(data->dirent, data->buf, new_len))
-		regs_set_return_value(regs, new_len);
-out:
-	kfree(data->buf);
-	data->buf = NULL;
-	return 0;
-}
-
-static struct kretprobe nm_pathhide_getdents_probe = {
-	.kp.symbol_name = "__arm64_sys_getdents64",
-	.entry_handler = nm_pathhide_getdents_entry,
-	.handler = nm_pathhide_getdents_exit,
-	.data_size = sizeof(struct nm_pathhide_getdents_data),
-	.maxactive = 40,
 };
 
 static void nm_pathhide_register_syscall_hooks(void)
@@ -457,8 +382,6 @@ static void nm_pathhide_register_syscall_hooks(void)
 		if (!register_kretprobe(&p->probe))
 			p->registered = true;
 	}
-	if (!register_kretprobe(&nm_pathhide_getdents_probe))
-		nm_pathhide_getdents_registered = true;
 	nm_pathhide_syscalls_registered = true;
 }
 
@@ -475,10 +398,6 @@ static void nm_pathhide_unregister_syscall_hooks(void)
 			unregister_kretprobe(&p->probe);
 			p->registered = false;
 		}
-	}
-	if (nm_pathhide_getdents_registered) {
-		unregister_kretprobe(&nm_pathhide_getdents_probe);
-		nm_pathhide_getdents_registered = false;
 	}
 	nm_pathhide_syscalls_registered = false;
 }
@@ -549,19 +468,129 @@ static __always_inline void nm_pathhide_inode_bloom_add(
 		  table->inode_bloom);
 }
 
+static void nm_pathhide_copy_storage_roots(struct nm_pathhide_table *to,
+					  const struct nm_pathhide_table *from)
+{
+	to->storage_root_count = from->storage_root_count;
+	memcpy(to->storage_roots, from->storage_roots,
+	       sizeof(to->storage_roots));
+}
+
+static void nm_pathhide_discover_storage_roots(struct nm_pathhide_table *table)
+{
+	static const char * const candidates[NM_PATHHIDE_STORAGE_ROOTS] = {
+		"/storage/emulated/0",
+		"/storage/self/primary",
+		"/sdcard",
+		"/mnt/sdcard",
+	};
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(candidates); i++) {
+		struct nm_pathhide_storage_root *root;
+		struct path resolved;
+		struct inode *inode;
+		size_t len = strlen(candidates[i]);
+		unsigned int j;
+
+		if (len >= NM_PATHHIDE_STORAGE_ROOT_LEN ||
+		    table->storage_root_count >= NM_PATHHIDE_STORAGE_ROOTS)
+			continue;
+		for (j = 0; j < table->storage_root_count; j++) {
+			if (!strcmp(table->storage_roots[j].path, candidates[i]))
+				break;
+		}
+		if (j < table->storage_root_count ||
+		    kern_path(candidates[i], LOOKUP_FOLLOW, &resolved))
+			continue;
+		inode = d_backing_inode(resolved.dentry);
+		if (!inode || !inode->i_sb || !inode->i_ino) {
+			path_put(&resolved);
+			continue;
+		}
+		if (table->storage_root_count &&
+		    (inode->i_sb->s_dev != table->storage_roots[0].dev ||
+		     inode->i_ino != table->storage_roots[0].ino)) {
+			path_put(&resolved);
+			continue;
+		}
+		root = &table->storage_roots[table->storage_root_count++];
+		strscpy(root->path, candidates[i], sizeof(root->path));
+		root->dev = inode->i_sb->s_dev;
+		root->ino = inode->i_ino;
+		root->len = len;
+		path_put(&resolved);
+	}
+}
+
+static void nm_pathhide_rule_set_storage(struct nm_pathhide_table *table,
+					 struct nm_pathhide_rule *rule)
+{
+	size_t path_len = strnlen(rule->path, sizeof(rule->path));
+	unsigned int i;
+
+	rule->under_storage = false;
+	rule->storage_suffix_off = 0;
+	rule->storage_suffix_len = 0;
+	if (!path_len || path_len >= sizeof(rule->path))
+		return;
+	for (i = 0; i < table->storage_root_count; i++) {
+		const struct nm_pathhide_storage_root *root =
+			&table->storage_roots[i];
+
+		if (root->len > path_len ||
+		    memcmp(rule->path, root->path, root->len) ||
+		    (path_len != root->len && rule->path[root->len] != '/'))
+			continue;
+		rule->under_storage = true;
+		rule->storage_suffix_off = root->len;
+		rule->storage_suffix_len = path_len - root->len;
+		return;
+	}
+}
+
 /* Exact path or directory-prefix matching only.  The old strstr() rule made
  * "com.foo" also hide "com.foobar" and was the source of several app crashes. */
-static bool nm_pathhide_text_matches(const char *path, const char *rule)
+static bool nm_pathhide_text_matches(const struct nm_pathhide_table *table,
+				     const char *path,
+				     const struct nm_pathhide_rule *rule)
 {
-	size_t len;
+	size_t path_len, rule_len;
+	unsigned int i;
 
-	if (!path || !rule || rule[0] != '/')
+	if (!path || rule->path[0] != '/')
 		return false;
-	len = strlen(rule);
-	if (strncmp(path, rule, len))
+	path_len = strlen(path);
+	rule_len = strnlen(rule->path, sizeof(rule->path));
+	if (!rule_len || rule_len >= sizeof(rule->path))
 		return false;
-	return path[len] == '\0' || path[len] == '/' ||
-	       (len && rule[len - 1] == '/');
+	if (rule->under_storage) {
+		size_t suffix_off = rule->storage_suffix_off;
+		size_t suffix_len = rule->storage_suffix_len;
+		const char *suffix;
+
+		if (suffix_off > rule_len || suffix_len > rule_len - suffix_off)
+			return false;
+		suffix = rule->path + suffix_off;
+		for (i = 0; i < table->storage_root_count; i++) {
+			const struct nm_pathhide_storage_root *root =
+				&table->storage_roots[i];
+			size_t match_len = root->len + suffix_len;
+
+			if (root->len > path_len || match_len > path_len ||
+			    memcmp(path, root->path, root->len) ||
+			    memcmp(path + root->len, suffix, suffix_len))
+				continue;
+			if (match_len == path_len || path[match_len] == '/' ||
+			    rule->path[rule_len - 1] == '/')
+				return true;
+		}
+		return false;
+	}
+	if (path_len < rule_len || memcmp(path, rule->path, rule_len))
+		return false;
+	return path_len == rule_len || path[rule_len] == '/' ||
+	       rule->path[rule_len - 1] == '/';
 }
 
 bool nomount_pathhide_match_path(const char *path)
@@ -582,13 +611,16 @@ bool nomount_pathhide_match_path(const char *path)
 		for (i = 0; i < table->count; i++) {
 			if (nm_pathhide_rule_matches(table, &table->rules[i],
 						      manual_scope, caller_uid) &&
-			    nm_pathhide_text_matches(path, table->rules[i].path)) {
+			    nm_pathhide_text_matches(table, path,
+						     &table->rules[i])) {
 				hide = true;
 				break;
 			}
 		}
 	}
 	rcu_read_unlock();
+	if (hide && nm_pathhide_caller_exempt())
+		hide = false;
 	return hide;
 }
 
@@ -623,6 +655,8 @@ bool nomount_pathhide_hide_inode(const struct inode *inode)
 	}
 out:
 	rcu_read_unlock();
+	if (hide && nm_pathhide_caller_exempt())
+		hide = false;
 	return hide;
 }
 
@@ -658,6 +692,8 @@ bool nomount_pathhide_hide_dirent(const struct inode *dir, u64 ino,
 	}
 out:
 	rcu_read_unlock();
+	if (hide && nm_pathhide_caller_exempt())
+		hide = false;
 	return hide;
 }
 
@@ -721,14 +757,18 @@ static int nm_pathhide_add(const char *path, bool appcloak_scope)
 	}
 	new->scope = old ? old->scope : NM_PATHHIDE_SCOPE_GLOBAL;
 	new->appcloak_uid_count = old ? old->appcloak_uid_count : 0;
-	if (old)
+	if (old) {
 		memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
-	if (old)
+		nm_pathhide_copy_storage_roots(new, old);
 		memcpy(new->appcloak_uids, old->appcloak_uids,
 		       sizeof(new->appcloak_uids));
+	}
 	strscpy(new->rules[new->count - 1].path, path,
 		sizeof(new->rules[new->count - 1].path));
 	new->rules[new->count - 1].appcloak_scope = appcloak_scope;
+	nm_pathhide_discover_storage_roots(new);
+	for (i = 0; i < new->count; i++)
+		nm_pathhide_rule_set_storage(new, &new->rules[i]);
 	/* A trailing slash denotes a directory-prefix rule. */
 	new->rules[new->count - 1].needs_path_match = path[len - 1] == '/';
 	if (!kern_path(path, LOOKUP_FOLLOW, &resolved)) {
@@ -737,7 +777,10 @@ static int nm_pathhide_add(const char *path, bool appcloak_scope)
 			new->rules[new->count - 1].dev = inode->i_sb->s_dev;
 			new->rules[new->count - 1].ino = inode->i_ino;
 			new->rules[new->count - 1].inode_valid = inode->i_ino != 0;
-			new->rules[new->count - 1].needs_path_match |= S_ISDIR(inode->i_mode);
+			new->rules[new->count - 1].needs_path_match |=
+				S_ISDIR(inode->i_mode) || !new->rules[new->count - 1].inode_valid;
+		} else {
+			new->rules[new->count - 1].needs_path_match = true;
 		}
 		path_put(&resolved);
 	} else {
@@ -749,11 +792,15 @@ static int nm_pathhide_add(const char *path, bool appcloak_scope)
 			nm_pathhide_inode_bloom_add(new, new->rules[i].dev,
 						      new->rules[i].ino);
 	}
+	if (new->has_path_rules)
+		nm_pathhide_register_syscall_hooks();
 	rcu_assign_pointer(nm_pathhide_rules, new);
 	if (!old) {
 		static_branch_enable(&nm_pathhide_active);
-		nm_pathhide_register_syscall_hooks();
-	} else
+	}
+	if (!new->has_path_rules)
+		nm_pathhide_unregister_syscall_hooks();
+	if (old)
 		kvfree_rcu(old, rcu);
 out:
 	mutex_unlock(&nm_pathhide_mutex);
@@ -783,6 +830,7 @@ static int nm_pathhide_remove(const char *path)
 		if (!new) { ret = -ENOMEM; goto out; }
 		new->scope = old->scope;
 		new->appcloak_uid_count = old->appcloak_uid_count;
+		nm_pathhide_copy_storage_roots(new, old);
 		memcpy(new->appcloak_uids, old->appcloak_uids,
 		       sizeof(new->appcloak_uids));
 		for (i = 0, j = 0; i < old->count; i++) {
@@ -799,7 +847,10 @@ static int nm_pathhide_remove(const char *path)
 	if (!new) {
 		static_branch_disable(&nm_pathhide_active);
 		nm_pathhide_unregister_syscall_hooks();
-	}
+	} else if (new->has_path_rules)
+		nm_pathhide_register_syscall_hooks();
+	else
+		nm_pathhide_unregister_syscall_hooks();
 	kvfree_rcu(old, rcu);
 out:
 	mutex_unlock(&nm_pathhide_mutex);
@@ -821,6 +872,7 @@ static int nm_pathhide_set_scope(const char *scope)
 	new = nm_pathhide_alloc(old->count);
 	if (!new) { mutex_unlock(&nm_pathhide_mutex); return -ENOMEM; }
 	memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
+	nm_pathhide_copy_storage_roots(new, old);
 	new->scope = value;
 	new->appcloak_uid_count = old->appcloak_uid_count;
 	memcpy(new->appcloak_uids, old->appcloak_uids, sizeof(new->appcloak_uids));
@@ -871,6 +923,7 @@ static int nm_pathhide_add_uid(const char *value)
 		memcpy(new->rules, old->rules, old->count * sizeof(*new->rules));
 		new->scope = old->scope;
 		new->has_path_rules = old->has_path_rules;
+		nm_pathhide_copy_storage_roots(new, old);
 		bitmap_copy(new->inode_bloom, old->inode_bloom,
 			    NM_PATHHIDE_INODE_BLOOM_BITS);
 		memcpy(new->appcloak_uids, old->appcloak_uids,
@@ -917,6 +970,7 @@ static int nm_pathhide_clear_appcloak(void)
 		return -ENOMEM;
 	}
 	new->scope = old->scope;
+	nm_pathhide_copy_storage_roots(new, old);
 	for (i = 0, j = 0; i < old->count; i++) {
 		if (old->rules[i].appcloak_scope)
 			continue;
@@ -928,6 +982,10 @@ static int nm_pathhide_clear_appcloak(void)
 		j++;
 	}
 	rcu_assign_pointer(nm_pathhide_rules, new);
+	if (new->has_path_rules)
+		nm_pathhide_register_syscall_hooks();
+	else
+		nm_pathhide_unregister_syscall_hooks();
 	kvfree_rcu(old, rcu);
 	mutex_unlock(&nm_pathhide_mutex);
 	return 0;
