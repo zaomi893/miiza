@@ -270,19 +270,46 @@ bool nomount_pathhide_match_path(const char *path);
 static bool nm_pathhide_scope_matches(const struct nm_pathhide_table *table);
 #ifdef CONFIG_KSU
 extern bool __ksu_is_allow_uid(uid_t uid) __weak;
+extern bool __ksu_is_allow_uid_for_current(uid_t uid) __weak;
+#endif
+
+#ifdef CONFIG_KSU
+static bool nm_pathhide_caller_is_ksu_authorized(const struct cred *cred)
+{
+	uid_t uid = __kuid_val(cred->uid);
+	uid_t euid = __kuid_val(cred->euid);
+	uid_t suid = __kuid_val(cred->suid);
+	uid_t fsuid = __kuid_val(cred->fsuid);
+
+	if (__ksu_is_allow_uid_for_current &&
+	    __ksu_is_allow_uid_for_current(uid))
+		return true;
+	if (!__ksu_is_allow_uid)
+		return false;
+	if (__ksu_is_allow_uid(uid))
+		return true;
+	if (!uid_eq(cred->euid, cred->uid) && __ksu_is_allow_uid(euid))
+		return true;
+	if (!uid_eq(cred->suid, cred->uid) &&
+	    !uid_eq(cred->suid, cred->euid) && __ksu_is_allow_uid(suid))
+		return true;
+	if (!uid_eq(cred->fsuid, cred->uid) &&
+	    !uid_eq(cred->fsuid, cred->euid) &&
+	    !uid_eq(cred->fsuid, cred->suid) && __ksu_is_allow_uid(fsuid))
+		return true;
+	return false;
+}
 #endif
 
 static bool nm_pathhide_caller_exempt(void)
 {
-	kuid_t euid = current_euid();
+	const struct cred *cred = current_cred();
 
-	if (uid_eq(euid, GLOBAL_ROOT_UID) ||
-	    uid_eq(current_fsuid(), GLOBAL_ROOT_UID))
+	if (uid_eq(cred->euid, GLOBAL_ROOT_UID) ||
+	    uid_eq(cred->fsuid, GLOBAL_ROOT_UID))
 		return true;
 #ifdef CONFIG_KSU
-	if (!__ksu_is_allow_uid)
-		return false;
-	return __ksu_is_allow_uid(__kuid_val(current_uid()));
+	return nm_pathhide_caller_is_ksu_authorized(cred);
 #else
 	return false;
 #endif

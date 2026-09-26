@@ -83,7 +83,10 @@ fallback probes remain for path operations not covered by that metadata hook:
 `faccessat2`, `readlinkat`, `openat`, and `openat2`. A
 matching path is exempted for root and KernelSU-authorized UIDs only after a
 rule actually matches, avoiding the authorization lookup on unrelated file
-traffic. Text matching now discovers the four common shared-storage roots and
+traffic. The exemption checks real, effective, saved, and filesystem UIDs and
+uses KernelSU's current-aware authorization API when available, so directory
+enumeration and child-file access remain consistent across credential changes.
+Text matching now discovers the four common shared-storage roots and
 uses only roots proven to resolve to the same `(device, inode)`; paths below
 those roots match by their saved relative suffix regardless of which alias an
 app uses. Suffix offsets and lengths are derived from the bounded stored rule
